@@ -1,0 +1,102 @@
+{
+  "report": "Project Canary model validation audit",
+  "generated_at_utc": "2026-08-09T09:07:10.257801+00:00",
+  "source": {
+    "workbook": "FARM HARVEST DATA.xlsx",
+    "source_rows": 1785,
+    "canonical_building_days": 1666,
+    "repeated_rows_consolidated": 119,
+    "blocking_errors": []
+  },
+  "recovery_model": {
+    "selected_model": "ridge_no_weight",
+    "cycles": 5,
+    "distinct_building_outcomes": 25,
+    "balanced_checkpoint_rows": 122,
+    "overall_mae_percentage_points": 1.339832785579222,
+    "day14_mae_percentage_points": 1.4390274974456099,
+    "day14_rmse_percentage_points": 1.8031871844774898,
+    "day14_bias_percentage_points": 0.11607705938147328,
+    "day14_target_side_accuracy": 0.84,
+    "day14_majority_side_accuracy": 0.84,
+    "day14_at_or_above_target_recall": 0.0,
+    "top_model_reliance": [
+      {
+        "feature": "percentage_alive",
+        "coefficient_per_standard_deviation": 0.010655253467841621,
+        "absolute_importance_pct": 22.18523834534897,
+        "direction": "Raises estimate"
+      },
+      {
+        "feature": "missing__temperature_recent_avg_c",
+        "coefficient_per_standard_deviation": 0.0065718339487206194,
+        "absolute_importance_pct": 13.68317543627203,
+        "direction": "Raises estimate"
+      },
+      {
+        "feature": "beginning_inventory",
+        "coefficient_per_standard_deviation": -0.0061129026837604215,
+        "absolute_importance_pct": 12.727637444801152,
+        "direction": "Lowers estimate"
+      },
+      {
+        "feature": "missing__humidity_recent_avg_pct",
+        "coefficient_per_standard_deviation": -0.004662078296047814,
+        "absolute_importance_pct": 9.706884823965646,
+        "direction": "Lowers estimate"
+      },
+      {
+        "feature": "feed_cumulative_per_1000_birds",
+        "coefficient_per_standard_deviation": 0.004163379544148123,
+        "absolute_importance_pct": 8.668547190157689,
+        "direction": "Raises estimate"
+      },
+      {
+        "feature": "is_lags_building",
+        "coefficient_per_standard_deviation": -0.003442604624346501,
+        "absolute_importance_pct": 7.167826119804033,
+        "direction": "Lowers estimate"
+      },
+      {
+        "feature": "cycle_day",
+        "coefficient_per_standard_deviation": 0.003160303549479175,
+        "absolute_importance_pct": 6.58004877128935,
+        "direction": "Raises estimate"
+      },
+      {
+        "feature": "mortality_daily_per_1000",
+        "coefficient_per_standard_deviation": -0.003126144463338058,
+        "absolute_importance_pct": 6.508926346094382,
+        "direction": "Lowers estimate"
+      }
+    ],
+    "verdict": "Directional point estimate only; target-side discrimination is not established."
+  },
+  "day35_weight_model": {
+    "selected_model": "historical_remaining_gain",
+    "cycles": 4,
+    "distinct_day35_outcomes": 19,
+    "checkpoint_rows": 76,
+    "overall_mae_grams": 197.6541750108444,
+    "day14_mae_grams": 183.20823778195492,
+    "day14_rmse_grams": 254.4497742265035,
+    "day14_bias_grams": 7.475110974551786,
+    "day14_within_200g_rate": 0.5789473684210527,
+    "historical_day35_target_hits": 0,
+    "verdict": "Useful age-aware baseline; uncertainty is material and target-hit discrimination cannot be tested."
+  },
+  "checks": {
+    "source_to_canonical_reconciliation": true,
+    "no_blocking_source_errors": true,
+    "recovery_day14_mae_recomputes": true,
+    "recovery_day14_rmse_recomputes": true,
+    "recovery_day14_bias_recomputes": true,
+    "weight_day14_mae_recomputes": true,
+    "weight_day14_rmse_recomputes": true,
+    "weight_day14_bias_recomputes": true,
+    "recovery_winner_within_selection_tolerance": true,
+    "weight_winner_within_selection_tolerance": true,
+    "recovery_importance_sums_to_100": true
+  },
+  "overall_status": "PASS"
+}

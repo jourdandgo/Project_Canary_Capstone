@@ -1,0 +1,22 @@
+[project]
+name = "project-canary"
+version = "0.4.0"
+description = "Project Canary continuous-cycle broiler decision-support prototype"
+requires-python = ">=3.11"
+dependencies = [
+  "joblib>=1.4,<2",
+  "openpyxl>=3.1,<4",
+  "pandas>=2.2,<3",
+  "scikit-learn>=1.6,<2",
+  "streamlit>=1.42,<2",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8,<9",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+pythonpath = ["."]

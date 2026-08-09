@@ -1,0 +1,191 @@
+{
+  "surface": "report",
+  "manifest": {
+    "version": 1,
+    "surface": "report",
+    "title": "Project Canary Capstone Validation",
+    "description": "Stakeholder acceptance review for the continuous-cycle decision-support prototype.",
+    "generatedAt": "2026-08-07T00:00:00Z",
+    "cards": [
+      {
+        "id": "scenario_checks",
+        "description": "Reproducible checks across five representative historical scenarios.",
+        "dataset": "summary",
+        "sourceId": "validation_evidence",
+        "metrics": [
+          {"label": "Scenario checks passed", "field": "checks_passed", "format": "number"},
+          {"label": "Checks run", "field": "checks_total", "format": "number"}
+        ]
+      },
+      {
+        "id": "walkthroughs",
+        "description": "Day and state combinations reviewed end to end.",
+        "dataset": "summary",
+        "sourceId": "validation_evidence",
+        "metrics": [{"label": "Historical walkthroughs", "field": "scenarios", "format": "number"}]
+      },
+      {
+        "id": "automated_tests",
+        "description": "Application, data, risk, model, forecast, and recommendation regression checks.",
+        "dataset": "summary",
+        "sourceId": "test_suite",
+        "metrics": [{"label": "Automated tests passed", "field": "tests_passed", "format": "number"}]
+      },
+      {
+        "id": "canonical_rows",
+        "description": "Unique cycle-building-day records after safe consolidation.",
+        "dataset": "summary",
+        "sourceId": "validation_evidence",
+        "metrics": [{"label": "Building-day records", "field": "canonical_rows", "format": "number"}]
+      }
+    ],
+    "charts": [
+      {
+        "id": "scenario_check_chart",
+        "title": "Validation checks passed by scenario",
+        "subtitle": "Nine checks were run in each historical walkthrough; all passed.",
+        "type": "bar",
+        "dataset": "scenario_check_counts",
+        "sourceId": "validation_evidence",
+        "encodings": {
+          "x": {"field": "scenario_short", "type": "ordinal", "label": "Historical scenario"},
+          "y": {"field": "checks_passed", "type": "quantitative", "label": "Checks passed", "format": "number"}
+        },
+        "yAxisTitle": "Checks passed",
+        "valueFormat": "number",
+        "layout": "full"
+      }
+    ],
+    "tables": [
+      {
+        "id": "scenario_table",
+        "title": "Historical acceptance scenarios",
+        "dataset": "scenarios",
+        "sourceId": "validation_evidence",
+        "defaultSort": {"field": "scenario", "direction": "asc"},
+        "columns": [
+          {"field": "scenario", "label": "Scenario", "type": "text"},
+          {"field": "coverage", "label": "What it proves", "type": "text"},
+          {"field": "result", "label": "Result", "type": "text"}
+        ]
+      },
+      {
+        "id": "output_table",
+        "title": "Acceptance against the five required outputs",
+        "dataset": "outputs",
+        "sourceId": "validation_evidence",
+        "defaultSort": {"field": "output", "direction": "asc"},
+        "columns": [
+          {"field": "output", "label": "Required output", "type": "text"},
+          {"field": "result", "label": "Validation result", "type": "text"},
+          {"field": "qualification", "label": "Important qualification", "type": "text"}
+        ]
+      },
+      {
+        "id": "open_table",
+        "title": "Highest-priority open decisions",
+        "dataset": "open_items",
+        "sourceId": "open_register",
+        "defaultSort": {"field": "decision", "direction": "asc"},
+        "columns": [
+          {"field": "decision", "label": "Decision to revisit", "type": "text"},
+          {"field": "current_behavior", "label": "Safe behavior until resolved", "type": "text"}
+        ]
+      }
+    ],
+    "sources": [
+      {"id": "validation_evidence", "label": "Reviewed Sprint 5 report snapshot", "path": "docs/report_sources/capstone_validation_report.sql"},
+      {"id": "test_suite", "label": "Reviewed automated-test summary", "path": "docs/report_sources/automated_test_summary.sql"},
+      {"id": "open_register", "label": "Reviewed open-items summary", "path": "docs/report_sources/open_items_report.sql"},
+      {"id": "model_card", "label": "Project Canary model card", "path": "models/MODEL_CARD.md"}
+    ],
+    "blocks": [
+      {"id": "title", "type": "markdown", "body": "# Project Canary Capstone Validation"},
+      {
+        "id": "executive_summary",
+        "type": "markdown",
+        "body": "## Executive Summary\n\n- **Overall assessment: Share with caveats.** The capstone’s decision flow is reproducible across the agreed early-warning period, later-cycle days, missing data, stale weights, staggered placements, and harvest completion.\n- **All five required outputs are present and traceable.** Risk, Why, recovery outlook, experimental weight outlook, and recommended action can be followed back to their evidence, rules, and versions.\n- **The remaining work is explicit.** Farm approval of risk thresholds and action rules is still required. Final-weight labels are available, but the selected method remains a non-personalized historical baseline."
+      },
+      {"id": "headline_metrics", "type": "metric-strip", "cardIds": ["scenario_checks", "walkthroughs", "automated_tests", "canonical_rows"]},
+      {
+        "id": "scenario_findings",
+        "type": "markdown",
+        "sourceId": "validation_evidence",
+        "body": "## The continuous-cycle behavior holds at the important boundaries\n\nFive historical walkthroughs produced **45 passing checks**. Day 14 remains the early-control view, while Day 22 and Day 48 prove Canary does not stop after the first two weeks. The later-cycle case also keeps a Day 35 weight visibly marked as 13 days stale."
+      },
+      {"id": "scenario_chart", "type": "chart", "chartId": "scenario_check_chart", "layout": "full"},
+      {"id": "scenario_evidence", "type": "table", "tableId": "scenario_table", "layout": "full"},
+      {
+        "id": "outputs_finding",
+        "type": "markdown",
+        "body": "## The decision question is answered without mixing rules and models\n\nThe operational risk rating remains rules-based. Recovery and weight are separate forecasts, and the action is chosen from a deterministic playbook. This separation keeps every result understandable to a nontechnical owner and prevents a model estimate from silently changing the risk label."
+      },
+      {"id": "output_evidence", "type": "table", "tableId": "output_table", "layout": "full"},
+      {
+        "id": "correction",
+        "type": "markdown",
+        "sourceId": "validation_evidence",
+        "body": "## Validation found and closed two incomplete-day gaps\n\nAn Incomplete day originally produced the incorrect forecast status “Waiting for placement.” Canary now recognizes that the flock is already placed, uses only the latest known observations when enough evidence exists, and visibly says **“Forecast available — latest recorded data used.”** The visual review also found a misleading “0 Active buildings” summary; it now counts placed buildings, retains a starting priority, and displays a delayed-data notice on incomplete cards. Regression tests protect both corrections."
+      },
+      {
+        "id": "next_steps",
+        "type": "markdown",
+        "body": "## Recommended next steps\n\n1. Have Doc Raymond approve or revise the provisional risk thresholds.\n2. Complete the seven-rule action-playbook review.\n3. Confirm missing building-cycle coverage and the final average-liveweight definition.\n4. Add 2026-2 and 2026-3 final-weight labels when available.\n5. Confirm whether workbook End Date always means actual harvest completion."
+      },
+      {
+        "id": "questions",
+        "type": "markdown",
+        "body": "## Further questions\n\nThe most important unresolved definitions are final average-liveweight, End Date meaning, and how culls, transfers, missing birds, and partial harvests affect survived birds and ending inventory. These do not conceal prototype failures, but they can materially change future training labels or operational interpretation."
+      },
+      {"id": "open_evidence", "type": "table", "tableId": "open_table", "layout": "full"},
+      {
+        "id": "caveats",
+        "type": "markdown",
+        "sourceId": "model_card",
+        "body": "## Caveats and assumptions\n\nThe recovery model is a limited-data prototype trained on five completed cycles. The weight result uses accepted final-harvest labels, but the selected method is a non-personalized farm historical baseline with weak target-side accuracy. Risk thresholds and recommendation rules are versioned but provisional. Canary is decision support, not disease diagnosis, automatic treatment, or a production deployment."
+      }
+    ]
+  },
+  "snapshot": {
+    "version": 1,
+    "generatedAt": "2026-08-07T00:00:00Z",
+    "status": "ready",
+    "datasets": {
+      "summary": [{"checks_passed": 45, "checks_total": 45, "scenarios": 5, "tests_passed": 36, "canonical_rows": 1666}],
+      "scenario_check_counts": [
+        {"scenario_short": "Day 14", "checks_passed": 9, "checks_run": 9, "result": "Pass"},
+        {"scenario_short": "Day 22", "checks_passed": 9, "checks_run": 9, "result": "Pass"},
+        {"scenario_short": "Mixed states", "checks_passed": 9, "checks_run": 9, "result": "Pass"},
+        {"scenario_short": "Day 48", "checks_passed": 9, "checks_run": 9, "result": "Pass"},
+        {"scenario_short": "Missing day", "checks_passed": 9, "checks_run": 9, "result": "Pass"}
+      ],
+      "scenarios": [
+        {"order": 1, "scenario": "Day 14 · cycle 2025-5", "coverage": "Early-warning boundary; active Tags and inactive Lags", "result": "Pass"},
+        {"order": 2, "scenario": "Day 22 · cycle 2026-3", "coverage": "Continuous operation after Day 14; no bodyweight yet", "result": "Pass"},
+        {"order": 3, "scenario": "June 12 · cycle 2026-2", "coverage": "Harvested, active, and inactive buildings in one view", "result": "Pass"},
+        {"order": 4, "scenario": "Day 48 · cycle 2025-5", "coverage": "After-Day-35 continuity and stale-weight disclosure", "result": "Pass"},
+        {"order": 5, "scenario": "Missing daily entry · cycle 2026-3", "coverage": "Incomplete state and latest-known-data forecasting", "result": "Pass after correction"}
+      ],
+      "outputs": [
+        {"order": 1, "output": "A. Risk rating", "result": "Pass", "qualification": "Farm approval of provisional thresholds remains open."},
+        {"order": 2, "output": "B. Why", "result": "Pass", "qualification": "Raw observations, thresholds, scores, freshness, equation, and label rule are traceable."},
+        {"order": 3, "output": "C. Predicted recovery", "result": "Pass as prototype", "qualification": "Five completed training cycles; cycle-held-out MAE 1.26 percentage points."},
+        {"order": 4, "output": "D. Predicted average weight", "result": "Experimental farm baseline", "qualification": "17 accepted final-harvest labels; MAE 0.093 kg; not personalized and target-side accuracy is 32.2%."},
+        {"order": 5, "output": "E. Recommended action", "result": "Pass as preliminary guidance", "qualification": "Seven deterministic rules remain pending Doc Raymond review."}
+      ],
+      "open_items": [
+        {"order": 1, "decision": "Risk thresholds and rating bands", "current_behavior": "Versioned and visibly provisional."},
+        {"order": 2, "decision": "Seven recommended-action rules", "current_behavior": "Visibly preliminary and editable with explicit approval controls."},
+        {"order": 3, "decision": "Final average-liveweight definition and denominator", "current_behavior": "Accepted labels are used; eligible buildings receive a visibly non-personalized farm baseline."},
+        {"order": 4, "decision": "Actual versus planned End Date", "current_behavior": "Default uses latest complete daily data; selected End Date is treated as harvested."},
+        {"order": 5, "decision": "Culls, transfers, and partial harvests", "current_behavior": "Recovery uses the agreed simple beginning-to-ending inventory formula."}
+      ]
+    }
+  },
+  "sources": [
+    {"id": "validation_evidence", "label": "Reviewed Sprint 5 report snapshot", "path": "docs/report_sources/capstone_validation_report.sql"},
+    {"id": "test_suite", "label": "Reviewed automated-test summary", "path": "docs/report_sources/automated_test_summary.sql"},
+    {"id": "open_register", "label": "Reviewed open-items summary", "path": "docs/report_sources/open_items_report.sql"},
+    {"id": "model_card", "label": "Project Canary model card", "path": "models/MODEL_CARD.md"}
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "version": "operational-alerts-0.2.0-provisional-philippines",
+  "approval_status": "Pending Doc Raymond validation",
+  "risk_score_effect": "None",
+  "maximum_current_reading_age_days": 2,
+  "mortality_daily_pct": {"watch": 0.1, "warning": 0.2, "critical": 0.3},
+  "temperature_deviation_from_target_c": {"warning": 3, "critical": 5},
+  "temperature_ranges_c": [
+    {"day_min": 1, "day_max": 7, "minimum": 29, "target": 31, "maximum": 33},
+    {"day_min": 8, "day_max": 14, "minimum": 25.5, "target": 27.5, "maximum": 29.5},
+    {"day_min": 15, "day_max": 21, "minimum": 26, "target": 27.25, "maximum": 28.5}
+  ],
+  "humidity_ranges_pct": [
+    {"day_min": 1, "day_max": 7, "minimum": 60, "target": 60, "maximum": 70},
+    {"day_min": 8, "day_max": 14, "minimum": 55, "target": 55, "maximum": 65},
+    {"day_min": 15, "day_max": 35, "minimum": 50, "target": 50, "maximum": 60}
+  ],
+  "feed_gap_pct": {"watch": 5, "warning": 10, "critical": 50},
+  "feed_targets_g_per_bird": [
+    10, 20, 20, 25, 25, 35, 35, 50, 50, 60,
+    60, 70, 80, 90, 90, 100, 100, 110, 110, 120,
+    120, 130, 130, 140, 140, 150, 150, 160, 160, 170,
+    170, 180, 180, 190, 190, 200, 200, 210, 210
+  ],
+  "deferred": [
+    "The Week 1-3 temperature ranges are a Doc Raymond literature-based proposal; record the exact source, sensor position, and housing context before approval.",
+    "No automatic temperature alert is issued after Day 21 until the farm approves a practical later-age reference range.",
+    "Feed-intake targets and the Daily FI/bird unit require farm-owner confirmation.",
+    "Water-intake alerts require a reliable building-day water field and an approved baseline.",
+    "THI requires an approved poultry-specific formula and action bands.",
+    "Temperature, humidity, and mortality thresholds require farm-owner sign-off before operational use."
+  ]
+}

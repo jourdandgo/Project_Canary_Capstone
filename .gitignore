@@ -1,0 +1,17 @@
+.venv/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+.DS_Store
+.streamlit/secrets.toml
+outputs/
+*.inspect.ndjson
+
+# Farm workbooks are intentionally excluded from source control.
+FARM HARVEST DATA*.xlsx
+Farm Performance Summary*.xlsx
+Farmer Validation Workbook*.xlsx
+Weights Cleaned*.xlsx
+Aggregated Temperature Data*.xlsx
+PROJECT CANARY - HARVEST FARM DATA*.xlsx
+cobb and farm targets*.xlsx

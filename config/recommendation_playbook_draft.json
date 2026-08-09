@@ -1,0 +1,138 @@
+{
+  "version": "recommendation-playbook-0.4.0-draft",
+  "approval_status": "Pending Doc Raymond review",
+  "intended_use": "Inspection, management follow-up, and escalation guidance only. Not disease diagnosis, medication, vaccination, or automated treatment advice.",
+  "severity_guide": [
+    {
+      "risk_rating": "Low",
+      "urgency": "Routine monitoring",
+      "owner_instruction": "Review during normal flock rounds and continue scheduled monitoring."
+    },
+    {
+      "risk_rating": "Medium",
+      "urgency": "Within 24 hours",
+      "owner_instruction": "Verify the evidence and inspect the building within 24 hours."
+    },
+    {
+      "risk_rating": "High",
+      "urgency": "Current shift",
+      "owner_instruction": "Inspect during the current shift, document findings, and correct verified management or equipment deviations."
+    },
+    {
+      "risk_rating": "Critical",
+      "urgency": "Immediate",
+      "owner_instruction": "Inspect immediately and notify the responsible farm manager. Involve the veterinarian or service technician when mortality, illness, or welfare concerns are present."
+    }
+  ],
+  "rules": [
+    {
+      "rule_id": "ACT-001",
+      "pattern": "No Material Drift",
+      "dashboard_action": "Continue normal management and monitoring. No corrective action is indicated today.",
+      "inspection_checklist": "Confirm that mortality, population, feed, water, and weight records are current. Continue scheduled weighing and daily flock observation.",
+      "escalation_trigger": "Escalate only if the risk level rises, a forecast deteriorates materially, or staff observe a welfare or health concern.",
+      "approval_status": "Pending Review",
+      "owner_comments": "",
+      "approved_wording": "",
+      "approval_date": ""
+    },
+    {
+      "rule_id": "ACT-002",
+      "pattern": "Weight Lag Only",
+      "dashboard_action": "Confirm the weight result, then check whether birds have unrestricted access to suitable feed and water.",
+      "inspection_checklist": "Reweigh a representative sample using the farm-approved method; review flock uniformity; check feed supply, feed form and quality, feeder height and space, water pressure and flow, drinker accessibility, house temperature, ventilation, lighting, and stocking density.",
+      "escalation_trigger": "Escalate to the farm manager, nutritionist, or service technician when the shortfall is confirmed and persists after verified management or equipment issues are corrected.",
+      "approval_status": "Pending Review",
+      "owner_comments": "",
+      "approved_wording": "",
+      "approval_date": ""
+    },
+    {
+      "rule_id": "ACT-003",
+      "pattern": "Survival Concern Only",
+      "dashboard_action": "Review the flock and establish why mortality or survival has worsened.",
+      "inspection_checklist": "Reconcile bird and mortality counts; inspect bird behavior, droppings, litter, air quality, temperature, water use, feed use, and recent operational changes; record causes of culling where known.",
+      "escalation_trigger": "Notify the farm veterinarian or service technician when mortality continues rising, clinical signs are present, or the cause is not evident. Arrange appropriate post-mortem examination through trained personnel.",
+      "approval_status": "Pending Review",
+      "owner_comments": "",
+      "approved_wording": "",
+      "approval_date": ""
+    },
+    {
+      "rule_id": "ACT-004",
+      "pattern": "Growth + Survival Drift",
+      "dashboard_action": "Treat this as a combined performance problem and complete a focused flock assessment.",
+      "inspection_checklist": "Verify weight and mortality data; check water and feed systems first; then review environment, litter, bird distribution, leg problems, feed quality, and recent feed or management changes.",
+      "escalation_trigger": "Escalate for veterinary or service-technician investigation when growth loss and survival loss occur together, particularly if mortality is increasing or birds show clinical signs.",
+      "approval_status": "Pending Review",
+      "owner_comments": "",
+      "approved_wording": "",
+      "approval_date": ""
+    },
+    {
+      "rule_id": "ACT-005",
+      "pattern": "Localized Building Drift",
+      "dashboard_action": "Inspect this building against better-performing peers and look for a building-specific problem.",
+      "inspection_checklist": "Compare feed and water consumption, water pressure, feeder and drinker access, sensor readings, fan and inlet operation, temperature distribution, litter condition, lighting, stocking density, and bird distribution. Confirm that the difference is not caused by stale or incorrect records.",
+      "escalation_trigger": "Escalate when the building remains worse than age-matched peers after data and equipment checks, or when a health or welfare concern is observed.",
+      "approval_status": "Pending Review",
+      "owner_comments": "",
+      "approved_wording": "",
+      "approval_date": ""
+    },
+    {
+      "rule_id": "ACT-006",
+      "pattern": "Farm-Wide Drift",
+      "dashboard_action": "Investigate shared inputs or conditions affecting several buildings before changing individual-building settings.",
+      "inspection_checklist": "Review the common feed batch or formulation, water source and pressure, water quality, controller programs, ventilation settings, weather exposure, chick source, vaccination history, and recent farm-wide operational changes.",
+      "escalation_trigger": "Contact the farm manager and the appropriate nutritionist, integrator, service technician, or veterinarian when a shared cause is suspected or several buildings continue deteriorating.",
+      "approval_status": "Pending Review",
+      "owner_comments": "",
+      "approved_wording": "",
+      "approval_date": ""
+    },
+    {
+      "rule_id": "ACT-007",
+      "pattern": "Missing or Stale Evidence",
+      "dashboard_action": "Update the missing measurement before making a major management decision.",
+      "inspection_checklist": "Obtain a fresh representative weight where needed; reconcile population and mortality; confirm feed and water readings; and check whether sensors or records are incomplete.",
+      "escalation_trigger": "Escalate the data issue when required measurements cannot be collected promptly or when missing evidence could conceal a health or welfare concern.",
+      "approval_status": "Pending Review",
+      "owner_comments": "",
+      "approved_wording": "",
+      "approval_date": ""
+    }
+  ],
+  "sources": [
+    {
+      "source": "Aviagen Ross Broiler Management Handbook 2025",
+      "use": "Liveweight monitoring, mortality records, feed and water checks, environment, post-mortem examination, and veterinary escalation.",
+      "url": "https://aviagen.com/assets/Tech_Center/Ross_Broiler/Aviagen-ROSS-Broiler-Handbook-EN.pdf"
+    },
+    {
+      "source": "Aviagen Indian River Broiler Management Handbook 2025 — Problem Solving",
+      "use": "Poor growth and mortality troubleshooting across feed, water, environment, stocking density, and veterinary investigation.",
+      "url": "https://eseu.aviagen.com/assets/Tech_Center/LIR_Broiler/Aviagen-IR-Broiler-Handbook-EN.pdf"
+    },
+    {
+      "source": "Cobb Broiler Management Guide",
+      "use": "Clean accessible water, adequate flow, feeder and drinker management, and post-placement management.",
+      "url": "https://www.cobb-vantress.com/assets/Cobb-Files/4d0dd628b7/Broiler-Guide_English-2021-min.pdf"
+    },
+    {
+      "source": "University of Georgia Extension — Poultry Drinking Water Primer",
+      "use": "Water as a flock-performance indicator and comparison of bird distribution and consumption within a house.",
+      "url": "https://extension.uga.edu/publications/detail.html?number=B1301&title=poultry-drinking-water-primer"
+    },
+    {
+      "source": "University of Georgia Extension — Litter Quality and Broiler Performance",
+      "use": "Litter, ventilation, drinker management, ammonia, health, and performance relationships.",
+      "url": "https://extension.uga.edu/publications/detail.html?number=B1267&title=litter-quality-and-broiler-performance"
+    },
+    {
+      "source": "Mississippi State University Extension — Minimum Ventilation Can Challenge Broilers",
+      "use": "Ventilation, air quality, moisture, weight gain, intake, health, and survival.",
+      "url": "https://www.extension.msstate.edu/publications/minimum-ventilation-can-challenge-broilers"
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "version": "risk-rules-0.2.0-provisional",
+  "approval_status": "Provisional - farm validation required",
+  "survival_target": {
+    "final_target_rate": 0.95,
+    "target_day": 35
+  },
+  "rating_bands": [
+    {"label": "Low", "minimum": 0, "maximum": 1},
+    {"label": "Medium", "minimum": 2, "maximum": 3},
+    {"label": "High", "minimum": 4, "maximum": 5},
+    {"label": "Critical", "minimum": 6, "maximum": 12}
+  ],
+  "age_bands": [
+    {"label": "Days 1-7", "minimum_age": 1, "maximum_age": 7, "weight_gap_pct": [5.0, 15.0, 30.0], "survival_gap_pp": [0.15, 0.50, 1.00], "mortality_trend_delta_per_1000": [0.20, 0.60, 0.85]},
+    {"label": "Days 8-14", "minimum_age": 8, "maximum_age": 14, "weight_gap_pct": [5.0, 15.0, 30.0], "survival_gap_pp": [0.25, 0.75, 1.50], "mortality_trend_delta_per_1000": [0.05, 0.20, 0.45]},
+    {"label": "Days 15-21", "minimum_age": 15, "maximum_age": 21, "weight_gap_pct": [5.0, 15.0, 30.0], "survival_gap_pp": [0.50, 1.25, 2.00], "mortality_trend_delta_per_1000": [0.05, 0.25, 0.40]},
+    {"label": "Day 22 onward", "minimum_age": 22, "maximum_age": 999, "weight_gap_pct": [5.0, 15.0, 30.0], "survival_gap_pp": [0.75, 2.00, 4.00], "mortality_trend_delta_per_1000": [0.15, 0.50, 0.95]}
+  ],
+  "mortality_trend": {
+    "recent_days": 3,
+    "baseline_days": 7,
+    "minimum_baseline_observations": 2
+  },
+  "peer_comparison": {
+    "minimum_comparable_buildings": 3,
+    "maximum_age_difference_days": 2,
+    "weight_gap_excess_pct": [2.0, 5.0, 10.0],
+    "survival_gap_excess_pp": [0.25, 0.75, 1.50],
+    "mortality_rate_excess_per_1000": [0.10, 0.30, 0.60]
+  },
+  "farm_wide": {
+    "minimum_scorable_buildings": 3,
+    "minimum_core_score": 2,
+    "minimum_elevated_share": 0.5
+  }
+}

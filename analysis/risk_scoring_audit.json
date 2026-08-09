@@ -1,0 +1,54 @@
+{
+  "audit_date": "2026-08-09",
+  "purpose": "Evaluate whether the provisional rules-based risk score is traceable and whether its Day 14 labels can be claimed as validated outcome predictions.",
+  "sources": [
+    "FARM HARVEST DATA.xlsx",
+    "Farm Performance Summary.xlsx",
+    "Farmer Validation Workbook.xlsx (all guidance sheets except RISK SCORING MATRIX)",
+    "config/risk_rules.json"
+  ],
+  "current_design_verdict": {
+    "dimensions": "Keep growth progress, survival position, mortality momentum, and peer context for the capstone because they answer distinct operational questions and match the agreed scope.",
+    "important_overlap": "Survival and mortality are related, while peer context may repeat the same underlying weight, survival, or mortality concern.",
+    "threshold_status": "Provisional. The validation workbook supports several separate alerts but does not approve the complete 0-3 point matrix, survival path, peer points, or rating bands.",
+    "interpretation": "Operational prioritization only; not a statistical probability or validated outcome classifier."
+  },
+  "historical_snapshot_audit": {
+    "scored_building_snapshots_at_cycle_last_date": 34,
+    "dimension_availability": {
+      "growth_progress": 23,
+      "survival_position": 34,
+      "mortality_momentum": 34,
+      "peer_context": 29
+    },
+    "peer_correlation_with_other_scores": {
+      "growth_progress": 0.397,
+      "survival_position": 0.581,
+      "mortality_momentum": 0.57
+    },
+    "last_date_total_score_vs_last_recorded_recovery_correlation": -0.478,
+    "last_date_interpretation": "Direction is operationally sensible, but the result is expected because current survival is a score input and last-recorded survival is the recovery outcome proxy. It is not independent early-warning proof."
+  },
+  "day14_audit": {
+    "historical_building_snapshots": 31,
+    "total_score_vs_last_recorded_recovery_correlation": 0.189,
+    "snapshots_with_recorded_day35_weight": 19,
+    "total_score_vs_recorded_day35_weight_correlation": 0.042,
+    "finding": "Risk bands did not show a consistent monotonic ordering in either outcome.",
+    "decision": "Do not claim that the Day 14 risk label predicts final recovery or Day 35 weight. Use the separate forecast layers for outcome estimates."
+  },
+  "validation_workbook_evidence": {
+    "body_weight": "Warning at 10% deviation and critical at 30% deviation are listed, but a complete four-level point system is not supplied.",
+    "daily_mortality": "0.1%, 0.2%, and 0.3% of beginning population are listed as normal/watch, warning, and critical operational thresholds.",
+    "population_loss": "3%, 5%, and 7% are listed as operational thresholds.",
+    "environment": "Age-specific temperature and humidity ranges are supplied and remain secondary operational checks.",
+    "interventions": "The workbook supports simple inspection mappings for low weight, high mortality, temperature, humidity, feed, and poor predicted recovery."
+  },
+  "required_farm_validation": [
+    "Approve the assumed survival path from placement to the 95% goal.",
+    "Decide whether the mortality risk dimension should combine absolute daily level and worsening trend.",
+    "Approve or revise all point cutoffs and Low/Medium/High/Critical bands.",
+    "Decide whether peer context should add 0-3 points, add a smaller modifier, or remain explanation only.",
+    "Approve the displayed problem-pattern names and management playbook."
+  ]
+}
