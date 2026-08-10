@@ -17,15 +17,15 @@ SOURCE = Path(
 )
 
 
-def test_operational_alerts_are_provisional_and_do_not_affect_risk():
+def test_operational_alerts_use_the_supplied_tropical_age_bands():
     rules = load_operational_alert_rules()
-    assert rules["approval_status"].startswith("Pending")
-    assert rules["risk_score_effect"] == "None"
-    assert rules["temperature_ranges_c"] == [
-        {"day_min": 1, "day_max": 7, "minimum": 29, "target": 31, "maximum": 33},
-        {"day_min": 8, "day_max": 14, "minimum": 25.5, "target": 27.5, "maximum": 29.5},
-        {"day_min": 15, "day_max": 21, "minimum": 26, "target": 27.25, "maximum": 28.5},
-    ]
+    assert "pending Doc Raymond" in rules["approval_status"]
+    assert rules["temperature_ranges_c"][0] == {
+        "day_min": 1, "day_max": 6, "minimum": 29, "target": 31, "maximum": 33
+    }
+    assert rules["temperature_ranges_c"][-1]["day_max"] == 999
+    assert rules["humidity_ranges_pct"][0]["minimum"] == 60
+    assert rules["humidity_ranges_pct"][-1]["maximum"] == 65
 
 
 def test_operational_alerts_are_explainable_when_present():
@@ -45,9 +45,10 @@ def test_operational_driver_trace_keeps_unavailable_inputs_explicit():
         "Water intake",
         "Combined heat-stress index",
     }.issubset(set(trace["Possible operational driver"]))
-    assert set(trace["Effect on risk score"]) == {
-        "None — supporting diagnostic only"
-    }
+    environment = trace.loc[trace["Possible operational driver"].isin(["Temperature", "Humidity"])]
+    assert environment["Effect on risk score"].str.startswith("Formal environmental dimension").all()
+    supporting = trace.loc[~trace["Possible operational driver"].isin(["Temperature", "Humidity"])]
+    assert set(supporting["Effect on risk score"]) == {"None — supporting diagnostic only"}
 
 
 def test_current_cycle_surfaces_specific_feed_gap_and_action():

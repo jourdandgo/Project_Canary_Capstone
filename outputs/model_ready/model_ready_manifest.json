@@ -1,0 +1,20 @@
+{
+  "source_workbook": "FARM HARVEST DATA.xlsx",
+  "canonical_building_day_rows": 1666,
+  "recovery_building_outcomes": 25,
+  "day35_weight_building_outcomes": 31,
+  "recovery_training_rows": 122,
+  "weight_training_rows": 124,
+  "recovery_daily_audit_rows": 1122,
+  "recovery_champion_features": [
+    "cycle_day",
+    "percentage_alive",
+    "mortality_daily_per_1000",
+    "mortality_recent_3d_per_1000",
+    "mortality_trend_delta_per_1000",
+    "feed_daily_per_1000_birds",
+    "feed_cumulative_per_1000_birds",
+    "temperature_recent_avg_c",
+    "humidity_recent_avg_pct"
+  ]
+}

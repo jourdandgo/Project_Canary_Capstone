@@ -49,6 +49,7 @@ def validate_risk_rules(rules: dict[str, Any]) -> None:
         "approval_status",
         "rating_bands",
         "dimension_cutoffs",
+        "temperature_ranges_c",
         "humidity_ranges_pct",
         "maximum_environment_reading_age_days",
         "notes",
@@ -61,7 +62,7 @@ def validate_risk_rules(rules: dict[str, Any]) -> None:
         "weight_gap_pct",
         "population_loss_pct",
         "daily_mortality_pct",
-        "temperature_range_c",
+        "temperature_deviation_c",
         "humidity_deviation_pp",
     }
     missing_dimensions = sorted(required_dimensions - set(dimensions))
@@ -69,20 +70,26 @@ def validate_risk_rules(rules: dict[str, Any]) -> None:
         raise RiskConfigurationError("Risk cutoffs are missing: " + ", ".join(missing_dimensions))
     for key in required_dimensions:
         _check_cutoffs(dimensions[key], key)
-    humidity_ranges = sorted(rules["humidity_ranges_pct"], key=lambda item: int(item["minimum_age"]))
-    if not humidity_ranges:
-        raise RiskConfigurationError("At least one humidity range is required.")
-    expected_minimum = 1
-    for band in humidity_ranges:
-        minimum = int(band["minimum_age"])
-        maximum = int(band["maximum_age"])
-        lower = float(band["minimum"])
-        upper = float(band["maximum"])
-        if minimum != expected_minimum or maximum < minimum or not 0 <= lower < upper <= 100:
-            raise RiskConfigurationError("Humidity ranges must cover all ages without gaps and use valid percentages.")
-        expected_minimum = maximum + 1
-    if humidity_ranges[-1]["maximum_age"] < 999:
-        raise RiskConfigurationError("The last humidity range must cover days beyond Day 35.")
+    for key, upper_limit, label in (
+        ("temperature_ranges_c", 60, "Temperature"),
+        ("humidity_ranges_pct", 100, "Humidity"),
+    ):
+        ranges = sorted(rules[key], key=lambda item: int(item["minimum_age"]))
+        if not ranges:
+            raise RiskConfigurationError(f"At least one {label.lower()} range is required.")
+        expected_minimum = 1
+        for band in ranges:
+            minimum = int(band["minimum_age"])
+            maximum = int(band["maximum_age"])
+            lower = float(band["minimum"])
+            upper = float(band["maximum"])
+            if minimum != expected_minimum or maximum < minimum or not 0 <= lower < upper <= upper_limit:
+                raise RiskConfigurationError(
+                    f"{label} ranges must cover all ages without gaps and use valid values."
+                )
+            expected_minimum = maximum + 1
+        if ranges[-1]["maximum_age"] < 999:
+            raise RiskConfigurationError(f"The last {label.lower()} range must cover days beyond Day 35.")
     if int(rules["maximum_environment_reading_age_days"]) < 0:
         raise RiskConfigurationError("Environmental reading age cannot be negative.")
 
@@ -141,6 +148,13 @@ def _humidity_range(rules: dict[str, Any], age: int) -> dict[str, Any]:
     raise RiskConfigurationError(f"No humidity range covers Day {age}.")
 
 
+def _temperature_range(rules: dict[str, Any], age: int) -> dict[str, Any]:
+    for band in rules["temperature_ranges_c"]:
+        if int(band["minimum_age"]) <= age <= int(band["maximum_age"]):
+            return band
+    raise RiskConfigurationError(f"No temperature range covers Day {age}.")
+
+
 def _latest_operational_signals(
     dataset: CanaryDataset,
     cycle_id: str,
@@ -162,7 +176,12 @@ def _latest_operational_signals(
         "daily_mortality_pct": pd.NA,
         "daily_mortality_score": pd.NA,
         "temperature_range_c": pd.NA,
-        "temperature_range_score": pd.NA,
+        "temperature_avg_c": pd.NA,
+        "temperature_minimum_c": pd.NA,
+        "temperature_maximum_c": pd.NA,
+        "temperature_deviation_c": pd.NA,
+        "temperature_direction": "Not scored",
+        "temperature_score": pd.NA,
         "humidity_avg_pct": pd.NA,
         "humidity_minimum_pct": pd.NA,
         "humidity_maximum_pct": pd.NA,
@@ -173,6 +192,14 @@ def _latest_operational_signals(
         "environment_driver": "Not scored",
         "environment_measurement_day": pd.NA,
         "environment_staleness_days": pd.NA,
+        "environment_status": "No environmental reading recorded on or before the review date.",
+        "environment_last_temperature_range_c": pd.NA,
+        "environment_last_temperature_avg_c": pd.NA,
+        "environment_last_temperature_minimum_c": pd.NA,
+        "environment_last_temperature_maximum_c": pd.NA,
+        "environment_last_humidity_avg_pct": pd.NA,
+        "environment_last_humidity_minimum_pct": pd.NA,
+        "environment_last_humidity_maximum_pct": pd.NA,
     }
     if history.empty:
         return result
@@ -192,7 +219,7 @@ def _latest_operational_signals(
         )
 
     environment_history = history.loc[
-        history[["temperature_min_c", "temperature_max_c", "humidity_avg_pct"]]
+        history[["temperature_avg_c", "temperature_min_c", "temperature_max_c", "humidity_avg_pct"]]
         .notna()
         .any(axis=1)
     ]
@@ -203,20 +230,68 @@ def _latest_operational_signals(
     staleness = max(0, int(cycle_day) - environment_age)
     result["environment_measurement_day"] = environment_age
     result["environment_staleness_days"] = staleness
-    if staleness > int(rules["maximum_environment_reading_age_days"]):
-        return result
-
-    component_scores: list[tuple[int, str]] = []
+    maximum_age = int(rules["maximum_environment_reading_age_days"])
     if pd.notna(environment.get("temperature_min_c")) and pd.notna(environment.get("temperature_max_c")):
-        temperature_range = max(
+        result["environment_last_temperature_range_c"] = max(
             0.0, float(environment["temperature_max_c"]) - float(environment["temperature_min_c"])
         )
-        temperature_score = int(
-            _score_threshold(temperature_range, rules["dimension_cutoffs"]["temperature_range_c"])
+    if pd.notna(environment.get("temperature_avg_c")):
+        last_temperature = float(environment["temperature_avg_c"])
+        accepted_temperature = _temperature_range(rules, environment_age)
+        result.update(
+            {
+                "environment_last_temperature_avg_c": last_temperature,
+                "environment_last_temperature_minimum_c": float(accepted_temperature["minimum"]),
+                "environment_last_temperature_maximum_c": float(accepted_temperature["maximum"]),
+            }
         )
-        result["temperature_range_c"] = temperature_range
-        result["temperature_range_score"] = temperature_score
-        component_scores.append((temperature_score, "Abnormal Temperature Fluctuation"))
+    if pd.notna(environment.get("humidity_avg_pct")):
+        last_humidity = float(environment["humidity_avg_pct"])
+        accepted = _humidity_range(rules, environment_age)
+        result.update(
+            {
+                "environment_last_humidity_avg_pct": last_humidity,
+                "environment_last_humidity_minimum_pct": float(accepted["minimum"]),
+                "environment_last_humidity_maximum_pct": float(accepted["maximum"]),
+            }
+        )
+    if staleness > maximum_age:
+        result["environment_status"] = (
+            f"Stale — last environmental reading was Day {environment_age}, {staleness} day(s) old; "
+            f"maximum allowed is {maximum_age} day(s)."
+        )
+        return result
+    result["environment_status"] = (
+        f"Current — recorded Day {environment_age}, {staleness} day(s) old."
+    )
+
+    component_scores: list[tuple[int, str]] = []
+    if pd.notna(environment.get("temperature_avg_c")):
+        temperature = float(environment["temperature_avg_c"])
+        accepted_temperature = _temperature_range(rules, environment_age)
+        lower_temperature = float(accepted_temperature["minimum"])
+        upper_temperature = float(accepted_temperature["maximum"])
+        if temperature < lower_temperature:
+            temperature_deviation = lower_temperature - temperature
+            temperature_direction = "Low Temperature"
+        elif temperature > upper_temperature:
+            temperature_deviation = temperature - upper_temperature
+            temperature_direction = "High Temperature"
+        else:
+            temperature_deviation = 0.0
+            temperature_direction = "Within Range"
+        temperature_score = int(_score_threshold(
+            temperature_deviation, rules["dimension_cutoffs"]["temperature_deviation_c"]
+        ))
+        result.update({
+            "temperature_avg_c": temperature,
+            "temperature_minimum_c": lower_temperature,
+            "temperature_maximum_c": upper_temperature,
+            "temperature_deviation_c": temperature_deviation,
+            "temperature_direction": temperature_direction,
+            "temperature_score": temperature_score,
+        })
+        component_scores.append((temperature_score, temperature_direction))
 
     if pd.notna(environment.get("humidity_avg_pct")):
         humidity = float(environment["humidity_avg_pct"])
@@ -311,8 +386,11 @@ def _score_evidence(row: pd.Series) -> dict[str, str]:
         )
     if pd.notna(row.get("environment_score")):
         driver = str(row.get("environment_driver"))
-        if driver == "Abnormal Temperature Fluctuation":
-            detail = f"daily temperature range is {float(row['temperature_range_c']):.1f}°C"
+        if driver in {"High Temperature", "Low Temperature"}:
+            detail = (
+                f"average temperature is {float(row['temperature_avg_c']):.1f}°C versus the "
+                f"{float(row['temperature_minimum_c']):.0f}–{float(row['temperature_maximum_c']):.0f}°C age range"
+            )
         elif driver in {"High Humidity", "Low Humidity"}:
             detail = (
                 f"humidity is {float(row['humidity_avg_pct']):.1f}% versus the "
@@ -341,13 +419,30 @@ def build_dimension_trace(scored_row: pd.Series | dict[str, object], rules: dict
     if pd.isna(row.get("cycle_day")):
         return pd.DataFrame(columns=["Dimension", "Raw observations", "Calculation", "Applied thresholds", "Score", "Data status"])
     cutoffs = rules["dimension_cutoffs"]
-    if pd.isna(row.get("humidity_avg_pct")):
-        environment_raw = "No current temperature-range or humidity evidence"
+    if pd.isna(row.get("environment_score")):
+        last_parts: list[str] = []
+        if pd.notna(row.get("environment_last_temperature_avg_c")):
+            last_parts.append(
+                f"last average temperature {float(row['environment_last_temperature_avg_c']):.1f}°C"
+            )
+        if pd.notna(row.get("environment_last_humidity_avg_pct")):
+            last_parts.append(
+                f"last humidity {float(row['environment_last_humidity_avg_pct']):.1f}%"
+            )
+        environment_raw = "; ".join(last_parts) if last_parts else "No recorded temperature-range or humidity evidence"
     else:
-        environment_raw = (
-            f"Temperature range {row.get('temperature_range_c', pd.NA)}°C; humidity "
-            f"{float(row['humidity_avg_pct']):.1f}% (accepted {float(row['humidity_minimum_pct']):.0f}–{float(row['humidity_maximum_pct']):.0f}%)"
-        )
+        current_parts: list[str] = []
+        if pd.notna(row.get("temperature_avg_c")):
+            current_parts.append(
+                f"average temperature {float(row['temperature_avg_c']):.1f}°C "
+                f"(accepted {float(row['temperature_minimum_c']):.0f}–{float(row['temperature_maximum_c']):.0f}°C)"
+            )
+        if pd.notna(row.get("humidity_avg_pct")):
+            current_parts.append(
+                f"humidity {float(row['humidity_avg_pct']):.1f}% "
+                f"(accepted {float(row['humidity_minimum_pct']):.0f}–{float(row['humidity_maximum_pct']):.0f}%)"
+            )
+        environment_raw = "; ".join(current_parts)
     trace = [
         {
             "Dimension": "Weight gap",
@@ -376,10 +471,13 @@ def build_dimension_trace(scored_row: pd.Series | dict[str, object], rules: dict
         {
             "Dimension": "Environmental conditions",
             "Raw observations": environment_raw,
-            "Calculation": f"Higher of temperature-range score and humidity-deviation score; driver: {row.get('environment_driver', 'Not scored')}",
-            "Applied thresholds": f"Temperature range: {_threshold_description(cutoffs['temperature_range_c'], '°C')}; humidity outside age range: {_threshold_description(cutoffs['humidity_deviation_pp'], ' pp')}",
+            "Calculation": f"Higher of temperature-deviation score and humidity-deviation score; driver: {row.get('environment_driver', 'Not scored')}",
+            "Applied thresholds": f"Temperature outside age range: {_threshold_description(cutoffs['temperature_deviation_c'], '°C')}; humidity outside age range: {_threshold_description(cutoffs['humidity_deviation_pp'], ' pp')}",
             "Score": row.get("environment_score", pd.NA),
-            "Data status": "Not scored" if pd.isna(row.get("environment_score")) else f"Day {int(row['environment_measurement_day'])}; {int(row['environment_staleness_days'])} day(s) old",
+            "Data status": row.get(
+                "environment_status",
+                "Not scored" if pd.isna(row.get("environment_score")) else f"Day {int(row['environment_measurement_day'])}; {int(row['environment_staleness_days'])} day(s) old",
+            ),
         },
     ]
     result = pd.DataFrame(trace)

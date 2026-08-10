@@ -147,6 +147,21 @@ def _ridge_feature_frame(
     return features[list(RIDGE_FEATURES)]
 
 
+def build_day35_feature_rows(dataset: CanaryDataset) -> pd.DataFrame:
+    """Return the exact raw engineered X rows and observed Day 35 Y used in validation."""
+
+    rows = build_day35_training_rows(dataset)
+    if rows.empty:
+        return rows
+    target_by_age = dataset.targets.set_index("age_day")["target_weight_kg"]
+    features = _ridge_feature_frame(rows, target_by_age)
+    audit = rows[["cycle_id", "building_id"]].copy()
+    audit["validation_cycle"] = rows["cycle_id"].astype(str)
+    audit = pd.concat([audit, features], axis=1)
+    audit["actual_day35_weight_kg_y"] = rows["actual_day35_weight_kg"].astype(float)
+    return audit
+
+
 def _fit_ridge_parameters(
     features: pd.DataFrame, target: np.ndarray
 ) -> tuple[Ridge, pd.Series, pd.Series, pd.Series]:
@@ -248,14 +263,14 @@ def train_day35_weight_baseline(dataset: CanaryDataset) -> dict[str, Any]:
     candidate_metrics: dict[str, dict[str, object]] = {}
     for candidate in candidates:
         predicted = np.clip(predictions[candidate], 0.1, 3.5)
-        cycle_mae = [
-            float(
-                mean_absolute_error(
-                    actual[groups == cycle], predicted[groups == cycle]
-                )
-            )
+        cycle_metrics = {
+            str(cycle): {
+                **_metrics(actual[groups == cycle], predicted[groups == cycle]),
+                "bias_kg": float(np.mean(predicted[groups == cycle] - actual[groups == cycle])),
+            }
             for cycle in np.unique(groups)
-        ]
+        }
+        cycle_mae = [float(values["mae_kg"]) for values in cycle_metrics.values()]
         horizon: dict[str, dict[str, float | int]] = {}
         for checkpoint in CHECKPOINT_DAYS:
             mask = rows["measurement_day"].eq(checkpoint).to_numpy()
@@ -264,6 +279,7 @@ def train_day35_weight_baseline(dataset: CanaryDataset) -> dict[str, Any]:
             **_metrics(actual, predicted),
             "cycle_macro_mae_kg": float(np.mean(cycle_mae)),
             "horizon": horizon,
+            "cycle": cycle_metrics,
         }
 
     best_macro_mae = min(

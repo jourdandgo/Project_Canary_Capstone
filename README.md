@@ -54,6 +54,12 @@ Handoff documents:
 - `docs/OPEN_ITEMS.md`
 - `docs/PROJECT_CANARY_DEFENSE_CHEAT_SHEET.md`
 - `docs/Project_Canary_Defense_Cheat_Sheet.docx`
+- `outputs/model_ready/Project_Canary_Model_Ready_Data.xlsx`
+- `outputs/model_ready/recovery_training.csv`
+- `outputs/model_ready/day35_weight_training.csv`
+- `notebooks/Project_Canary_Harvest_Recovery_Model.ipynb`
+- `notebooks/Project_Canary_Day35_Weight_Model.ipynb`
+- `docs/TEAMMATE_MODEL_COMPARISON_PROTOCOL.md`
 
 A researched seven-rule preliminary action playbook is available for Doc Raymond's review. The editable approval workbook is stored in `docs/Project_Canary_Preliminary_Action_Playbook.xlsx`, and its synchronized version-controlled source is `config/recommendation_playbook_draft.json`. The dashboard uses these as visibly preliminary inspection and escalation guidance—not approved farm policy or treatment advice.
 

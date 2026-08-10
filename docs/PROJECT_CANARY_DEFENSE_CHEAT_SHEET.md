@@ -1,5 +1,27 @@
 # Project Canary — Capstone Defense Cheat Sheet
 
+## New transparent evidence package
+
+Canary no longer asks the panel to trust an in-memory transformation. The repository includes:
+
+- `outputs/model_ready/Project_Canary_Model_Ready_Data.xlsx`
+  - Data Dictionary
+  - 31 union building-outcome rows, including 25 recovery-eligible outcomes and 31 Day 35 weight outcomes
+  - the exact 122 recovery-training snapshots
+  - the exact 124 Day 35 weight-training rows
+  - all 1,122 leakage-safe daily recovery candidates before checkpoint balancing
+- `outputs/model_ready/recovery_training.csv`
+- `outputs/model_ready/day35_weight_training.csv`
+- two executed notebooks that rebuild the workflow and verify their rows against these exports
+
+One building-outcome row is the final historical evidence for one building-cycle. A training snapshot is an earlier decision point containing only what management could have known on that review date. The snapshot design is what lets Canary evaluate Day 7, 14, 21, and 28 forecasts without exposing later measurements.
+
+The versioned model manifests are the single source for metrics displayed in the app, notebooks, and defense material. The app now shows overall, Day 14, forecast-horizon, and held-out-cycle results.
+
+### Teammate-model comparison
+
+The comparison framework is ready, but the actual comparison is pending the teammate’s notebook, trusted model artifact, environment file, and preprocessing/feature specification. Canary first inventories the pickle without executing it, then reproduces the notebook approach on the canonical exports. The model must pass the same complete-cycle holdouts and leakage rules before it can replace a champion.
+
 ## 1. The 20-second answer
 
 **Project Canary is an early-warning and decision-support system for a broiler farm.** It combines daily farm records into one view per building, assigns an explainable operational risk rating, forecasts Day 35 average weight and final harvest recovery, and recommends what management should inspect next.
@@ -103,7 +125,7 @@ Each dimension scores 0–3 points.
 | Weight gap | How far below the smoothed target was the latest measured weight at that measurement age? | Actual weight versus target for the weighing day |
 | Population loss | How much of the beginning flock has already been lost? | `(beginning − current population) ÷ beginning` |
 | Daily mortality | Is there an urgent current loss? | Latest daily mortality ÷ beginning population |
-| Environmental conditions | Is the recorded house environment outside the provisional limit? | Worse of daily temperature range and humidity deviation |
+| Environmental conditions | Is the recorded house environment outside the age-specific tropical range? | Worse of average-temperature deviation and humidity deviation |
 
 ### Weight-gap thresholds
 
@@ -120,10 +142,10 @@ Each dimension scores 0–3 points.
 |---|---:|---:|---:|---:|
 | Population loss | 3% | 5% | 7% | 7% |
 | Daily mortality | 0.1% | 0.2% | 0.3% | 0.3% |
-| Daily temperature range | 2°C | 3°C | 5°C | 5°C |
-| Humidity outside age range | 0.1 points | 5 points | 10 points | 10 points |
+| Temperature outside age range | 0°C | 1°C | 2°C | 2°C |
+| Humidity outside age range | 0 points | 5 points | 10 points | 10 points |
 
-Humidity reference bands are 60–70% for Days 1–7, 55–65% for Days 8–14, and 50–60% from Day 15 onward. The environmental score is the **higher** of the temperature-range and humidity scores, so related environmental evidence is not counted twice.
+Temperature reference bands are 29–33°C for Days 1–6; 26–29°C for Days 7–13; 25–28°C for Days 14–20; 24–27°C for Days 21–27; and 24–26°C for Days 28–35. Humidity is 60–70% for Days 1–7 and 50–65% from Day 8 onward. The Day 35 bands are carried after Day 35 provisionally. The environmental score is the **higher** of the temperature and humidity scores, so related environmental evidence is not counted twice.
 
 ### Total score to label
 
@@ -142,9 +164,14 @@ Humidity reference bands are 60–70% for Days 1–7, 55–65% for Days 8–14, 
 
 Peer comparison remains useful context, but it no longer adds points. Feed remains an alert only because some cycles contain inconsistent feed-per-bird magnitudes. Water and THI remain deferred until reliable inputs and approved formulas exist.
 
-### Honest limitation
+### Environmental freshness and honest limitation
 
-Risk thresholds are provisional until Doc Raymond signs them off. Environmental coverage is about **42%** of canonical building-days. The proposed 2/3/5°C temperature-range rule would place **540 of 696** recorded days above the 5°C boundary, so it clearly requires calibration before farm reliance. The score represents operational concern, not a statistical probability of missing a goal.
+- Direct environmental readings cover **706 of 1,666 building-days (42.4%)**.
+- With Canary's maximum two-day carry-forward rule, **768 building-days (46.1%)** have sufficiently current environmental evidence.
+- A stale value is never scored as safe. The dashboard shows the last environmental measurement day, its age, and why it was excluded.
+- Example: on 2026-3 Day 22, the latest environment reading is from Day 17. At five days old it exceeds the two-day limit, so the dimension is **Not scored**.
+
+Risk thresholds are provisional until Doc Raymond signs them off. The tropical operating bands have been supplied; the remaining validation question is how far outside a band should count as mild, moderate, or severe, and whether the Day 35 range should be carried forward. The score represents operational concern, not a statistical probability of missing a goal.
 
 ## 7. Component 2A — Day 35 weight model
 
@@ -185,12 +212,12 @@ Additional inputs:
 | Candidate | Held-out MAE | Result |
 |---|---:|---|
 | Historical Day 35 mean | about 210 g | Baseline |
-| Target-curve ratio | about 295 g | Not selected |
+| Target-curve ratio | about 322 g | Not selected |
 | Recent linear ADG | about 432 g | Not selected |
 | Historical remaining gain | about 178 g | Strong transparent benchmark |
 | **Ridge regression** | **about 172 g** | **Selected** |
 | Random Forest | about 176 g | Not selected |
-| Gradient boosting | about 203 g | Not selected |
+| Gradient boosting | about 206 g | Not selected |
 
 ### Validation and selection
 
@@ -209,7 +236,7 @@ Rule: choose the simplest candidate within 5% of the best cycle-balanced MAE. Hi
 - Day 14 MAE: **about 167 g**
 - Day 14 correct target side: **about 87%**
 
-There are only **5 historical 1.8 kg hits** and 26 misses. The model catches misses well but recognizes only about 20% of the small hit group. Do not oversell target-hit classification.
+There are only **5 historical 1.8 kg hits** and 26 misses. Across all four checkpoints, the model catches misses well but recognizes only about 15% of the small hit group; at Day 14 it recognizes about 20%. Do not oversell target-hit classification.
 
 ### Feature importance
 
@@ -300,6 +327,8 @@ Primary metric: cycle-balanced MAE, with a 10% simplicity tolerance for recovery
 
 Compact Ridge was selected because it had the lowest overall MAE, remained close to the best cycle-balanced candidate, and avoided questionable identity and raw-inventory features.
 
+Random Forest had the best cycle-balanced MAE at about **1.33 points**. Compact Ridge was about **1.42 points**, which is within the predeclared 10% simplicity tolerance, and it had the best overall row-level MAE at about **1.32 points**. Ridge was therefore selected for stability and interpretability on a small dataset—not because it won every metric.
+
 - Overall MAE: **about 1.32 percentage points**
 - RMSE: **about 1.76 points**
 - Day 14 MAE: **about 1.43 points**
@@ -345,17 +374,21 @@ Urgency follows the risk label:
 
 Possible causes are hypotheses to inspect, not diagnoses. Recommendations do not prescribe medication or automatically change house settings.
 
+**Provenance:** DOC-002 through DOC-010 retain trigger and action concepts from Doc Raymond's Farmer Validation Workbook. The Canary team expanded them into clearer dashboard wording, inspection checklists, and escalation guidance. DOC-001 and DOC-011 are team-authored safety fallbacks. All wording remains marked **Pending Review** until Doc Raymond approves it and an approval date is recorded.
+
 ## 11. Environment and actionability
 
-Temperature range and humidity now contribute through one combined environmental risk dimension. Specific operating alerts remain visible in the building investigation view.
+Average-temperature deviation and humidity deviation now contribute through one combined environmental risk dimension. Specific operating alerts remain visible in the building investigation view.
 
-Current absolute-temperature references remain provisional:
+Current tropical temperature references are:
 
-- Days 1–7: 29–33°C
-- Days 8–14: 25.5–29.5°C
-- Days 15–21: 26–28.5°C
+- Days 1–6: 29–33°C
+- Days 7–13: 26–29°C
+- Days 14–20: 25–28°C
+- Days 21–27: 24–27°C
+- Days 28–35: 24–26°C
 
-No automatic absolute-temperature alert is issued after Day 21 until the farm approves a later-age range. The formal environmental score currently uses daily temperature range, not an unapproved absolute temperature target. Humidity and feed alerts are also provisional. Water and THI require reliable inputs and approved formulas.
+The Day 28–35 band is carried forward after Day 35 so monitoring does not stop; this carry-forward and the 1/2/3-point severity distances require farm approval. Humidity uses 60–70% on Days 1–7 and 50–65% from Day 8 onward. Feed alerts remain provisional. Water and THI require reliable inputs and approved formulas.
 
 Canary should say “temperature is above the approved range; inspect ventilation/cooling and verify the sensor,” not automatically “lower temperature by 3°C.” A specific adjustment must depend on the verified sensor, bird behavior, equipment, housing, weather, and farm protocol.
 
@@ -399,7 +432,7 @@ A second “predict Day 14” model would add complexity without a new managemen
 | Weight gap | 519.9 g measured on Day 21 versus 800 g target: 35.0% below | 3 |
 | Population loss | `(7,114 − 6,763) ÷ 7,114 = 4.93%` | 1 |
 | Daily mortality | latest daily mortality = 0.197% of beginning birds | 1 |
-| Environment | no sufficiently current environmental reading | Not scored |
+| Environment | last reading Day 17; five days old, above the two-day freshness limit | Not scored |
 
 Total = `3 + 1 + 1 = 5` → **High risk**. Leading trigger: **Low Body Weight**.
 
@@ -479,9 +512,13 @@ It is transparent, strong, and easy to audit. It is the benchmark the ML model m
 
 Trust it as a limited-data continuous estimate with about 1.3 points MAE—not as proof that a building will hit 95%. It did not beat the majority baseline for target classification.
 
+### “Why did you select Ridge when Random Forest had the best cycle-balanced recovery MAE?”
+
+Random Forest's cycle-balanced MAE was about 1.33 points. Compact Ridge was about 1.42 points, within the predeclared 10% simplicity tolerance, while having the best overall MAE at about 1.32 points. On only 25 building outcomes, Ridge is easier to explain and less likely to overfit. We disclose both results instead of claiming Ridge won every metric.
+
 ### “Do temperature and humidity drive the forecast?”
 
-They are recovery-model inputs and operating checks. Temperature range and humidity also form one provisional environmental risk dimension. Sparse coverage prevents causal claims: use them to guide inspection, not to promise that one adjustment will change the outcome.
+They are recovery-model inputs and operating checks. Average-temperature and humidity deviations also form one provisional environmental risk dimension. Sparse coverage prevents causal claims: use them to guide inspection, not to promise that one adjustment will change the outcome.
 
 ### “Is the app production ready?”
 

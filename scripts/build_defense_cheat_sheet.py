@@ -346,7 +346,8 @@ def build() -> Path:
             p = cell.paragraphs[0]
             paragraph_spacing(p, after=0)
             add_inline(p, line[2:], size=10.5, color=GREEN)
-            doc.add_paragraph().paragraph_format.space_after = Pt(2)
+            if any(candidate.strip() for candidate in lines[i + 1 :]):
+                doc.add_paragraph().paragraph_format.space_after = Pt(2)
         elif re.match(r"^\d+\. ", line):
             if active_numbering_id is None:
                 active_numbering_id = new_numbering_sequence(doc)

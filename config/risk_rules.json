@@ -1,6 +1,6 @@
 {
-  "version": "risk-rules-0.3.0-doc-validation",
-  "approval_status": "Provisional - farm validation required",
+  "version": "risk-rules-0.4.0-tropical-bands",
+  "approval_status": "Provisional - tropical bands supplied; severity distances require farm sign-off",
   "rating_bands": [
     {"label": "Low", "minimum": 0, "maximum": 1},
     {"label": "Medium", "minimum": 2, "maximum": 3},
@@ -11,20 +11,32 @@
     "weight_gap_pct": [5.0, 10.0, 30.0],
     "population_loss_pct": [3.0, 5.0, 7.0],
     "daily_mortality_pct": [0.1, 0.2, 0.3],
-    "temperature_range_c": [2.0, 3.0, 5.0],
-    "humidity_deviation_pp": [0.1, 5.0, 10.0]
+    "temperature_deviation_c": [0.0, 1.0, 2.0],
+    "humidity_deviation_pp": [0.0, 5.0, 10.0]
   },
+  "temperature_ranges_c": [
+    {"label": "Days 1-6", "minimum_age": 1, "maximum_age": 6, "minimum": 29.0, "maximum": 33.0},
+    {"label": "Day 7", "minimum_age": 7, "maximum_age": 7, "minimum": 26.0, "maximum": 29.0},
+    {"label": "Days 8-13", "minimum_age": 8, "maximum_age": 13, "minimum": 26.0, "maximum": 29.0},
+    {"label": "Days 14-20", "minimum_age": 14, "maximum_age": 20, "minimum": 25.0, "maximum": 28.0},
+    {"label": "Days 21-27", "minimum_age": 21, "maximum_age": 27, "minimum": 24.0, "maximum": 27.0},
+    {"label": "Days 28-35", "minimum_age": 28, "maximum_age": 35, "minimum": 24.0, "maximum": 26.0},
+    {"label": "Day 36 onward (carried provisionally)", "minimum_age": 36, "maximum_age": 999, "minimum": 24.0, "maximum": 26.0}
+  ],
   "humidity_ranges_pct": [
     {"label": "Days 1-7", "minimum_age": 1, "maximum_age": 7, "minimum": 60.0, "maximum": 70.0},
-    {"label": "Days 8-14", "minimum_age": 8, "maximum_age": 14, "minimum": 55.0, "maximum": 65.0},
-    {"label": "Day 15 onward", "minimum_age": 15, "maximum_age": 999, "minimum": 50.0, "maximum": 60.0}
+    {"label": "Days 8-13", "minimum_age": 8, "maximum_age": 13, "minimum": 50.0, "maximum": 65.0},
+    {"label": "Days 14-20", "minimum_age": 14, "maximum_age": 20, "minimum": 50.0, "maximum": 65.0},
+    {"label": "Days 21-27", "minimum_age": 21, "maximum_age": 27, "minimum": 50.0, "maximum": 65.0},
+    {"label": "Days 28-35", "minimum_age": 28, "maximum_age": 35, "minimum": 50.0, "maximum": 65.0},
+    {"label": "Day 36 onward (carried provisionally)", "minimum_age": 36, "maximum_age": 999, "minimum": 50.0, "maximum": 65.0}
   ],
   "maximum_environment_reading_age_days": 2,
   "notes": [
-    "Weight, population loss, and daily mortality cutoffs are derived from Doc Raymond's Farmer Validation Workbook and remain provisional until final sign-off.",
-    "Environmental score is the higher of daily temperature range and age-specific humidity deviation; it does not diagnose heat stress or disease.",
-    "The 2/3/5 C temperature-range thresholds flag most recorded environmental days and require calibration before operational reliance.",
-    "Absolute high/low temperature is not part of the formal score until age-specific Philippine farm bands are approved.",
-    "Peer comparison remains visible as context but no longer adds risk points."
+    "Temperature and humidity bands follow the tropical-climate table supplied for the capstone; the Day 35 band is carried forward after Day 35 pending farm confirmation.",
+    "Temperature risk is the distance of the recorded daily average outside the age-specific acceptable band: within band 0, up to 1 C outside 1, over 1 to 2 C outside 2, and over 2 C outside 3.",
+    "Humidity risk uses the same distance-outside-band method: within band 0, up to 5 percentage points outside 1, over 5 to 10 points outside 2, and over 10 points outside 3.",
+    "The environmental dimension takes the higher temperature or humidity score, preventing the same environmental event from being counted twice.",
+    "Daily temperature swing remains a supplemental diagnostic but no longer adds formal risk points because the supplied table defines absolute acceptable bands, not swing thresholds."
   ]
 }

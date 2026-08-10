@@ -33,8 +33,8 @@ def dataset():
 def test_every_operational_pattern_has_a_deterministic_rule():
     playbook = load_recommendation_playbook()
     patterns = {rule["pattern"] for rule in playbook["rules"]}
-    assert {"Low Body Weight", "High Mortality", "Rapid Population Loss", "Abnormal Temperature Fluctuation", "High Humidity", "Low Humidity"}.issubset(patterns)
-    assert len({rule["rule_id"] for rule in playbook["rules"]}) == 11
+    assert {"Low Body Weight", "High Mortality", "Rapid Population Loss", "Abnormal Temperature Fluctuation", "High Temperature", "Low Temperature", "High Humidity", "Low Humidity"}.issubset(patterns)
+    assert len({rule["rule_id"] for rule in playbook["rules"]}) == 13
 
 
 def test_pattern_and_risk_rating_map_to_action_and_urgency(dataset):
@@ -48,10 +48,13 @@ def test_pattern_and_risk_rating_map_to_action_and_urgency(dataset):
     assert tags2["recommendation_urgency"] == "Current shift"
     assert "weight" in tags2["recommended_action"].lower()
     assert tags2["recommendation_guidance_status"].startswith("Preliminary")
+    assert tags2["recommendation_source"] == "Farmer Validation Workbook (Doc Raymond)"
+    assert "Canary team expanded" in tags2["recommendation_wording_provenance"]
 
     trace = build_recommendation_trace(tags2)
     assert trace.loc[trace["Decision element"] == "Action rule", "Applied value"].iloc[0] == "DOC-002"
     assert trace.loc[trace["Decision element"] == "Risk-level urgency", "Applied value"].iloc[0] == "High → Current shift"
+    assert trace.loc[trace["Decision element"] == "Source", "Applied value"].iloc[0] == "Farmer Validation Workbook (Doc Raymond)"
 
 
 def test_recommendations_do_not_change_risk_values(dataset):

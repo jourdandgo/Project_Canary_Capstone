@@ -126,6 +126,37 @@ def test_missing_weight_is_not_treated_as_zero_risk(dataset):
     assert row["risk_rating"] != "Not rated"
 
 
+def test_stale_environment_is_explained_and_not_scored_as_safe(dataset):
+    as_of = default_as_of_date(dataset, "2026-3")
+    row = score_cycle_snapshot(dataset, "2026-3", as_of).query("building_id == 'Tags 1'").iloc[0]
+
+    assert row["cycle_day"] == 22
+    assert row["environment_measurement_day"] == 17
+    assert row["environment_staleness_days"] == 5
+    assert pd.isna(row["environment_score"])
+    assert row["environment_status"].startswith("Stale")
+    assert pd.notna(row["environment_last_temperature_range_c"])
+
+    trace = build_dimension_trace(row)
+    environment = trace.loc[trace["Dimension"] == "Environmental conditions"].iloc[0]
+    assert "last average temperature" in environment["Raw observations"]
+    assert "maximum allowed is 2 day(s)" in environment["Data status"]
+
+
+def test_current_environment_is_scored_with_freshness(dataset):
+    cycle_start = dataset.cycles.loc[
+        (dataset.cycles["cycle_id"] == "2026-3")
+        & (dataset.cycles["building_id"] == "Tags 1"),
+        "start_date",
+    ].iloc[0]
+    as_of = pd.Timestamp(cycle_start) + pd.DateOffset(days=16)
+    row = score_cycle_snapshot(dataset, "2026-3", as_of).query("building_id == 'Tags 1'").iloc[0]
+
+    assert row["cycle_day"] == 17
+    assert row["environment_score"] == 3
+    assert row["environment_status"].startswith("Current")
+
+
 def test_risk_history_stops_at_selected_date_and_stays_as_of_safe(dataset):
     as_of = default_as_of_date(dataset, "2026-3")
     history = build_risk_history(dataset, "2026-3", "Tags 1", as_of)

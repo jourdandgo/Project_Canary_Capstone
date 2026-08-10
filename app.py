@@ -388,6 +388,36 @@ def _day35_horizon_metrics_table(manifest: dict[str, object]) -> pd.DataFrame:
     )
 
 
+def _recovery_cycle_metrics_table(manifest: dict[str, object]) -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "Held-out cycle": cycle,
+                "Snapshots": int(metrics["rows"]),
+                "MAE": f"{float(metrics['mae']) * 100:.2f} pts",
+                "RMSE": f"{float(metrics['rmse']) * 100:.2f} pts",
+                "Bias": f"{float(metrics['bias']) * 100:+.2f} pts",
+            }
+            for cycle, metrics in manifest["selected_metrics"].get("cycle", {}).items()
+        ]
+    )
+
+
+def _day35_cycle_metrics_table(manifest: dict[str, object]) -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "Held-out cycle": cycle,
+                "Checkpoint rows": int(metrics["rows"]),
+                "MAE": f"{float(metrics['mae_kg']) * 1000:.0f} g",
+                "RMSE": f"{float(metrics['rmse_kg']) * 1000:.0f} g",
+                "Bias": f"{float(metrics['bias_kg']) * 1000:+.0f} g",
+            }
+            for cycle, metrics in manifest["selected_metrics"].get("cycle", {}).items()
+        ]
+    )
+
+
 FEATURE_DISPLAY = {
     "cycle_day": "Flock age",
     "beginning_inventory": "Beginning population",
@@ -676,6 +706,8 @@ PATTERN_DISPLAY = {
     "High Mortality": ("High daily mortality", "The latest mortality rate exceeds the current limit."),
     "Rapid Population Loss": ("Population loss", "The surviving population has fallen beyond the current limit."),
     "Abnormal Temperature Fluctuation": ("Large temperature swing", "The daily maximum-to-minimum temperature range is above the current limit."),
+    "High Temperature": ("Temperature above the age range", "The latest average temperature is above the tropical operating range for this flock age."),
+    "Low Temperature": ("Temperature below the age range", "The latest average temperature is below the tropical operating range for this flock age."),
     "High Humidity": ("Humidity above range", "Recorded humidity is above the current age-specific range."),
     "Low Humidity": ("Humidity below range", "Recorded humidity is below the current age-specific range."),
     "No Material Concern": (
@@ -806,6 +838,16 @@ def _building_card(row: pd.Series) -> str:
     elif row["state"] == "Records ended":
         freshness_badge = '<span class="micro-badge">Latest available record</span>'
     evidence_note = f'<span class="micro-badge">{int(row["scored_dimensions"])}/4 risk checks</span>'
+    evidence_details: list[str] = []
+    if pd.isna(row.get("weight_score")):
+        evidence_details.append("Weight not scored: no usable measured weight")
+    if pd.isna(row.get("environment_score")):
+        evidence_details.append(f"Environment not scored: {row.get('environment_status', 'no current reading')}")
+    evidence_detail = (
+        f'<div class="evidence-note">{html.escape(" · ".join(evidence_details))}</div>'
+        if evidence_details
+        else ""
+    )
     predicted_recovery = row.get("predicted_final_recovery", pd.NA)
     revenue_at_risk = row.get("gross_revenue_at_risk_php", pd.NA)
     current_recovery = row.get("percentage_alive", pd.NA)
@@ -824,6 +866,7 @@ def _building_card(row: pd.Series) -> str:
     <div class="card-body">
       <div class="head"><div class="name">{building_id}</div><span class="pill {rating_class}">{html.escape(rating_text)}</span></div>
       <div class="card-summary"><div class="meta">{day} · Score {'—' if pd.isna(row['risk_score']) else str(int(row['risk_score'])) + '/12'}</div><div>{evidence_note} {freshness_badge}</div></div>
+      {evidence_detail}
       <div class="driver"><span class="pattern-title">{html.escape(pattern_title)}</span><span class="pattern-subtitle">{html.escape(pattern_subtitle)}<br><strong>Why now:</strong> {html.escape(driver)}</span></div>
       <div class="outcome-stack">
         <div class="outcome-row"><div class="outcome-name">Harvest recovery</div><div class="outcome-detail"><div class="outcome-flow"><span>Current recorded: {_percent(current_recovery)}</span><span class="outcome-arrow">→</span><strong>Projected: {_percent(predicted_recovery)}</strong></div><span class="gap-tag {recovery_class}">{html.escape(recovery_gap)} · harvest goal 95%</span></div></div>
@@ -913,10 +956,26 @@ with st.sidebar:
             format="DD/MM/YYYY",
             help="Choose the day you want Canary to stand on. Only information recorded on or before this day is used.",
         )
-        st.caption("Review date is an ‘as-of’ date—not the predicted harvest date. Future records are never used.")
+        st.caption(
+            "Review date means: ‘What would Canary have shown using only records available by this date?’ "
+            "Moving it backward replays an earlier decision point; risk scores, forecasts, and actions are recomputed, and later records are excluded."
+        )
 
 rules = load_risk_rules()
 recommendation_playbook = load_recommendation_playbook()
+environment_columns = ["temperature_min_c", "temperature_max_c", "humidity_avg_pct"]
+environment_denominator = int(dataset.daily["operational_recorded"].sum())
+environment_direct_rows = int(
+    dataset.daily.loc[dataset.daily["operational_recorded"], environment_columns]
+    .notna()
+    .any(axis=1)
+    .sum()
+)
+environment_direct_coverage_pct = (
+    environment_direct_rows / environment_denominator * 100
+    if environment_denominator
+    else 0.0
+)
 value_assumptions = _value_assumptions()
 # Model artifacts can be replaced while a local Streamlit session is open. Clear the
 # lightweight loaders so an older cached manifest never breaks a refreshed page.
@@ -1038,10 +1097,29 @@ if selected_view == VIEW_PRIORITIES:
             f"{len(historical_recorded)} of 6",
             help="Buildings with recorded data in this completed historical cycle.",
         )
+        recovery_portfolio = historical_recorded.loc[
+            historical_recorded["actual_harvest_recovery"].notna()
+            & historical_recorded["beginning_inventory"].notna()
+            & (historical_recorded["beginning_inventory"] > 0)
+        ]
+        if recovery_portfolio.empty:
+            portfolio_actual_recovery = pd.NA
+            portfolio_actual_note = "No beginning/ending population pair is available"
+        else:
+            portfolio_actual_recovery = float(
+                (recovery_portfolio["actual_harvest_recovery"] * recovery_portfolio["beginning_inventory"]).sum()
+                / recovery_portfolio["beginning_inventory"].sum()
+            )
+            portfolio_actual_gap = (portfolio_actual_recovery - 0.95) * 100
+            portfolio_actual_note = (
+                f"{abs(portfolio_actual_gap):.1f} pts {'above' if portfolio_actual_gap >= 0 else 'below'} 95% · "
+                f"{len(recovery_portfolio)} building(s), inventory-weighted"
+            )
         summary[1].metric(
-            "Actual recovery results",
-            f"{recovery_actuals} of {len(historical_recorded)}",
-            help="Completed buildings with ending and beginning population available.",
+            "Final harvest recovery",
+            _percent(portfolio_actual_recovery),
+            portfolio_actual_note,
+            help="Across the cycle: total estimated ending birds divided by total beginning birds for completed buildings with both values available.",
         )
         summary[2].metric(
             "Actual weight results",
@@ -1515,7 +1593,7 @@ if selected_view == VIEW_DETAILS:
             "Score": "Points",
             "Applied thresholds": "Rule applied",
         }
-    )[["Dimension", "What Canary observed", "Points", "Rule applied"]].copy()
+    )[["Dimension", "What Canary observed", "Calculation", "Points", "Rule applied", "Data status"]].copy()
     risk_table["Points"] = risk_table["Points"].map(
         lambda value: "Not scored" if pd.isna(value) else f"{int(value)}/3"
     )
@@ -1758,17 +1836,26 @@ if selected_view == VIEW_ACTIONS:
         st.success(recommendation_playbook["approval_status"])
     else:
         st.warning(recommendation_playbook["approval_status"])
-    action_summary = pd.DataFrame(recommendation_playbook["rules"])[
-        ["rule_id", "pattern", "dashboard_action", "approval_status"]
+    action_summary = pd.DataFrame(recommendation_playbook["rules"])
+    action_summary["source"] = action_summary.apply(
+        lambda rule: "Canary team safeguard"
+        if rule["rule_id"] in {"DOC-001", "DOC-011"}
+        else "Farmer Validation Workbook (Doc Raymond)",
+        axis=1,
+    )
+    action_summary = action_summary[
+        ["rule_id", "pattern", "dashboard_action", "source", "approval_status"]
     ].rename(
         columns={
             "rule_id": "Rule",
             "pattern": "Problem pattern",
             "dashboard_action": "Dashboard recommendation",
+            "source": "Source",
             "approval_status": "Approval",
         }
     )
     st.dataframe(action_summary, hide_index=True, width="stretch")
+    st.caption(recommendation_playbook.get("provenance_note", ""))
 
     severity_summary = pd.DataFrame(recommendation_playbook["severity_guide"])[
         ["risk_rating", "urgency", "owner_instruction"]
@@ -1944,8 +2031,8 @@ if selected_view == VIEW_CHECKS:
         "Design revision: mortality trend and peer comparison no longer add points. Peer results remain useful context, but the formal score now uses simpler building-level evidence that management can verify directly."
     )
     st.caption(
-        "The Farmer Validation Workbook supplies the starting weight, population-loss, daily-mortality, temperature-range, and humidity references. "
-        "They remain provisional. In particular, the 2/3/5°C temperature-range thresholds flag most recorded environmental days and require Doc Raymond's calibration."
+        "The Farmer Validation Workbook supplies the starting weight, population-loss, and daily-mortality references. "
+        "Temperature and humidity now use the supplied tropical age bands. The distance outside each band remains provisional until Doc Raymond approves the severity cutoffs."
     )
 
     if st.session_state.pop("risk_rules_saved_message", None):
@@ -1963,7 +2050,7 @@ if selected_view == VIEW_CHECKS:
             ("Weight gap (%)", "weight_gap_pct"),
             ("Population loss (%)", "population_loss_pct"),
             ("Daily mortality (%)", "daily_mortality_pct"),
-            ("Daily temperature range (°C)", "temperature_range_c"),
+            ("Temperature outside age range (°C)", "temperature_deviation_c"),
             ("Humidity outside age range (points)", "humidity_deviation_pp"),
         ]
         dimension_editor = st.data_editor(
@@ -1980,6 +2067,18 @@ if selected_view == VIEW_CHECKS:
             hide_index=True,
             width="stretch",
             key="risk_dimension_threshold_editor",
+        )
+
+        st.markdown("**Accepted temperature range by age**")
+        temperature_editor = st.data_editor(
+            pd.DataFrame(rules["temperature_ranges_c"]).rename(columns={
+                "label": "Age band", "minimum_age": "First day", "maximum_age": "Last day",
+                "minimum": "Minimum temperature (°C)", "maximum": "Maximum temperature (°C)",
+            }),
+            disabled=["Age band", "First day", "Last day"],
+            hide_index=True,
+            width="stretch",
+            key="risk_temperature_range_editor",
         )
 
         st.markdown("**Accepted humidity range by age**")
@@ -2019,7 +2118,10 @@ if selected_view == VIEW_CHECKS:
         with version_cols[1]:
             risk_approval_status = st.selectbox(
                 "Validation status",
-                ["Provisional - farm validation required", "Farm-approved by Doc Raymond"],
+                [
+                    "Provisional - tropical bands supplied; severity distances require farm sign-off",
+                    "Farm-approved by Doc Raymond",
+                ],
                 index=(
                     1
                     if rules["approval_status"] == "Farm-approved by Doc Raymond"
@@ -2045,6 +2147,9 @@ if selected_view == VIEW_CHECKS:
                         float(edited["1-point maximum"]),
                         float(edited["2-point maximum"]),
                     ]
+                for band, (_, edited) in zip(updated_rules["temperature_ranges_c"], temperature_editor.iterrows()):
+                    band["minimum"] = float(edited["Minimum temperature (°C)"])
+                    band["maximum"] = float(edited["Maximum temperature (°C)"])
                 for band, (_, edited) in zip(updated_rules["humidity_ranges_pct"], humidity_editor.iterrows()):
                     band["minimum"] = float(edited["Minimum humidity (%)"])
                     band["maximum"] = float(edited["Maximum humidity (%)"])
@@ -2308,7 +2413,7 @@ if selected_view == VIEW_METHODS:
             [
                 {
                     "Component": "1 · Rules-based risk",
-                    "Input": "Current weight gap, population loss, daily mortality, temperature range, and humidity evidence",
+                    "Input": "Current weight gap, population loss, daily mortality, and age-specific temperature/humidity evidence",
                     "Process": "Four transparent 0–3 checks; total 0–12",
                     "Output": "Low / Medium / High / Critical, with the exact why",
                     "Business use": "Choose where to inspect first",
@@ -2395,6 +2500,57 @@ if selected_view == VIEW_METHODS:
             "For this capstone, cycles before the latest cycle are displayed as completed using each building’s last recorded date. The source does not contain a verified harvest-event flag."
         )
 
+    with st.expander("Why Canary does not use SMOTE or oversampling"):
+        st.markdown(
+            """
+            - Both forecasts are **regression** problems; standard SMOTE is a classification technique.
+            - The scarce evidence is independent building-cycle outcomes—not spreadsheet rows. Synthetic rows do not create new flocks.
+            - Artificial flock histories could be biologically implausible and could make validation error look too small.
+            - Canary instead uses simple regularized models, complete-cycle holdouts, balanced checkpoints, uncertainty ranges, and explicit limitations.
+
+            The most valuable improvement is more standardized completed cycles with verified harvest events—not synthetic observations.
+            """
+        )
+    st.info(
+        "Supplementary reproducible evidence is included in the repository: "
+        "`notebooks/Project_Canary_Harvest_Recovery_Model.ipynb` and "
+        "`notebooks/Project_Canary_Day35_Weight_Model.ipynb`."
+    )
+
+    st.subheader("Download the model-ready evidence")
+    st.caption(
+        "These are the exact auditable rows behind the model comparisons—not a manually prepared substitute. "
+        "The outcome sheet has one row per building-cycle; the training sheets contain leakage-safe as-of snapshots."
+    )
+    evidence_root = Path(__file__).resolve().parent
+    evidence_files = [
+        ("Model-ready workbook", evidence_root / "outputs" / "model_ready" / "Project_Canary_Model_Ready_Data.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+        ("Recovery training CSV", evidence_root / "outputs" / "model_ready" / "recovery_training.csv", "text/csv"),
+        ("Day 35 weight CSV", evidence_root / "outputs" / "model_ready" / "day35_weight_training.csv", "text/csv"),
+        ("Recovery notebook", evidence_root / "notebooks" / "Project_Canary_Harvest_Recovery_Model.ipynb", "application/x-ipynb+json"),
+        ("Day 35 weight notebook", evidence_root / "notebooks" / "Project_Canary_Day35_Weight_Model.ipynb", "application/x-ipynb+json"),
+    ]
+    download_columns = st.columns(len(evidence_files))
+    for column, (label, file_path, mime) in zip(download_columns, evidence_files):
+        with column:
+            if file_path.exists():
+                st.download_button(label, file_path.read_bytes(), file_name=file_path.name, mime=mime, width="stretch")
+            else:
+                st.caption(f"{label}: regenerate evidence exports")
+
+    st.subheader("Data lineage")
+    lineage = pd.DataFrame(
+        [
+            {"Stage": "1 · Source workbook", "Rows / outcomes": f"{dataset.quality.source_rows:,} source rows", "Control": "Read-only input"},
+            {"Stage": "2 · Canonical building-days", "Rows / outcomes": f"{dataset.quality.canonical_rows:,} rows", "Control": "Zone rows consolidated; conflicts checked"},
+            {"Stage": "3 · Labeled outcomes", "Rows / outcomes": f"{recovery_manifest['training_building_cycles']} recovery / {day35_manifest['training_building_cycles']} weight", "Control": "Y retained only for completed historical evidence"},
+            {"Stage": "4 · Training snapshots", "Rows / outcomes": f"{recovery_manifest['training_snapshot_rows']} recovery / {day35_manifest['training_checkpoint_rows']} weight", "Control": "Only facts known by the review date"},
+            {"Stage": "5 · Validation", "Rows / outcomes": "One complete cycle held out at a time", "Control": "No same-cycle train/test mixing"},
+            {"Stage": "6 · Live forecast", "Rows / outcomes": "One as-of snapshot per active building", "Control": "Inference only; no daily retraining"},
+        ]
+    )
+    st.dataframe(lineage, hide_index=True, width="stretch")
+
     risk_tab, recovery_tab, weight_tab, action_tab = st.tabs(
         ["1 · Risk scoring", "2A · Recovery model", "2B · Day 35 weight", "3 · Recommendations"]
     )
@@ -2416,7 +2572,7 @@ if selected_view == VIEW_METHODS:
                     {"Workflow": "Inputs / X", "Plain-language explanation": "Age, current survival, mortality, feed, and available temperature/humidity signals known on the review date."},
                     {"Workflow": "Methods tried", "Plain-language explanation": "Current-survival projection, historical mean, three Ridge variants, and Random Forest."},
                     {"Workflow": "Fair comparison", "Plain-language explanation": "Leave one complete cycle out, predict it, and repeat. No daily row from that cycle remains in training."},
-                    {"Workflow": "Winner", "Plain-language explanation": f"{recovery_name}; simplest method within 5% of the best cycle-balanced error."},
+                    {"Workflow": "Winner", "Plain-language explanation": f"{recovery_name}; simplest method within {float(recovery_manifest['selection_tolerance_pct']):g}% of the best cycle-balanced error."},
                 ]
             ),
             hide_index=True,
@@ -2509,13 +2665,29 @@ if selected_view == VIEW_METHODS:
         st.markdown("**How it was validated**")
         st.write(
             "Canary leaves one complete recorded cycle out, trains on the other cycles, predicts the unseen cycle, and repeats this for every cycle. "
-            "Canary first finds the best cycle-balanced MAE, then chooses the simplest method within 5% of that result. "
+            f"Canary first finds the best cycle-balanced MAE, then chooses the simplest method within {float(recovery_manifest['selection_tolerance_pct']):g}% of that result. "
             "Daily rows from the same cycle never appear in both training and validation."
         )
         st.dataframe(
             _candidate_metrics_table(recovery_manifest, "recovery"),
             hide_index=True,
             width="stretch",
+        )
+        with st.expander("See recovery performance for every held-out cycle"):
+            cycle_table = _recovery_cycle_metrics_table(recovery_manifest)
+            if cycle_table.empty:
+                st.caption("Retrain the versioned model bundle to generate cycle-level evidence.")
+            else:
+                st.dataframe(cycle_table, hide_index=True, width="stretch")
+        recovery_best_macro = min(
+            recovery_manifest["metrics"].items(),
+            key=lambda item: float(item[1].get("cycle_macro_mae", item[1]["mae"])),
+        )
+        st.caption(
+            f"Selection detail: {recovery_best_macro[0].replace('_', ' ').title()} had the best cycle-balanced MAE "
+            f"({float(recovery_best_macro[1]['cycle_macro_mae']) * 100:.2f} points). {recovery_name} was within the "
+            f"{float(recovery_manifest['selection_tolerance_pct']):g}% simplicity tolerance and had the best overall MAE "
+            f"({float(rmetrics['mae']) * 100:.2f} points), so Canary selected the more interpretable model."
         )
         st.markdown("**Selected-model performance by forecast timing**")
         st.dataframe(
@@ -2688,6 +2860,12 @@ if selected_view == VIEW_METHODS:
             hide_index=True,
             width="stretch",
         )
+        with st.expander("See weight performance for every held-out cycle"):
+            cycle_table = _day35_cycle_metrics_table(day35_manifest)
+            if cycle_table.empty:
+                st.caption("Retrain the versioned Day 35 manifest to generate cycle-level evidence.")
+            else:
+                st.dataframe(cycle_table, hide_index=True, width="stretch")
         st.warning(
             f"The historical Day 35 set contains {day35_manifest['actual_target_hits']} results at/above 1.8 kg and "
             f"{day35_manifest['actual_target_misses']} below it. Target-side accuracy is now measurable, but the small hit group still limits confidence."
@@ -2774,7 +2952,7 @@ if selected_view == VIEW_METHODS:
                     },
                     {
                         "Check": "Environmental conditions",
-                        "Calculation": "Higher of daily temperature-range score and humidity deviation score",
+                        "Calculation": "Higher of average-temperature deviation and humidity deviation from their age-specific ranges",
                         "Operational meaning": "Is a recorded operating condition outside the provisional limit?",
                     },
                 ]
@@ -2783,7 +2961,7 @@ if selected_view == VIEW_METHODS:
             width="stretch",
         )
         st.warning(
-            "Validation limit: this is an expert-rule priority score, not a trained outcome model. Environmental readings cover about 42% of canonical building-days, and the current 2/3/5°C temperature-range rule flags most recorded days. Missing conditions are not scored as safe, and the environmental cutoffs require farm calibration."
+            f"Validation limit: this is an expert-rule priority score, not a trained outcome model. Direct environmental readings cover {environment_direct_coverage_pct:.1f}% of operational building-days in the loaded workbook. Canary can carry a reading forward for at most {int(rules['maximum_environment_reading_age_days'])} days; after that it is shown as stale and not scored. The tropical age bands are supplied, but the distances used to assign 1, 2, or 3 points still require farm sign-off."
         )
         st.info(
             "Why this version is clearer: the old mortality-trend and peer points were removed. Peer comparisons remain diagnostic context; daily mortality and environmental conditions now connect the score to checks management can perform."
@@ -2794,7 +2972,7 @@ if selected_view == VIEW_METHODS:
                 ("Weight gap (%)", "weight_gap_pct"),
                 ("Population loss (%)", "population_loss_pct"),
                 ("Daily mortality (%)", "daily_mortality_pct"),
-                ("Temperature range (°C)", "temperature_range_c"),
+                ("Temperature outside age range (°C)", "temperature_deviation_c"),
                 ("Humidity outside age range (points)", "humidity_deviation_pp"),
             ]
         ])
@@ -2804,8 +2982,10 @@ if selected_view == VIEW_METHODS:
             width="stretch",
         )
         st.caption(
-            "At or below the first value = 0 points; above first through second = 1; above second through third = 2; above third = 3. The environmental score uses the worse of temperature range and humidity deviation, so the two related signals are not double-counted."
+            "At or below the first value = 0 points; above first through second = 1; above second through third = 2; above third = 3. The environmental score uses the worse of temperature or humidity deviation, so the two related signals are not double-counted."
         )
+        st.markdown("**Age-specific tropical temperature reference**")
+        st.dataframe(pd.DataFrame(rules["temperature_ranges_c"]), hide_index=True, width="stretch")
         st.markdown("**Age-specific humidity reference**")
         st.dataframe(pd.DataFrame(rules["humidity_ranges_pct"]), hide_index=True, width="stretch")
         if st.button("Review or edit risk thresholds", key="open_risk_rule_admin"):
@@ -2816,16 +2996,25 @@ if selected_view == VIEW_METHODS:
         st.markdown(
             "Canary first looks for a specific, current operating alert supported by recorded evidence. If one exists, that alert leads the owner-facing action. If none exists, Canary labels the operating cause as unconfirmed and falls back to the broader problem-pattern playbook. It never asks a model to invent a treatment."
         )
-        action_method = pd.DataFrame(recommendation_playbook["rules"])[
-            ["pattern", "dashboard_action", "approval_status"]
+        action_method = pd.DataFrame(recommendation_playbook["rules"])
+        action_method["source"] = action_method.apply(
+            lambda rule: "Canary team safeguard"
+            if rule["rule_id"] in {"DOC-001", "DOC-011"}
+            else "Farmer Validation Workbook (Doc Raymond)",
+            axis=1,
+        )
+        action_method = action_method[
+            ["pattern", "dashboard_action", "source", "approval_status"]
         ].rename(
             columns={
                 "pattern": "Problem pattern",
                 "dashboard_action": "Recommended management focus",
+                "source": "Source",
                 "approval_status": "Validation status",
             }
         )
         st.dataframe(action_method, hide_index=True, width="stretch")
+        st.caption(recommendation_playbook.get("provenance_note", ""))
         st.info(
             "Use the recommendation as inspection and management guidance—not disease diagnosis, automatic treatment, or a guarantee that either target will be reached."
         )

@@ -132,6 +132,14 @@ def _guidance_status(rule: dict[str, Any], playbook: dict[str, Any]) -> str:
     return "Preliminary guidance — pending Doc Raymond review"
 
 
+def _rule_source(rule: dict[str, Any]) -> str:
+    """State whether the operational basis came from the farm or is a safety fallback."""
+
+    if rule["rule_id"] in {"DOC-001", "DOC-011"}:
+        return "Canary team safeguard"
+    return "Farmer Validation Workbook (Doc Raymond)"
+
+
 def apply_recommendations(
     snapshot: pd.DataFrame,
     playbook: dict[str, Any] | None = None,
@@ -163,6 +171,8 @@ def apply_recommendations(
                     "recommendation_approval_status": playbook["approval_status"],
                     "recommendation_rule_approval": "Not applicable",
                     "recommendation_guidance_status": "Not applicable",
+                    "recommendation_source": "Not applicable",
+                    "recommendation_wording_provenance": "Not applicable",
                 }
             )
             records.append(row)
@@ -205,6 +215,11 @@ def apply_recommendations(
                 "recommendation_possible_causes": rule.get("possible_causes", "Not specified"),
                 "recommendation_response_time": rule.get("response_time", severity["urgency"]),
                 "recommendation_responsible_person": rule.get("responsible_person", "Farm manager"),
+                "recommendation_source": rule.get("source", _rule_source(rule)),
+                "recommendation_wording_provenance": rule.get(
+                    "wording_provenance",
+                    "Trigger and action basis retained; Canary team expanded the wording into checks and escalation guidance.",
+                ),
             }
         )
         records.append(row)
@@ -220,6 +235,8 @@ def build_recommendation_trace(row: pd.Series) -> pd.DataFrame:
             {"Decision element": "Rule version", "Applied value": row["recommendation_rule_version"]},
             {"Decision element": "Rule approval", "Applied value": row["recommendation_rule_approval"]},
             {"Decision element": "Overall status", "Applied value": row["recommendation_approval_status"]},
+            {"Decision element": "Source", "Applied value": row.get("recommendation_source", "Not specified")},
+            {"Decision element": "Wording provenance", "Applied value": row.get("recommendation_wording_provenance", "Not specified")},
             {"Decision element": "Possible causes to verify", "Applied value": row.get("recommendation_possible_causes", "Not specified")},
             {"Decision element": "Response time", "Applied value": row.get("recommendation_response_time", row["recommendation_urgency"])},
         ]

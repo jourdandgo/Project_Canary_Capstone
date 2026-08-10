@@ -4,7 +4,13 @@ __pycache__/
 *.py[cod]
 .DS_Store
 .streamlit/secrets.toml
-outputs/
+outputs/*
+!outputs/model_ready/
+outputs/model_ready/*
+!outputs/model_ready/Project_Canary_Model_Ready_Data.xlsx
+!outputs/model_ready/recovery_training.csv
+!outputs/model_ready/day35_weight_training.csv
+!outputs/model_ready/model_ready_manifest.json
 *.inspect.ndjson
 
 # Farm workbooks are intentionally excluded from source control.

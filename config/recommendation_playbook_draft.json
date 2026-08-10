@@ -2,6 +2,7 @@
   "version": "recommendation-playbook-0.5.0-doc-validation",
   "approval_status": "Pending Doc Raymond review",
   "intended_use": "Doc Raymond-provided inspection and escalation guidance. Possible causes are hypotheses to check, not diagnoses or automatic treatment instructions.",
+  "provenance_note": "Rules DOC-002 through DOC-010 retain trigger and action concepts from Doc Raymond's Farmer Validation Workbook. The Canary team expanded them into dashboard wording, checklists, and escalation guidance. DOC-001 and DOC-011 are team-authored safety fallbacks. All wording remains pending final farm approval.",
   "severity_guide": [
     {"risk_rating": "Low", "urgency": "Routine monitoring", "owner_instruction": "Review during normal flock rounds."},
     {"risk_rating": "Medium", "urgency": "Within 24 hours", "owner_instruction": "Verify the evidence and inspect within 24 hours."},
@@ -48,6 +49,22 @@
       "escalation_trigger": "Escalate when the range remains outside the approved limit or equipment is not responding.",
       "possible_causes": "Ventilation, fan, controller, heater, cooling-equipment, or sensor problem", "response_time": "Within 24 hours", "responsible_person": "Farm head / maintenance",
       "approval_status": "Pending Review", "owner_comments": "From Farmer Validation Workbook; thresholds need calibration", "approved_wording": "", "approval_date": ""
+    },
+    {
+      "rule_id": "DOC-005A", "pattern": "High Temperature",
+      "dashboard_action": "Verify the reading, then check ventilation, cooling, and water availability within 6 hours.",
+      "inspection_checklist": "Check the sensor at bird height, fans, inlets or curtains, airflow, cooling pads, water availability, and whether heaters are still operating.",
+      "escalation_trigger": "Escalate when temperature remains above the age range, equipment is not responding, or birds show heat-stress or welfare signs.",
+      "possible_causes": "Ventilation, cooling, heater, controller, airflow, water-access, or sensor problem", "response_time": "Within 6 hours", "responsible_person": "Farm head / maintenance",
+      "approval_status": "Pending Review", "owner_comments": "High Temperature action based on Farmer Validation Workbook", "approved_wording": "", "approval_date": ""
+    },
+    {
+      "rule_id": "DOC-005B", "pattern": "Low Temperature",
+      "dashboard_action": "Verify the reading, then check heater condition, heater timing, and drafts within 6 hours.",
+      "inspection_checklist": "Check the sensor at bird height, heater condition and timing, controller setpoint, curtains, air leaks, drafts, and bird distribution.",
+      "escalation_trigger": "Escalate when temperature remains below the age range, heating equipment is not responding, or birds show cold-stress or welfare signs.",
+      "possible_causes": "Heater, controller, draft, curtain, air-leak, or sensor problem", "response_time": "Within 6 hours", "responsible_person": "Farm head / maintenance",
+      "approval_status": "Pending Review", "owner_comments": "Low Temperature action based on Farmer Validation Workbook", "approved_wording": "", "approval_date": ""
     },
     {
       "rule_id": "DOC-006", "pattern": "High Humidity",

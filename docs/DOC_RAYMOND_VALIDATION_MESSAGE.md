@@ -26,7 +26,7 @@ The risk score is separate from the forecasts. Canary checks four warning signs 
 1. **Weight gap:** how far the latest measured weight is below the target for that bird age. Current point boundaries are 5%, 10%, and 30% below target.
 2. **Population loss:** beginning birds minus current birds, divided by beginning birds. Starting point boundaries are 3%, 5%, and 7%.
 3. **Daily mortality:** latest daily mortality divided by beginning birds. Starting boundaries are 0.1%, 0.2%, and 0.3%.
-4. **Environmental conditions:** the worse of (a) daily maximum temperature minus minimum temperature, and (b) humidity outside the age-specific range. The proposed temperature-range boundaries are 2°C, 3°C, and 5°C.
+4. **Environmental conditions:** the worse of (a) average temperature outside the age-specific tropical range, and (b) humidity outside its age-specific range. Temperature distance boundaries are 0°C, 1°C, and 2°C; humidity boundaries are 0, 5, and 10 percentage points.
 
 The four scores total **0 to 12 points**:
 
@@ -39,14 +39,16 @@ If a measurement is missing, Canary shows that the evidence is incomplete rather
 
 Peer comparisons remain visible for context but no longer add points. Missing evidence is shown as missing rather than silently receiving zero.
 
-Important: the current 2/3/5°C temperature-range rule would place most recorded days above 5°C, so this rule needs your calibration before farm use.
+The supplied tropical age bands have now replaced the old temperature-swing rule. Daily temperature swing remains visible only as a supporting diagnostic.
 
 ## Current problem triggers and recommendations
 
 - **Low Body Weight:** Confirm the weight; check bird condition, feeder allocation, feed/water access, and temperature.
 - **High Mortality:** Confirm the count; check sick birds and whether ventilation is adequate.
 - **Rapid Population Loss:** Reconcile population and mortality; inspect the flock and escalate unexplained continuing loss.
-- **Abnormal Temperature Fluctuation:** Verify the readings; check ventilation, fans, controllers, heaters, cooling equipment, and air leaks.
+- **High Temperature:** Verify the reading; check ventilation, fans/inlets, cooling, heater state, airflow, and water availability within 6 hours.
+- **Low Temperature:** Verify the reading; check heater condition/timing, controller setpoint, curtains, air leaks, and drafts within 6 hours.
+- **Abnormal Temperature Fluctuation:** Keep as a supporting check; verify readings and inspect ventilation/controller operation.
 - **High Humidity:** Check ventilation, litter, leaks, drinkers, cooling pads, and water-pump timing.
 - **Low Humidity:** Check the sensor, ventilation schedule, air speed, dust, and weather.
 - **Low Feed Intake / Rapid Feed Drop:** Verify the unit and reading; check feed system, quality, access, water, heat, and bird condition. This remains an alert—not a risk point—until feed units are confirmed.
@@ -62,9 +64,9 @@ Current response timing is:
 
 ## Items we still need your guidance on
 
-1. Please approve age-specific **absolute temperature ranges** for this farm and confirm where sensors are positioned. The old target sheet appears too cold for Philippine conditions.
-2. Does “temperature deviation” mean **daily maximum minus daily minimum**? Are 2°C / 3°C / 5°C sensible, given that most historical recorded days exceed 5°C?
-3. Are the humidity ranges—60–70% on Days 1–7, 55–65% on Days 8–14, and 50–60% after Day 14—appropriate? What should count as warning versus critical?
+1. Please confirm the supplied tropical bands and sensor position: temperature 29–33°C on Days 1–6; 26–29°C on Days 7–13; 25–28°C on Days 14–20; 24–27°C on Days 21–27; and 24–26°C on Days 28–35. May Day 28–35 be carried after Day 35?
+2. Are these severity distances appropriate: temperature within range = 0, up to 1°C outside = 1, over 1–2°C = 2, over 2°C = 3? Daily temperature swing will remain supporting context only.
+3. Please confirm humidity at 60–70% on Days 1–7 and 50–65% from Day 8 onward. Are 5 and 10 percentage points outside the band appropriate for moderate and severe scores?
 4. Is **Daily FI/bird** consistently grams or kilograms per bird per day? Should a feed shortfall be compared with the target for that age, and what gaps should trigger warning and critical alerts?
 5. Are the triggers, recommended checks, possible causes, and response times above correct? Who owns each response, and when is veterinarian or technician escalation mandatory?
 6. Is the checkpoint-calibrated smoothed daily weight curve, including the 40 g Day 0 working anchor, acceptable for non-checkpoint comparisons? A Gompertz curve was tested but not selected because it missed approved checkpoints by up to 42 g.

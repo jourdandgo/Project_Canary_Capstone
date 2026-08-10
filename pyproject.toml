@@ -13,6 +13,10 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+  "ipykernel>=7,<8",
+  "nbclient>=0.10,<1",
+  "nbformat>=5,<6",
+  "python-docx>=1.2,<2",
   "pytest>=8,<9",
 ]
 

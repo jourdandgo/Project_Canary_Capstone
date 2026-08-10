@@ -468,6 +468,13 @@ def _decision_checkpoint_snapshots(snapshots: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def build_recovery_training_snapshots(dataset: CanaryDataset) -> pd.DataFrame:
+    """Return the exact balanced, leakage-safe rows used to compare recovery models."""
+
+    snapshots = build_modeling_snapshots(dataset, "recovery")
+    return _decision_checkpoint_snapshots(snapshots)
+
+
 def train_outcome_model(
     dataset: CanaryDataset,
     outcome: str,
@@ -528,10 +535,16 @@ def train_outcome_model(
     for candidate in candidates:
         prediction = predictions[candidate]
         residual = y - prediction
-        cycle_mae = [
-            float(mean_absolute_error(y[groups == cycle], prediction[groups == cycle]))
+        cycle_metrics = {
+            str(cycle): {
+                "rows": int(np.sum(groups == cycle)),
+                "mae": float(mean_absolute_error(y[groups == cycle], prediction[groups == cycle])),
+                "rmse": float(mean_squared_error(y[groups == cycle], prediction[groups == cycle]) ** 0.5),
+                "bias": float(np.mean(prediction[groups == cycle] - y[groups == cycle])),
+            }
             for cycle in np.unique(groups)
-        ]
+        }
+        cycle_mae = [float(values["mae"]) for values in cycle_metrics.values()]
         horizon_metrics: dict[str, dict[str, float | int]] = {}
         bands = _horizon_band(snapshots["cycle_day"])
         for band in bands.cat.categories:
@@ -576,6 +589,7 @@ def train_outcome_model(
             },
             "uncertainty_half_width_80": float(np.quantile(np.abs(residual), 0.80)),
             "horizon": horizon_metrics,
+            "cycle": cycle_metrics,
         }
 
     best_macro_mae = min(

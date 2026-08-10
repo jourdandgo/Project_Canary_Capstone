@@ -73,8 +73,7 @@ Standardized Ridge coefficients describe association and direction in the fitted
 - Day 35 weight uses 31 building outcomes across 6 cycles. The current cycle is excluded from training.
 - Recovery selection uses cycle-balanced MAE with a 10% simplicity tolerance; Day 35 weight uses a 5% tolerance. This avoids promoting complexity for a trivial gain.
 - Uncertainty ranges use the 80th percentile of held-out absolute errors. They are empirical prototype ranges, not formal clinical or statistical guarantees.
-- Environmental risk thresholds remain provisional until Doc Raymond confirms the age-specific temperature bands, temperature-range cutoffs, and humidity persistence rule.
-- Recommendation triggers and actions now follow Doc Raymond's Farmer Validation Workbook. Response times, responsible persons, and exact operating wording still require final confirmation before farm reliance.
+- Risk thresholds remain provisional until farm experts approve them. Recommendations remain pending Doc Raymond's action table.
 
 ## Day 35 weight improvement plan
 

@@ -98,7 +98,7 @@ def test_historical_home_shows_actuals_without_risk_or_predictions(monkeypatch):
     metric_labels = [metric.label for metric in app.metric]
     assert metric_labels[:3] == [
         "Completed buildings",
-        "Actual recovery results",
+        "Final harvest recovery",
         "Actual weight results",
     ]
     assert not [widget for widget in app.date_input if widget.label == "Review date"]

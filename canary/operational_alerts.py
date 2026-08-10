@@ -112,7 +112,7 @@ def evaluate_operational_alerts(
                 else value - float(expected["maximum"])
             )
             if check == "Temperature":
-                deviations = rules.get("temperature_deviation_from_target_c", {"warning": 3, "critical": 5})
+                deviations = rules.get("temperature_deviation_from_range_c", {"warning": 1, "critical": 2})
                 absolute_gap = range_gap
                 severity = "Critical" if absolute_gap >= deviations["critical"] else "Warning" if absolute_gap >= deviations["warning"] else "Watch"
                 title = f"Temperature is too {'low' if target_gap < 0 else 'high'} for Day {age}"
@@ -195,7 +195,14 @@ def build_operational_driver_trace(
     beginning = float(meta.iloc[0]["beginning_inventory"]) if not meta.empty else float("nan")
     rows: list[dict[str, str]] = []
 
-    def add_row(check: str, recorded: str, reference: str, status: str, next_check: str) -> None:
+    def add_row(
+        check: str,
+        recorded: str,
+        reference: str,
+        status: str,
+        next_check: str,
+        effect: str = "None — supporting diagnostic only",
+    ) -> None:
         rows.append(
             {
                 "Possible operational driver": check,
@@ -203,7 +210,7 @@ def build_operational_driver_trace(
                 "Reference": reference,
                 "Status": status,
                 "What management should check": next_check,
-                "Effect on risk score": "None — supporting diagnostic only",
+                "Effect on risk score": effect,
             }
         )
 
@@ -235,14 +242,28 @@ def build_operational_driver_trace(
     for column, check, range_key, unit in environment_specs:
         observed = history.loc[history[column].notna()]
         if observed.empty:
-            add_row(check, "Not recorded", "Age-specific provisional range", "No evidence", f"Verify or record the latest {check.lower()} reading.")
+            add_row(
+                check,
+                "Not recorded",
+                "Age-specific provisional range",
+                "No evidence",
+                f"Verify or record the latest {check.lower()} reading.",
+                "Formal environmental dimension — not scored without current evidence",
+            )
             continue
         record = observed.iloc[-1]
         age = int(record["age_day"])
         expected = _age_range(rules[range_key], age)
         value = float(record[column])
         if expected is None:
-            add_row(check, f"{value:.1f}{unit} on Day {age}", "No proposed range for this age", "Needs farm threshold", f"Confirm the acceptable {check.lower()} range for Day {age}.")
+            add_row(
+                check,
+                f"{value:.1f}{unit} on Day {age}",
+                "No proposed range for this age",
+                "Needs farm threshold",
+                f"Confirm the acceptable {check.lower()} range for Day {age}.",
+                "Formal environmental dimension — not scored without an age range",
+            )
             continue
         reference = f"Proposed Day {expected['day_min']}–{expected['day_max']} range: {expected['minimum']:.0f}–{expected['maximum']:.0f}{unit}"
         if value < expected["minimum"]:
@@ -256,7 +277,14 @@ def build_operational_driver_trace(
             if check == "Temperature"
             else "Verify the sensor, ventilation, litter condition, and possible water leakage."
         )
-        add_row(check, f"{value:.1f}{unit} on Day {age}", reference, status, next_check)
+        add_row(
+            check,
+            f"{value:.1f}{unit} on Day {age}",
+            reference,
+            status,
+            next_check,
+            "Formal environmental dimension — worse of temperature or humidity deviation",
+        )
 
     feed = history.loc[history["feed_daily_kg_per_bird"].notna()]
     if feed.empty:
