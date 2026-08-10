@@ -5,7 +5,7 @@ Status: **PASS**
 ## Executive verdict
 
 - Recovery: Directional point estimate only; target-side discrimination is not established. Held-out MAE is 1.32 points overall and 1.43 points at Day 14.
-- Day 35 weight: Useful age-aware baseline; uncertainty is material and target-hit discrimination cannot be tested. Held-out MAE is 198 g overall and 183 g from Day 14.
+- Day 35 weight: Useful limited-data Ridge forecast; uncertainty is material and target-hit evidence remains small. Held-out MAE is about 172 g overall and 167 g from Day 14.
 - Risk: retain as a transparent operational-priority score, not as a probability model. Thresholds still require farm validation.
 
 ## Data foundation
@@ -20,7 +20,7 @@ At Day 14, target-side accuracy is 84.0%, equal to the 84.0% majority baseline; 
 
 ## Day 35 weight model
 
-The selected method is `historical_remaining_gain`, validated across 4 cycles and 19 Day 35 building outcomes. At Day 14, 57.9% of projections were within 200 g. Historical Day 35 target hits: 0.
+The selected method is `ridge_regression`, validated across 6 historical cycles and 31 Day 35 building outcomes using 124 leakage-safe checkpoint rows. Overall, about 65% of projections were within 200 g. At Day 14, MAE is about 167 g and target-side accuracy is about 87%. Five outcomes reached the revised 1.8 kg goal; recognition of this small hit group remains weak. Historical remaining gain remains the strongest transparent benchmark at about 178 g MAE.
 
 ## Required interpretation
 

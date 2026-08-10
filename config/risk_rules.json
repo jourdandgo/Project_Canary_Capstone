@@ -1,37 +1,30 @@
 {
-  "version": "risk-rules-0.2.0-provisional",
+  "version": "risk-rules-0.3.0-doc-validation",
   "approval_status": "Provisional - farm validation required",
-  "survival_target": {
-    "final_target_rate": 0.95,
-    "target_day": 35
-  },
   "rating_bands": [
     {"label": "Low", "minimum": 0, "maximum": 1},
     {"label": "Medium", "minimum": 2, "maximum": 3},
     {"label": "High", "minimum": 4, "maximum": 5},
     {"label": "Critical", "minimum": 6, "maximum": 12}
   ],
-  "age_bands": [
-    {"label": "Days 1-7", "minimum_age": 1, "maximum_age": 7, "weight_gap_pct": [5.0, 15.0, 30.0], "survival_gap_pp": [0.15, 0.50, 1.00], "mortality_trend_delta_per_1000": [0.20, 0.60, 0.85]},
-    {"label": "Days 8-14", "minimum_age": 8, "maximum_age": 14, "weight_gap_pct": [5.0, 15.0, 30.0], "survival_gap_pp": [0.25, 0.75, 1.50], "mortality_trend_delta_per_1000": [0.05, 0.20, 0.45]},
-    {"label": "Days 15-21", "minimum_age": 15, "maximum_age": 21, "weight_gap_pct": [5.0, 15.0, 30.0], "survival_gap_pp": [0.50, 1.25, 2.00], "mortality_trend_delta_per_1000": [0.05, 0.25, 0.40]},
-    {"label": "Day 22 onward", "minimum_age": 22, "maximum_age": 999, "weight_gap_pct": [5.0, 15.0, 30.0], "survival_gap_pp": [0.75, 2.00, 4.00], "mortality_trend_delta_per_1000": [0.15, 0.50, 0.95]}
+  "dimension_cutoffs": {
+    "weight_gap_pct": [5.0, 10.0, 30.0],
+    "population_loss_pct": [3.0, 5.0, 7.0],
+    "daily_mortality_pct": [0.1, 0.2, 0.3],
+    "temperature_range_c": [2.0, 3.0, 5.0],
+    "humidity_deviation_pp": [0.1, 5.0, 10.0]
+  },
+  "humidity_ranges_pct": [
+    {"label": "Days 1-7", "minimum_age": 1, "maximum_age": 7, "minimum": 60.0, "maximum": 70.0},
+    {"label": "Days 8-14", "minimum_age": 8, "maximum_age": 14, "minimum": 55.0, "maximum": 65.0},
+    {"label": "Day 15 onward", "minimum_age": 15, "maximum_age": 999, "minimum": 50.0, "maximum": 60.0}
   ],
-  "mortality_trend": {
-    "recent_days": 3,
-    "baseline_days": 7,
-    "minimum_baseline_observations": 2
-  },
-  "peer_comparison": {
-    "minimum_comparable_buildings": 3,
-    "maximum_age_difference_days": 2,
-    "weight_gap_excess_pct": [2.0, 5.0, 10.0],
-    "survival_gap_excess_pp": [0.25, 0.75, 1.50],
-    "mortality_rate_excess_per_1000": [0.10, 0.30, 0.60]
-  },
-  "farm_wide": {
-    "minimum_scorable_buildings": 3,
-    "minimum_core_score": 2,
-    "minimum_elevated_share": 0.5
-  }
+  "maximum_environment_reading_age_days": 2,
+  "notes": [
+    "Weight, population loss, and daily mortality cutoffs are derived from Doc Raymond's Farmer Validation Workbook and remain provisional until final sign-off.",
+    "Environmental score is the higher of daily temperature range and age-specific humidity deviation; it does not diagnose heat stress or disease.",
+    "The 2/3/5 C temperature-range thresholds flag most recorded environmental days and require calibration before operational reliance.",
+    "Absolute high/low temperature is not part of the formal score until age-specific Philippine farm bands are approved.",
+    "Peer comparison remains visible as context but no longer adds risk points."
+  ]
 }

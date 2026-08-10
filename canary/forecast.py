@@ -18,7 +18,7 @@ from .modeling import FEATURE_COLUMNS, extract_feature_row
 
 DEFAULT_MODEL_DIR = Path(__file__).resolve().parent.parent / "models"
 RECOVERY_TARGET = 0.95
-WEIGHT_TARGET_KG = 2.0
+WEIGHT_TARGET_KG = 1.8
 
 
 @lru_cache(maxsize=8)
@@ -251,7 +251,7 @@ def forecast_trace(row: pd.Series, model_dir: str | Path = DEFAULT_MODEL_DIR) ->
                     if pd.isna(row.get("projected_day35_weight_kg"))
                     else f"{float(row.get('projected_day35_weight_kg')):.2f} kg"
                 ),
-                "Goal": "2.00 kg on Day 35",
+                "Goal": "1.80 kg on Day 35",
                 "Likely range": (
                     "Not available"
                     if pd.isna(row.get("day35_weight_interval_low_kg"))
@@ -272,12 +272,12 @@ def forecast_trace(row: pd.Series, model_dir: str | Path = DEFAULT_MODEL_DIR) ->
                 "How to interpret it": (
                     "This is the recorded average weight on Day 35."
                     if observed_day35
-                    else "Adds the farm's historically observed remaining growth from the measurement age to the latest measured weight."
+                    else "Uses compact Ridge regression with the latest available checkpoint history, age-target progress, and observed growth signals."
                 ),
                 "Important limitation": (
                     "No projection limitation; this is an observation."
                     if observed_day35
-                    else "Only 19 historical Day 35 outcomes are available, and none reached 2.0 kg; target-hit classification cannot yet be validated."
+                    else f"Validated on {day35['training_building_cycles']} historical building outcomes across {len(day35['training_cycles'])} cycles; the small number of 1.8 kg target hits limits classification confidence."
                 ),
             },
         ]

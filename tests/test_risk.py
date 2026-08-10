@@ -23,7 +23,7 @@ from canary.risk import _rating
 SOURCE = Path(
     os.getenv(
         "CANARY_TEST_WORKBOOK",
-        str(Path(__file__).resolve().parents[2] / "FARM HARVEST DATA.xlsx"),
+        str(Path(__file__).resolve().parents[1] / "data" / "FARM HARVEST DATA.xlsx"),
     )
 )
 
@@ -56,27 +56,27 @@ def test_day_14_score_reconciles_to_the_four_dimensions(dataset):
     as_of = pd.Timestamp(meta["start_date"]) + pd.DateOffset(days=13)
     row = score_cycle_snapshot(dataset, "2025-5", as_of).query("building_id == 'Tags 1'").iloc[0]
 
-    assert row["weight_gap_pct"] == pytest.approx((0.400 - 0.235) / 0.400 * 100)
-    assert [row["weight_score"], row["survival_score"], row["mortality_score"], row["peer_score"]] == [3, 0, 0, 2]
-    assert row["risk_score"] == 5
-    assert row["risk_rating"] == "High"
+    assert row["weight_gap_pct"] == pytest.approx((0.380 - 0.235) / 0.380 * 100)
+    assert [row["weight_score"], row["population_loss_score"], row["daily_mortality_score"], row["environment_score"]] == [3, 0, 0, 3]
+    assert row["risk_score"] == 6
+    assert row["risk_rating"] == "Critical"
     assert row["risk_score"] == sum(
-        row[column] for column in ["weight_score", "survival_score", "mortality_score", "peer_score"]
+        row[column] for column in ["weight_score", "population_loss_score", "daily_mortality_score", "environment_score"]
     )
-    assert "0.235 vs 0.400 kg" in row["why_primary"]
+    assert "0.235 vs 0.380 kg" in row["why_primary"]
     assert row["score_equation"] == (
-        "Weight gap 3 + Survival path 0 + Mortality trend 0 + Peer comparison 2 = 5"
+        "Weight gap 3 + Population loss 0 + Daily mortality 0 + Environmental conditions 3 = 6"
     )
-    assert row["risk_label_rule"] == "Score 4-5 => High"
+    assert row["risk_label_rule"] == "Score 6-12 => Critical"
     assert row["identified_problem"] == row["risk_pattern"]
-    assert row["recommendation_rule_id"] == "Pending Sprint 4"
+    assert row["recommendation_rule_id"] == "Not applicable"
 
     trace = build_dimension_trace(row)
     assert trace["Dimension"].tolist() == [
         "Weight gap",
-        "Survival path",
-        "Mortality trend",
-        "Peer comparison",
+        "Population loss",
+        "Daily mortality",
+        "Environmental conditions",
     ]
     assert trace["Score"].sum() == row["risk_score"]
     assert trace["Applied thresholds"].str.len().gt(0).all()
@@ -101,7 +101,7 @@ def test_future_rows_do_not_change_an_earlier_as_of_score(dataset):
     changed = replace(dataset, daily=changed_daily)
     rescored = score_cycle_snapshot(changed, "2025-5", as_of)
 
-    columns = ["risk_score", "weight_score", "survival_score", "mortality_score", "peer_score"]
+    columns = ["risk_score", "weight_score", "population_loss_score", "daily_mortality_score", "environment_score"]
     pd.testing.assert_series_equal(
         baseline.query("building_id == 'Tags 1'").iloc[0][columns],
         rescored.query("building_id == 'Tags 1'").iloc[0][columns],
@@ -110,11 +110,17 @@ def test_future_rows_do_not_change_an_earlier_as_of_score(dataset):
 
 def test_missing_weight_is_not_treated_as_zero_risk(dataset):
     as_of = default_as_of_date(dataset, "2026-3")
-    row = score_cycle_snapshot(dataset, "2026-3", as_of).query("building_id == 'Tags 1'").iloc[0]
+    daily = dataset.daily.copy()
+    mask = (daily["cycle_id"] == "2026-3") & (daily["building_id"] == "Tags 1")
+    daily.loc[mask, "bodyweight_kg"] = pd.NA
+    daily.loc[mask, "weight_measured"] = False
+    row = score_cycle_snapshot(
+        replace(dataset, daily=daily), "2026-3", as_of
+    ).query("building_id == 'Tags 1'").iloc[0]
 
     assert pd.isna(row["weight_score"])
     assert row["evidence_status"] == "Reduced evidence"
-    available = [row[column] for column in ["survival_score", "mortality_score", "peer_score"]]
+    available = [row[column] for column in ["population_loss_score", "daily_mortality_score", "environment_score"]]
     assert row["risk_score"] == sum(value for value in available if pd.notna(value))
     assert row["cycle_day"] == 22
     assert row["risk_rating"] != "Not rated"
@@ -140,7 +146,7 @@ def test_snapshot_before_later_building_placements_does_not_fail(dataset):
 
 def test_risk_rule_validation_rejects_non_ascending_cutoffs():
     rules = deepcopy(load_risk_rules())
-    rules["age_bands"][0]["weight_gap_pct"] = [5.0, 30.0, 15.0]
+    rules["dimension_cutoffs"]["weight_gap_pct"] = [5.0, 30.0, 15.0]
 
     with pytest.raises(RiskConfigurationError, match="strictly increasing"):
         validate_risk_rules(rules)

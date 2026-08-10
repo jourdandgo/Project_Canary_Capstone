@@ -22,10 +22,10 @@ from canary.modeling import (
 )
 
 
-PROJECT = Path(__file__).resolve().parents[2]
-FARM_DATA = PROJECT / "FARM HARVEST DATA.xlsx"
-PERFORMANCE = PROJECT / "Farm Performance Summary.xlsx"
-FARMER_VALIDATION = PROJECT / "Farmer Validation Workbook.xlsx"
+APP_ROOT = Path(__file__).resolve().parents[1]
+FARM_DATA = APP_ROOT / "data" / "FARM HARVEST DATA.xlsx"
+PERFORMANCE = APP_ROOT / "data" / "Farm Performance Summary.xlsx"
+FARMER_VALIDATION = APP_ROOT / "data" / "Farmer Validation Workbook.xlsx"
 OUTPUT = Path(__file__).with_name("eda_results.json")
 
 
@@ -272,8 +272,12 @@ def build_results() -> dict[str, object]:
         .reset_index()
     )
 
-    recovery_manifest = json.loads(Path("models/recovery_manifest.json").read_text())
-    weight_manifest = json.loads(Path("models/weight_manifest.json").read_text())
+    recovery_manifest = json.loads(
+        (APP_ROOT / "models" / "recovery_manifest.json").read_text()
+    )
+    weight_manifest = json.loads(
+        (APP_ROOT / "models" / "day35_weight_manifest.json").read_text()
+    )
     model_summary = {
         "recovery_selected_model": recovery_manifest["selected_model"],
         "recovery_building_cycles": recovery_manifest["training_building_cycles"],
@@ -293,24 +297,26 @@ def build_results() -> dict[str, object]:
         * 100,
         "weight_selected_model": weight_manifest["selected_model"],
         "weight_building_cycles": weight_manifest["training_building_cycles"],
-        "weight_mae_kg": weight_manifest["selected_metrics"]["mae"],
+        "weight_mae_kg": weight_manifest["selected_metrics"]["mae_kg"],
         "weight_target_side_accuracy_pct": weight_manifest["selected_metrics"][
             "target_side_accuracy"
         ]
         * 100,
     }
-    farmer_book = pd.read_excel(
-        FARMER_VALIDATION, sheet_name=None, header=None, engine="openpyxl"
-    )
-    farmer_profile = {
-        name: {
-            "rows": int(frame.shape[0]),
-            "columns": int(frame.shape[1]),
-            "non_empty_cells": int(frame.notna().sum().sum()),
+    farmer_profile: dict[str, object] = {}
+    if FARMER_VALIDATION.exists():
+        farmer_book = pd.read_excel(
+            FARMER_VALIDATION, sheet_name=None, header=None, engine="openpyxl"
+        )
+        farmer_profile = {
+            name: {
+                "rows": int(frame.shape[0]),
+                "columns": int(frame.shape[1]),
+                "non_empty_cells": int(frame.notna().sum().sum()),
+            }
+            for name, frame in farmer_book.items()
+            if name != "RISK SCORING MATRIX"
         }
-        for name, frame in farmer_book.items()
-        if name != "RISK SCORING MATRIX"
-    }
     return {
         "coverage": coverage,
         "associations": associations,

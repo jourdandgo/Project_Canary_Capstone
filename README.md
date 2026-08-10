@@ -2,11 +2,11 @@
 
 Local Streamlit prototype for daily broiler-farm decision support.
 
-Product definition: **Day 35 is the primary 2.0 kg management milestone.** Canary uses Days 1–14 as the early-warning window, projects each building's Day 35 average weight when a measured weight exists, and separately forecasts harvest recovery against 95%. It does not linearly convert a later harvest weight into an artificial Day 35 label.
+Product definition: **Day 35 is the primary 1.8 kg management milestone.** Canary uses Days 1–14 as the early-warning window, projects each building's Day 35 average weight when a measured weight exists, and separately forecasts harvest recovery against 95%.
 
 ## Completed capstone scope through Sprint 5
 
-- Read `FARM HARVEST DATA.xlsx` without modifying it.
+- Read `FARM HARVEST DATA.xlsx` without modifying the uploaded file; apply the farm-approved revised target curve in the ingestion layer.
 - Consolidate multiple environmental-section readings to one building-day.
 - Preserve missing mortality and feed observations as missing, not zero.
 - Select a harvest cycle; the latest cycle also accepts an as-of review date.
@@ -15,7 +15,7 @@ Product definition: **Day 35 is the primary 2.0 kg management milestone.** Canar
 - For earlier cycles, show harvest completed on, actual harvest recovery, and actual final average weight when available—without historical risk ratings, predictions, or recommendations.
 - Show latest observed population, percentage alive, bodyweight measurement, target, and freshness.
 - Show an inspectable data-quality report.
-- Calculate four separate rules-based dimensions: weight gap, survival path, mortality trend, and peer comparison.
+- Calculate four separate rules-based dimensions: weight gap, cumulative population loss, latest daily mortality, and combined environmental conditions.
 - Map the available-dimension total to Low, Medium, High, or Critical using the agreed 0–12 structure.
 - Generate deterministic primary and supporting explanations plus problem-pattern classifications.
 - Preserve missing dimensions as not scored and disclose reduced evidence.
@@ -24,13 +24,13 @@ Product definition: **Day 35 is the primary 2.0 kg management milestone.** Canar
 - Build leakage-safe daily modeling snapshots using only complete recorded cycles and information available as of each day.
 - Compare a trend baseline, historical mean, Ridge regression, and random forest with leave-one-cycle-out validation.
 - Forecast harvest recovery with a point estimate, target gap, empirical uncertainty range, model version, and plain-language confidence note. The historical target is explicitly disclosed as last-recorded recovery because confirmed harvest status is not available in the source workbook.
-- Project average weight on Day 35 from the building's latest measured weight plus the age-appropriate remaining gain observed in historical Day 35 records. If no weight has been measured, Canary shows the projection as unavailable rather than inventing a farm-wide value.
+- Project Day 35 average weight with compact Ridge regression using only checkpoint evidence known by the review date. Historical remaining gain remains the transparent benchmark and fallback candidate.
 - Keep forecasting fully independent of the rules-based risk score.
 - Present a simple owner-first view: how many buildings need attention and which ones, the inventory-weighted projected harvest recovery and target gap, estimated gross revenue at risk, and the first building/action to review.
 - Use a multipage sidebar shell: owner pages (Home, Building View, Business Value), capstone-evidence pages (EDA & Insights, Canary Methodology), and administration pages (Action Playbook, Data & Settings).
 - Show current recovery and latest measured weight beside predicted recovery and the projected Day 35 result.
 - Constrain predicted final recovery so it never exceeds survival already recorded today under the agreed accounting rule.
-- Compare Day 35 historical mean, target-curve, recent-ADG, historical remaining-gain, and compact Ridge candidates; retain the transparent remaining-gain winner because it has the lowest complete-cycle-held-out MAE.
+- Compare Day 35 historical mean, target-curve, recent-ADG, historical remaining-gain, Ridge, Random Forest, and gradient-boosting candidates; select Ridge because it has the lowest cycle-balanced held-out MAE and beats the simple benchmark beyond the 5% tolerance.
 - Treat each eligible building checkpoint as a separate as-of training example and pool examples across buildings; do not fit unreliable building-specific models or use later checkpoint weights in an earlier forecast.
 - Provide a dedicated adjustable Business Value page and card-level estimated gross revenue at risk, clearly separated from profit or guaranteed savings.
 - Provide dedicated question-led EDA and detailed Canary Methodology pages for capstone defense, separate from the owner-facing Home dashboard.
@@ -52,6 +52,8 @@ Handoff documents:
 - `docs/SPRINT5_VALIDATION_REPORT.md`
 - `docs/OPERATING_GUIDE.md`
 - `docs/OPEN_ITEMS.md`
+- `docs/PROJECT_CANARY_DEFENSE_CHEAT_SHEET.md`
+- `docs/Project_Canary_Defense_Cheat_Sheet.docx`
 
 A researched seven-rule preliminary action playbook is available for Doc Raymond's review. The editable approval workbook is stored in `docs/Project_Canary_Preliminary_Action_Playbook.xlsx`, and its synchronized version-controlled source is `config/recommendation_playbook_draft.json`. The dashboard uses these as visibly preliminary inspection and escalation guidance—not approved farm policy or treatment advice.
 

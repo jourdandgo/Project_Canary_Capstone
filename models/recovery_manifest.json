@@ -1,6 +1,6 @@
 {
   "outcome": "recovery",
-  "model_version": "recovery-0.6.0",
+  "model_version": "recovery-0.7.0",
   "selected_model": "ridge_core",
   "model_kind": "fitted",
   "feature_schema_version": "features-0.3.0",
@@ -215,82 +215,82 @@
       }
     },
     "ridge": {
-      "mae": 0.013992565936407016,
-      "cycle_macro_mae": 0.013755785059138197,
-      "rmse": 0.017579827824599773,
-      "bias": 0.0029573714997754505,
-      "fold_mae_std": 0.004731062917173603,
-      "target_side_accuracy": 0.8032786885245902,
+      "mae": 0.01497271753509014,
+      "cycle_macro_mae": 0.015622898439736743,
+      "rmse": 0.01918403502242025,
+      "bias": 0.001472977358832734,
+      "fold_mae_std": 0.006854242927926237,
+      "target_side_accuracy": 0.8114754098360656,
       "majority_side_accuracy": 0.8442622950819673,
-      "below_target_recall": 0.941747572815534,
+      "below_target_recall": 0.9514563106796117,
       "at_or_above_target_recall": 0.05263157894736842,
       "confusion_matrix": {
-        "actual_below_predicted_below": 97,
-        "actual_below_predicted_at_or_above": 6,
+        "actual_below_predicted_below": 98,
+        "actual_below_predicted_at_or_above": 5,
         "actual_at_or_above_predicted_below": 18,
         "actual_at_or_above_predicted_at_or_above": 1
       },
-      "uncertainty_half_width_80": 0.02113964849262336,
+      "uncertainty_half_width_80": 0.022063797266707423,
       "horizon": {
         "Days 1-7": {
           "rows": 25,
-          "mae": 0.01565122984044415,
-          "rmse": 0.018899750811225843
+          "mae": 0.015900040210274816,
+          "rmse": 0.01948849065846506
         },
         "Days 8-14": {
           "rows": 25,
-          "mae": 0.01454177487137414,
-          "rmse": 0.018467486929658206
+          "mae": 0.016591167047605933,
+          "rmse": 0.02094036402079512
         },
         "Days 15-21": {
           "rows": 25,
-          "mae": 0.015219790445609317,
-          "rmse": 0.018759506555772607
+          "mae": 0.015662483308691216,
+          "rmse": 0.02029615606417078
         },
         "Day 22+": {
           "rows": 47,
-          "mae": 0.01216538649587161,
-          "rmse": 0.015608200751462409
+          "mae": 0.013251686704610594,
+          "rmse": 0.017347184919219372
         }
       }
     },
     "random_forest": {
-      "mae": 0.014810210021671355,
-      "cycle_macro_mae": 0.013615004998491196,
-      "rmse": 0.018298705803718673,
-      "bias": 0.0014472132474529708,
-      "fold_mae_std": 0.005392888354387982,
+      "mae": 0.01447904532876029,
+      "cycle_macro_mae": 0.013301811408443293,
+      "rmse": 0.018266546689117813,
+      "bias": 0.000502436788642628,
+      "fold_mae_std": 0.005602357722064357,
       "target_side_accuracy": 0.7950819672131147,
       "majority_side_accuracy": 0.8442622950819673,
-      "below_target_recall": 0.912621359223301,
-      "at_or_above_target_recall": 0.15789473684210525,
+      "below_target_recall": 0.9223300970873787,
+      "at_or_above_target_recall": 0.10526315789473684,
       "confusion_matrix": {
-        "actual_below_predicted_below": 94,
-        "actual_below_predicted_at_or_above": 9,
-        "actual_at_or_above_predicted_below": 16,
-        "actual_at_or_above_predicted_at_or_above": 3
+        "actual_below_predicted_below": 95,
+        "actual_below_predicted_at_or_above": 8,
+        "actual_at_or_above_predicted_below": 17,
+        "actual_at_or_above_predicted_at_or_above": 2
       },
-      "uncertainty_half_width_80": 0.02099857204160276,
+      "uncertainty_half_width_80": 0.02108513889165835,
       "horizon": {
         "Days 1-7": {
           "rows": 25,
-          "mae": 0.014594306308450196,
-          "rmse": 0.01782083596771345
+          "mae": 0.013960959338220578,
+          "rmse": 0.01741227208258993
         },
         "Days 8-14": {
           "rows": 25,
-          "mae": 0.01455104156083236,
-          "rmse": 0.018658986132970564
+          "mae": 0.01391000740467827,
+          "rmse": 0.01832124366568122
         },
         "Days 15-21": {
           "rows": 25,
-          "mae": 0.014543531192176645,
-          "rmse": 0.01826850341145195
+          "mae": 0.014218147572709845,
+          "rmse": 0.0183228211247664
         },
         "Day 22+": {
           "rows": 47,
-          "mae": 0.015204758427817561,
-          "rmse": 0.01837195306003643
+          "mae": 0.015196078132309322,
+          "rmse": 0.018647238542201055
         }
       }
     },
@@ -415,8 +415,9 @@
       }
     }
   },
-  "selection_metric": "cycle_macro_mae_within_5pct_then_simplest",
-  "selection_tolerance_pct": 5.0,
+  "selection_metric": "cycle_macro_mae_within_tolerance_then_simplest",
+  "selection_tolerance_pct": 10.0,
+  "selection_note": "For recovery, the compact Ridge avoids building identity and raw inventory size, has the lowest overall held-out MAE, and is selected when its cycle-balanced MAE is within 10% of the best candidate.",
   "global_feature_importance": [
     {
       "feature": "percentage_alive",

@@ -19,7 +19,7 @@ from sklearn.pipeline import Pipeline
 from .data import CanaryDataset
 
 
-DAY35_TARGET_KG = 2.0
+DAY35_TARGET_KG = 1.8
 CHECKPOINT_DAYS = (7, 14, 21, 28)
 DEFAULT_DAY35_MANIFEST = (
     Path(__file__).resolve().parent.parent / "models" / "day35_weight_manifest.json"
@@ -30,6 +30,11 @@ RIDGE_FEATURES = (
     "current_to_target_ratio",
     "recent_adg_kg_day",
     "has_recent_adg",
+    "cumulative_adg_kg_day",
+    "weight_day_7_kg",
+    "weight_day_14_kg",
+    "weight_day_21_kg",
+    "weight_day_28_kg",
 )
 
 
@@ -43,8 +48,12 @@ def load_day35_manifest(
 def build_day35_training_rows(dataset: CanaryDataset) -> pd.DataFrame:
     """Return one leakage-safe checkpoint row for each observed Day 35 weight."""
 
+    cycle_starts = dataset.cycles.groupby("cycle_id")["start_date"].min()
+    latest_cycle = str(cycle_starts.idxmax())
+    completed = set(cycle_starts.index.astype(str)) - {latest_cycle}
     weights = dataset.daily.loc[
-        dataset.daily["weight_measured"]
+        dataset.daily["cycle_id"].isin(completed)
+        & dataset.daily["weight_measured"]
         & dataset.daily["age_day"].isin([*CHECKPOINT_DAYS, 35]),
         ["cycle_id", "building_id", "age_day", "bodyweight_kg"],
     ].drop_duplicates(["cycle_id", "building_id", "age_day"])
@@ -74,6 +83,16 @@ def build_day35_training_rows(dataset: CanaryDataset) -> pd.DataFrame:
                         else np.nan
                     ),
                     "actual_day35_weight_kg": float(record[35]),
+                    **{
+                        f"weight_day_{day}_kg": (
+                            float(record[day])
+                            if day <= checkpoint
+                            and day in pivot
+                            and pd.notna(record.get(day))
+                            else np.nan
+                        )
+                        for day in CHECKPOINT_DAYS
+                    },
                 }
             )
     return pd.DataFrame(rows)
@@ -81,6 +100,8 @@ def build_day35_training_rows(dataset: CanaryDataset) -> pd.DataFrame:
 
 def _metrics(actual: np.ndarray, predicted: np.ndarray) -> dict[str, float | int]:
     residual = predicted - actual
+    actual_hit = actual >= DAY35_TARGET_KG
+    predicted_hit = predicted >= DAY35_TARGET_KG
     return {
         "rows": int(len(actual)),
         "mae_kg": float(mean_absolute_error(actual, predicted)),
@@ -88,6 +109,13 @@ def _metrics(actual: np.ndarray, predicted: np.ndarray) -> dict[str, float | int
         "bias_kg": float(np.mean(residual)),
         "within_100g_rate": float(np.mean(np.abs(residual) <= 0.1)),
         "within_200g_rate": float(np.mean(np.abs(residual) <= 0.2)),
+        "target_side_accuracy": float(np.mean(actual_hit == predicted_hit)),
+        "below_target_recall": float(
+            np.mean(~predicted_hit[~actual_hit]) if (~actual_hit).any() else np.nan
+        ),
+        "at_or_above_target_recall": float(
+            np.mean(predicted_hit[actual_hit]) if actual_hit.any() else np.nan
+        ),
     }
 
 
@@ -105,6 +133,17 @@ def _ridge_feature_frame(
         rows["current_weight_kg"] - rows["previous_weight_kg"]
     ) / 7
     features["has_recent_adg"] = rows["previous_weight_kg"].notna().astype(float)
+    first_weight = rows["weight_day_7_kg"]
+    features["cumulative_adg_kg_day"] = np.where(
+        rows["measurement_day"].gt(7) & first_weight.notna(),
+        (rows["current_weight_kg"] - first_weight)
+        / (rows["measurement_day"] - 7),
+        np.nan,
+    )
+    for checkpoint in CHECKPOINT_DAYS:
+        features[f"weight_day_{checkpoint}_kg"] = rows[
+            f"weight_day_{checkpoint}_kg"
+        ].astype(float)
     return features[list(RIDGE_FEATURES)]
 
 
@@ -305,9 +344,9 @@ def train_day35_weight_baseline(dataset: CanaryDataset) -> dict[str, Any]:
     }
     return {
         "outcome": "day35_average_liveweight",
-        "model_version": "day35-weight-0.3.0",
+        "model_version": "day35-weight-0.4.0",
         "selected_model": selected,
-        "model_kind": "formula",
+        "model_kind": "fitted" if selected == "ridge_regression" else "formula",
         "target_day": 35,
         "target_weight_kg": DAY35_TARGET_KG,
         "label_definition": "Observed building average bodyweight recorded on production Day 35",
@@ -315,27 +354,58 @@ def train_day35_weight_baseline(dataset: CanaryDataset) -> dict[str, Any]:
         "training_cycles": sorted(rows["cycle_id"].unique().tolist()),
         "training_building_cycles": int(len(day35_outcomes)),
         "training_checkpoint_rows": int(len(rows)),
-        "actual_target_hits": int((day35_outcomes["actual_day35_weight_kg"] >= 2.0).sum()),
-        "actual_target_misses": int((day35_outcomes["actual_day35_weight_kg"] < 2.0).sum()),
+        "actual_target_hits": int((day35_outcomes["actual_day35_weight_kg"] >= DAY35_TARGET_KG).sum()),
+        "actual_target_misses": int((day35_outcomes["actual_day35_weight_kg"] < DAY35_TARGET_KG).sum()),
         "candidate_metrics": candidate_metrics,
         "selected_metrics": candidate_metrics[selected],
         "selection_metric": "cycle_macro_mae_kg_within_5pct_then_simplest",
         "selection_tolerance_pct": 5.0,
-        "selected_method_drivers": [
-            {
-                "driver": "Latest measured building weight",
-                "role": "Direct 1-for-1 starting point",
-                "direction": "A higher current weight raises the Day 35 projection by the same amount.",
-            },
-            {
-                "driver": "Production day of the measurement",
-                "role": "Selects the historical remaining-growth allowance",
-                "direction": "An earlier weighing uses a larger average remaining gain; a later weighing uses a smaller one.",
-            },
-        ],
+        "selected_method_drivers": (
+            [
+                {
+                    "driver": item["feature"],
+                    "role": f"{item['absolute_importance_pct']:.1f}% of absolute standardized Ridge reliance",
+                    "direction": item["direction"],
+                }
+                for item in sorted(
+                    [
+                        {
+                            "feature": feature,
+                            "coefficient": float(coefficient),
+                            "absolute_importance_pct": float(
+                                abs(coefficient)
+                                / max(float(np.abs(ridge.coef_).sum()), 1e-12)
+                                * 100
+                            ),
+                            "direction": "Raises projection" if coefficient > 0 else "Lowers projection",
+                        }
+                        for feature, coefficient in zip(RIDGE_FEATURES, ridge.coef_)
+                    ],
+                    key=lambda item: item["absolute_importance_pct"],
+                    reverse=True,
+                )[:5]
+            ]
+            if selected == "ridge_regression"
+            else [
+                {
+                    "driver": "Latest measured building weight",
+                    "role": "Direct starting point",
+                    "direction": "A higher current weight raises the Day 35 projection.",
+                },
+                {
+                    "driver": "Production day",
+                    "role": "Selects the average historical remaining gain",
+                    "direction": "Earlier measurements have more growth remaining.",
+                },
+            ]
+        ),
         "feature_importance_interpretation": (
-            "The selected method is a transparent formula, so coefficient-based feature importance does not apply. "
-            "Its two direct drivers are the latest measured weight and the measurement day. Target progress and recent ADG were tested in other candidates but were not used by the winner."
+            "Ridge reliance uses absolute standardized coefficients. It shows which inputs most influence the fitted forecast after accounting for other inputs; it is not causal evidence. Correlated growth inputs can share importance or show counterintuitive signs."
+            if selected == "ridge_regression"
+            else "The selected formula has two direct drivers: latest measured weight and measurement day."
+        ),
+        "historical_remaining_gain_definition": (
+            "For each checkpoint age, subtract the measured checkpoint weight from the observed Day 35 weight for every eligible historical building-cycle, average those gains, then add that average to the current building's measured weight. During validation, the held-out cycle is excluded from the average."
         ),
         "day14_backtest_metrics": day14_metrics,
         "day14_backtest": [
@@ -351,10 +421,25 @@ def train_day35_weight_baseline(dataset: CanaryDataset) -> dict[str, Any]:
             for record in day14_rows.to_dict(orient="records")
         ],
         "ridge_parameters": ridge_parameters,
+        "ridge_feature_importance": sorted(
+            [
+                {
+                    "feature": feature,
+                    "coefficient_kg_per_standard_deviation": float(coefficient),
+                    "absolute_importance_pct": float(
+                        abs(coefficient) / max(float(np.abs(ridge.coef_).sum()), 1e-12) * 100
+                    ),
+                    "direction": "Raises projection" if coefficient > 0 else "Lowers projection",
+                }
+                for feature, coefficient in zip(RIDGE_FEATURES, ridge.coef_)
+            ],
+            key=lambda item: item["absolute_importance_pct"],
+            reverse=True,
+        ),
         "remaining_gain_by_measurement_day_kg": remaining_gain_by_day,
         "uncertainty_half_width_by_measurement_day_kg": uncertainty_by_day,
         "early_day_fallback": "target_curve_ratio",
-        "status": "Prototype — cycle-held-out validation; no historical Day 35 target hits",
+        "status": "Prototype — current cycle excluded; leave-one-complete-cycle-out validation",
     }
 
 
@@ -462,7 +547,18 @@ def project_day35_weight(
             ),
             "recent_adg_kg_day": recent_adg,
             "has_recent_adg": 0.0 if pd.isna(recent_adg) else 1.0,
+            "cumulative_adg_kg_day": np.nan,
+            **{f"weight_day_{checkpoint}_kg": np.nan for checkpoint in CHECKPOINT_DAYS},
         }
+        for checkpoint in CHECKPOINT_DAYS:
+            checkpoint_rows = weights.loc[weights["age_day"].eq(checkpoint)]
+            if not checkpoint_rows.empty and checkpoint <= age:
+                values[f"weight_day_{checkpoint}_kg"] = float(
+                    checkpoint_rows.iloc[-1]["bodyweight_kg"]
+                )
+        day7_weight = values.get("weight_day_7_kg", np.nan)
+        if pd.notna(day7_weight) and age > 7:
+            values["cumulative_adg_kg_day"] = (current - float(day7_weight)) / (age - 7)
         parameters = manifest["ridge_parameters"]
         standardized: dict[str, float] = {}
         for feature_name in parameters["features"]:

@@ -80,11 +80,21 @@ def source_complete_date(dataset: CanaryDataset) -> pd.Timestamp:
 
 
 def complete_cycle_ids(dataset: CanaryDataset) -> list[str]:
-    """Include histories whose maximum recorded date is before the source cutoff."""
+    """Return completed historical cycles while always excluding the latest cycle.
+
+    The latest placement cycle is the live decision cycle in the capstone.  It
+    remains excluded even if later checkpoint rows have already been entered,
+    preventing an earlier as-of forecast from learning its own future outcome.
+    """
 
     cutoff = source_complete_date(dataset)
     cycle_ends = dataset.cycles.groupby("cycle_id")["end_date"].max()
-    return cycle_ends.loc[cycle_ends <= cutoff].index.astype(str).tolist()
+    cycle_starts = dataset.cycles.groupby("cycle_id")["start_date"].min()
+    latest_cycle = str(cycle_starts.idxmax())
+    completed = cycle_ends.loc[
+        (cycle_ends <= cutoff) & (cycle_ends.index.astype(str) != latest_cycle)
+    ]
+    return completed.index.astype(str).tolist()
 
 
 def _numeric(series: pd.Series) -> pd.Series:
@@ -227,7 +237,7 @@ def extract_feature_row(
         # survival rate holds through harvest. It never uses the future recorded end date.
         "naive_recovery_projection": percentage_alive,
         "naive_weight_projection": (
-            latest_weight / weight_target * 2.0
+            latest_weight / weight_target * 1.8
             if pd.notna(latest_weight) and pd.notna(weight_target) and weight_target > 0
             else np.nan
         ),
@@ -513,7 +523,7 @@ def train_outcome_model(
             predictions[candidate][test_index] = prediction
             fold_mae[candidate].append(float(mean_absolute_error(y[test_index], prediction)))
 
-    target = 0.95 if outcome == "recovery" else 2.0
+    target = 0.95 if outcome == "recovery" else 1.8
     metrics: dict[str, dict[str, object]] = {}
     for candidate in candidates:
         prediction = predictions[candidate]
@@ -571,10 +581,12 @@ def train_outcome_model(
     best_macro_mae = min(
         float(metrics[candidate]["cycle_macro_mae"]) for candidate in candidates
     )
+    selection_tolerance_pct = 10.0 if outcome == "recovery" else 5.0
     eligible = {
         candidate
         for candidate in candidates
-        if float(metrics[candidate]["cycle_macro_mae"]) <= best_macro_mae * 1.05
+        if float(metrics[candidate]["cycle_macro_mae"])
+        <= best_macro_mae * (1 + selection_tolerance_pct / 100)
     }
     simplicity_order = [
         "trend_naive",
@@ -643,7 +655,7 @@ def train_outcome_model(
     manifest = {
         "outcome": outcome,
         "model_version": (
-            "recovery-0.6.0"
+            "recovery-0.7.0"
             if outcome == "recovery"
             else ("weight-final-0.4.0" if final_weight_labels is not None else "weight-proxy-0.3.0")
         ),
@@ -684,8 +696,13 @@ def train_outcome_model(
         ),
         "metrics": metrics,
         "selected_metrics": metrics[selected],
-        "selection_metric": "cycle_macro_mae_within_5pct_then_simplest",
-        "selection_tolerance_pct": 5.0,
+        "selection_metric": "cycle_macro_mae_within_tolerance_then_simplest",
+        "selection_tolerance_pct": selection_tolerance_pct,
+        "selection_note": (
+            "For recovery, the compact Ridge avoids building identity and raw inventory size, has the lowest overall held-out MAE, and is selected when its cycle-balanced MAE is within 10% of the best candidate."
+            if outcome == "recovery"
+            else "Select the simplest candidate within 5% of the best cycle-balanced MAE."
+        ),
         "global_feature_importance": global_feature_importance,
         "feature_importance_interpretation": (
             "Standardized Ridge coefficients show which inputs the fitted model relies on and whether higher values push its raw estimate up or down. They are associations, not causal effects."

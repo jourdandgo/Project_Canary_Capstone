@@ -20,7 +20,7 @@ After those corrections, reorganize the app around the farm owner's daily decisi
 | Rules-based risk rating | Implemented | Reproducible and explainable; thresholds remain provisional. |
 | Explain why a building was flagged | Implemented | Strong traceability, but too much detail is exposed on the default path. |
 | Predict recovery | Prototype | Point-error performance is promising, but the endpoint name and target-miss usefulness need correction. |
-| Project Day 35 average weight | Limited-data prototype | Building-specific when a measured weight exists; 19 historical Day 35 outcomes support the baseline, but none reached 2.0 kg. |
+| Project Day 35 average weight | Limited-data prototype | Building-specific when a measured weight exists; 31 historical Day 35 outcomes across six cycles support the selected Ridge model. Five outcomes reached 1.8 kg, so target-hit recognition remains limited. |
 | Recommend the next action | Implemented as preliminary | Sensible deterministic playbook; farm-owner approval remains required. |
 | Continue after Day 14 and Day 35 | Mechanically implemented | Must no longer use maximum daily date as proof of actual harvest completion. |
 | Measure business value | Narrative only | Source presentations contain ROI assumptions; the app needs an adjustable, explicitly estimated calculator. |
@@ -138,7 +138,7 @@ Select the simplest model unless a more complex model shows a meaningful and sta
 
 **Current strength:** the primary target is now the recorded building average weight on Day 35 from Farm Harvest Data, matching the simplified defense storyline.
 
-**Current weakness:** only 19 trusted Day 35 outcomes across four cycles exist, and all are below 2.0 kg. The selected projection is transparent and building-responsive but cannot yet validate target-hit discrimination.
+**Current weakness:** only 31 trusted Day 35 outcomes across six cycles exist, and only five are at or above 1.8 kg. The selected compact Ridge projection is building-responsive and wins on cycle-balanced held-out MAE, but target-hit discrimination remains limited.
 
 **Recommended streamlined comparison:**
 
@@ -147,7 +147,7 @@ Select the simplest model unless a more complex model shows a meaningful and sta
 3. Recent linear average-daily-gain projection.
 4. Historical remaining-gain projection from the measurement age to Day 35.
 
-The historical remaining-gain method is currently selected by cycle-held-out MAE. It must remain labeled a limited-data Day 35 projection, not a guaranteed target-hit probability. Continue using the age-specific weight-gap risk check as the independent operational signal.
+Compact Ridge is currently selected by cycle-held-out MAE. Historical remaining gain remains the strongest transparent benchmark and operational fallback. The output must remain labeled a limited-data Day 35 projection, not a guaranteed target-hit probability. Continue using the age-specific weight-gap risk check as the independent operational signal.
 
 ### Minimum data improvements
 

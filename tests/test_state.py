@@ -16,7 +16,7 @@ from canary.state import (
 SOURCE = Path(
     os.getenv(
         "CANARY_TEST_WORKBOOK",
-        str(Path(__file__).resolve().parents[2] / "FARM HARVEST DATA.xlsx"),
+        str(Path(__file__).resolve().parents[1] / "data" / "FARM HARVEST DATA.xlsx"),
     )
 )
 
@@ -61,7 +61,7 @@ def test_day_14_weight_is_observed_and_fresh():
     assert tags1["weight_staleness_days"] == 0
     assert tags1["weight_freshness"] == "Current"
     assert tags1["latest_weight_kg"] == 0.235
-    assert tags1["weight_target_at_measurement_kg"] == 0.4
+    assert tags1["weight_target_at_measurement_kg"] == 0.38
 
 
 def test_padded_day_is_incomplete_and_uses_last_observed_day():

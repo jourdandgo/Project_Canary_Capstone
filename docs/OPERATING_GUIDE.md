@@ -7,7 +7,7 @@ For the latest cycle, Canary answers for each of the six buildings:
 1. How operationally concerning is this building today?
 2. Why did it receive that risk rating?
 3. What harvest recovery is currently expected against the 95% goal?
-4. Is the building projected to reach 2.0 kg on Day 35?
+4. Is the building projected to reach 1.8 kg on Day 35?
 5. What should management inspect or focus on next?
 
 Risk is a rules-based operating signal. It is not a probability and is not changed by either forecast.
@@ -16,13 +16,13 @@ For every earlier cycle, Canary instead shows a completed-results summary: **har
 
 ## Day 14, Day 35, and harvest recovery
 
-- **Day 35 is a management milestone:** the average bird should weigh at least 2.0 kg.
-- **Days 1–14 are the early-warning window:** Day 14 has a confirmed 400 g target and provides time to investigate emerging gaps.
-- **Day 35 is not automatically the end of the cycle:** it is the primary 2.0 kg weight milestone.
+- **Day 35 is a management milestone:** the average bird should weigh at least 1.8 kg.
+- **Days 1–14 are the early-warning window:** Day 14 has a confirmed 380 g target and provides time to investigate emerging gaps.
+- **Day 35 is not automatically the end of the cycle:** it is the primary 1.8 kg weight milestone.
 - **Harvest recovery is a separate outcome:** for the latest cycle, Canary forecasts it against 95%. For earlier cycles, actual recovery uses ending recorded population divided by beginning population.
 - Canary does not estimate a Day 35 outcome by multiplying a later harvest weight by `35/49`.
 
-Before Day 35, the dashboard projects whether the flock is on track for 2.0 kg. On Day 35 it uses the recorded Day 35 weight when available. After Day 35 it keeps the Day 35 milestone visible and continues the operational assessment for as long as daily records exist.
+Before Day 35, the dashboard projects whether the flock is on track for 1.8 kg. On Day 35 it uses the recorded Day 35 weight when available. After Day 35 it keeps the Day 35 milestone visible and continues the operational assessment for as long as daily records exist.
 
 ## Start the prototype
 
@@ -54,7 +54,7 @@ Canary automatically looks for `FARM HARVEST DATA.xlsx` one folder above the app
 - **Risk rating:** Low, Medium, High, or Critical operational concern from the four rules-based dimensions. Missing dimensions are not silently scored as good.
 - **Why:** Deterministic evidence showing the actual value, comparison, score, freshness, and problem pattern.
 - **Predicted harvest recovery:** Estimated last-recorded population / beginning population, compared with the 95% target. This is a disclosed capstone proxy for true harvest recovery.
-- **Projected Day 35 weight:** Latest measured building weight plus the average remaining gain historically observed from that age to Day 35. It is compared with 2.0 kg. No measured weight means no building projection.
+- **Projected Day 35 weight:** Compact Ridge estimate based on the checkpoint weights and target progress known by the review date. It is compared with 1.8 kg. Historical remaining gain remains the transparent benchmark.
 - **Recommended action:** A deterministic inspection or management response. Until Doc Raymond approves the playbook, it remains preliminary guidance.
 - **Estimated gross revenue at risk:** Beginning birds × predicted recovery gap to 95% × assumed sale weight × assumed selling price. It is not profit or guaranteed savings.
 

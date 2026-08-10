@@ -10,7 +10,7 @@ from canary.data import load_workbook
 SOURCE = Path(
     os.getenv(
         "CANARY_TEST_WORKBOOK",
-        str(Path(__file__).resolve().parents[2] / "FARM HARVEST DATA.xlsx"),
+        str(Path(__file__).resolve().parents[1] / "data" / "FARM HARVEST DATA.xlsx"),
     )
 )
 
@@ -23,6 +23,8 @@ def test_real_workbook_resolves_to_unique_building_days():
     assert quality.canonical_rows == 1666
     assert quality.duplicate_keys == 119
     assert quality.duplicate_rows_consolidated == 119
+    assert quality.zone_aggregated_days == 119
+    assert quality.maximum_environment_sections == 2
     assert quality.production_conflict_keys == 0
     assert quality.passed
     assert not dataset.daily.duplicated(["cycle_id", "building_id", "age_day"]).any()
@@ -41,6 +43,12 @@ def test_environment_duplicates_are_aggregated_without_multiplying_production():
     assert row["population"] == 11174
     assert row["mortality_daily"] == 16
     assert row["temperature_avg_c"] == pytest.approx((31.853277 + 33.122017) / 2, rel=1e-6)
+    assert row["environment_section_count"] == 2
+    assert row["environment_sections"] == "A, B"
+    assert bool(row["zone_aggregated"])
+    assert row["temperature_zone_spread_c"] == pytest.approx(
+        abs(31.853277 - 33.122017), rel=1e-6
+    )
 
 
 def test_blank_operational_days_remain_missing_not_zero():
@@ -58,9 +66,15 @@ def test_blank_operational_days_remain_missing_not_zero():
     assert not bool(row["operational_recorded"])
 
 
-def test_target_is_two_kilograms_after_day_35():
+def test_revised_targets_are_smoothed_and_hold_at_1_8kg_after_day_35():
     dataset = load_workbook(SOURCE)
     targets = dataset.targets.set_index("age_day")
 
-    assert targets.loc[35, "target_weight_kg"] == 2.0
-    assert targets.loc[49, "target_weight_kg"] == 2.0
+    assert targets.loc[7, "target_weight_kg"] == 0.170
+    assert targets.loc[14, "target_weight_kg"] == 0.380
+    assert targets.loc[21, "target_weight_kg"] == 0.800
+    assert targets.loc[28, "target_weight_kg"] == 1.200
+    assert targets.loc[35, "target_weight_kg"] == 1.800
+    assert targets.loc[49, "target_weight_kg"] == 1.800
+    assert targets.loc[13, "target_weight_scaled_g"] < targets.loc[14, "target_weight_scaled_g"]
+    assert targets.loc[29, "target_weight_scaled_g"] == 1284

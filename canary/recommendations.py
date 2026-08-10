@@ -102,7 +102,8 @@ def save_recommendation_playbook(
     updated = deepcopy(playbook)
     updated["approval_status"] = _overall_approval_status(updated)
     if updated["approval_status"].startswith("Approved"):
-        updated["version"] = str(updated["version"]).replace("-draft", "-approved")
+        version = str(updated["version"]).replace("-draft", "-approved")
+        updated["version"] = version.replace("-doc-validation", "-approved")
     else:
         updated["version"] = str(updated["version"]).replace("-approved", "-draft")
     validate_recommendation_playbook(updated)
@@ -114,10 +115,10 @@ def save_recommendation_playbook(
 
 
 def _selected_pattern(row: pd.Series) -> str:
-    pattern = str(row.get("risk_pattern", "No Material Drift"))
+    pattern = str(row.get("risk_pattern", "No Material Concern"))
     evidence = str(row.get("evidence_status", ""))
     if evidence == "Insufficient" or (
-        pattern == "No Material Drift" and evidence not in {"Complete", "Not eligible"}
+        pattern == "No Material Concern" and evidence not in {"Complete", "Not eligible"}
     ):
         return "Missing or Stale Evidence"
     return pattern
@@ -201,6 +202,9 @@ def apply_recommendations(
                 "recommendation_approval_status": playbook["approval_status"],
                 "recommendation_rule_approval": rule["approval_status"],
                 "recommendation_guidance_status": guidance_status,
+                "recommendation_possible_causes": rule.get("possible_causes", "Not specified"),
+                "recommendation_response_time": rule.get("response_time", severity["urgency"]),
+                "recommendation_responsible_person": rule.get("responsible_person", "Farm manager"),
             }
         )
         records.append(row)
@@ -216,5 +220,7 @@ def build_recommendation_trace(row: pd.Series) -> pd.DataFrame:
             {"Decision element": "Rule version", "Applied value": row["recommendation_rule_version"]},
             {"Decision element": "Rule approval", "Applied value": row["recommendation_rule_approval"]},
             {"Decision element": "Overall status", "Applied value": row["recommendation_approval_status"]},
+            {"Decision element": "Possible causes to verify", "Applied value": row.get("recommendation_possible_causes", "Not specified")},
+            {"Decision element": "Response time", "Applied value": row.get("recommendation_response_time", row["recommendation_urgency"])},
         ]
     )

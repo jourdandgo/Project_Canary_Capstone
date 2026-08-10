@@ -15,7 +15,7 @@ from canary import (
 SOURCE = Path(
     os.getenv(
         "CANARY_TEST_WORKBOOK",
-        str(Path(__file__).resolve().parents[2] / "FARM HARVEST DATA.xlsx"),
+        str(Path(__file__).resolve().parents[1] / "data" / "FARM HARVEST DATA.xlsx"),
     )
 )
 PERFORMANCE = Path(

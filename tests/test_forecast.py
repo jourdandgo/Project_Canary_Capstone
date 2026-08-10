@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+from dataclasses import replace
 
 import numpy as np
 import pandas as pd
@@ -18,7 +19,7 @@ from canary import (
 SOURCE = Path(
     os.getenv(
         "CANARY_TEST_WORKBOOK",
-        str(Path(__file__).resolve().parents[2] / "FARM HARVEST DATA.xlsx"),
+        str(Path(__file__).resolve().parents[1] / "data" / "FARM HARVEST DATA.xlsx"),
     )
 )
 
@@ -49,8 +50,13 @@ def test_active_buildings_receive_recovery_forecast_without_altering_risk(datase
 
 def test_missing_current_weight_does_not_receive_a_fake_building_projection(dataset):
     as_of = default_as_of_date(dataset, "2026-3")
-    forecast = attach_forecasts(dataset, score_cycle_snapshot(dataset, "2026-3", as_of))
-    active = forecast.loc[forecast["state"] == "Active"]
+    daily = dataset.daily.copy()
+    mask = (daily["cycle_id"] == "2026-3") & (daily["building_id"] == "Tags 1")
+    daily.loc[mask, "bodyweight_kg"] = np.nan
+    daily.loc[mask, "weight_measured"] = False
+    changed = replace(dataset, daily=daily)
+    forecast = attach_forecasts(changed, score_cycle_snapshot(changed, "2026-3", as_of))
+    active = forecast.loc[forecast["building_id"] == "Tags 1"]
 
     assert active["projected_day35_weight_kg"].isna().all()
     assert active["day35_weight_scope"].eq("Unavailable").all()
@@ -78,8 +84,8 @@ def test_incomplete_day_keeps_updating_from_latest_known_observations(dataset):
     assert incomplete["recovery_forecast_status"].eq(
         "Forecast available — latest recorded data used"
     ).all()
-    assert incomplete["projected_day35_weight_kg"].isna().all()
-    assert incomplete["day35_weight_scope"].eq("Unavailable").all()
+    assert incomplete["projected_day35_weight_kg"].notna().all()
+    assert incomplete["day35_weight_scope"].eq("Building projection").all()
 
 
 def test_records_ended_trace_keeps_forecasts_and_discloses_proxy(dataset):

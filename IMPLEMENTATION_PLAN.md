@@ -37,7 +37,7 @@ No recommendation may be invented while the approved action mapping is unavailab
 
 **Status:** Complete with provisional thresholds pending farm validation
 
-- Implement four independently explainable dimensions: weight gap, survival, mortality trend, and peer comparison.
+- Implement four independently explainable dimensions: weight gap, cumulative population loss, latest daily mortality, and combined environmental conditions; retain peer comparison as context only.
 - Keep thresholds in editable, versioned configuration rather than application code.
 - Produce dimension scores, total score, Low/Medium/High/Critical label, primary drivers, supporting evidence, and problem pattern.
 - Show reduced-evidence states when a dimension cannot be scored.
@@ -55,7 +55,7 @@ No recommendation may be invented while the approved action mapping is unavailab
 - Report target gaps, uncertainty, validation results by forecast horizon, and model versions.
 - Use the naïve model whenever ML does not demonstrate better validation performance.
 
-**Gate review:** Cycle-level validation and future-information exclusion pass. Recovery is released as a limited-data prototype whose historical target is last-recorded population divided by beginning population—not confirmed harvest recovery. The Day 35 method uses 19 recorded building-level Day 35 outcomes across four cycles. Its cycle-held-out MAE is approximately 0.198 kg. All 19 outcomes were below 2.0 kg, so the data cannot yet validate whether it distinguishes target hitters from misses.
+**Gate review:** Cycle-level validation and future-information exclusion pass. Recovery is released as a limited-data prototype whose historical target is last-recorded population divided by beginning population—not confirmed harvest recovery. The revised Day 35 model uses 31 recorded building-level Day 35 outcomes across six historical cycles. Compact Ridge is the selected method, with a cycle-balanced held-out MAE of approximately 0.170 kg. Five outcomes reached the revised 1.8 kg milestone and 26 did not, so target-hit recognition remains a disclosed limitation.
 
 ## Sprint 4 — Recommendations and integrated decision view
 
@@ -95,8 +95,8 @@ The maintained source of truth for these and other follow-ups is `docs/OPEN_ITEM
 
 **Status:** Complete
 
-- Treat Day 35 as the 2.0 kg management milestone, not the assumed harvest day.
-- Project each building's Day 35 average weight against 2.0 kg when a measured weight exists.
+- Treat Day 35 as the 1.8 kg management milestone, not the assumed harvest day.
+- Project each building's Day 35 average weight against 1.8 kg when a measured weight exists.
 - Keep recovery separate and disclose last-recorded recovery as its historical proxy until true harvest status is available.
 - Prohibit the unsupported `final weight ÷ 49 × 35` conversion.
 - Reconcile metric definitions, suspect-label exclusions, and outstanding expert approvals in one traceable register.

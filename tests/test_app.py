@@ -8,7 +8,7 @@ from streamlit.testing.v1 import AppTest
 SOURCE = Path(
     os.getenv(
         "CANARY_TEST_WORKBOOK",
-        str(Path(__file__).resolve().parents[2] / "FARM HARVEST DATA.xlsx"),
+        str(Path(__file__).resolve().parents[1] / "data" / "FARM HARVEST DATA.xlsx"),
     )
 )
 
@@ -72,7 +72,7 @@ def test_dashboard_renders_without_streamlit_errors(monkeypatch):
     assert "What management should check next" in detail_visible
     assert "What is driving today’s outlook?" in detail_visible
     assert "strongest building-specific factors" in detail_visible
-    assert "two direct drivers" in detail_visible
+    assert "Day 35 weight method: direct drivers" in detail_visible
 
     cycle = next(widget for widget in detail.selectbox if widget.label == "Harvest cycle")
     cycle.set_value("2025-5").run()
@@ -184,7 +184,7 @@ def test_model_proof_exposes_targets_features_and_validation(monkeypatch):
     assert "historical-mean baseline" in visible_text
     assert "last-recorded recovery" in visible_text
     assert "Executive summary" in visible_text
-    assert "2.0 kg on Day 35" in visible_text
+    assert "1.8 kg on Day 35" in visible_text
     assert "Day 14 prediction versus last-recorded recovery" in visible_text
     assert "Data foundation" in visible_text
     assert "balanced decision snapshots" in visible_text

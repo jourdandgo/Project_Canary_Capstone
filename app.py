@@ -43,6 +43,7 @@ from canary import (
     save_recommendation_playbook,
     save_risk_rules,
     recovery_feature_contributions,
+    DAY35_TARGET_KG,
 )
 from canary.outcomes import build_historical_outcomes, latest_cycle_id
 from canary.operational_alerts import evaluate_operational_alerts
@@ -264,7 +265,7 @@ def _current_vs_outlook_table(row: pd.Series) -> pd.DataFrame:
         else pd.NA
     )
     weight_goal_pct = (
-        float(row["day35_weight_target_gap_kg"]) / 2.0 * 100
+        float(row["day35_weight_target_gap_kg"]) / DAY35_TARGET_KG * 100
         if pd.notna(row["day35_weight_target_gap_kg"])
         else pd.NA
     )
@@ -364,6 +365,7 @@ def _day35_candidate_metrics_table(manifest: dict[str, object]) -> pd.DataFrame:
                 "RMSE": f"{float(metrics['rmse_kg']) * 1000:.0f} g",
                 "Bias": f"{float(metrics['bias_kg']) * 1000:+.0f} g",
                 "Within 200 g": f"{float(metrics['within_200g_rate']):.1%}",
+                "Correct side of 1.8 kg": f"{float(metrics['target_side_accuracy']):.1%}",
             }
             for candidate, metrics in manifest["candidate_metrics"].items()
         ]
@@ -379,6 +381,7 @@ def _day35_horizon_metrics_table(manifest: dict[str, object]) -> pd.DataFrame:
                 "MAE": f"{float(metrics['mae_kg']) * 1000:.0f} g",
                 "RMSE": f"{float(metrics['rmse_kg']) * 1000:.0f} g",
                 "Within 200 g": f"{float(metrics['within_200g_rate']):.1%}",
+                "Correct side of 1.8 kg": f"{float(metrics['target_side_accuracy']):.1%}",
             }
             for horizon, metrics in manifest["selected_metrics"]["horizon"].items()
         ]
@@ -542,9 +545,9 @@ def _day35_milestone(dataset, cycle_id: str, building_id: str, as_of: object, ro
     if day35.empty:
         return "Unknown", "No measured Day 35 weight was recorded; Canary will not infer one from a later harvest weight."
     observed = float(day35.sort_values("record_date").iloc[-1]["bodyweight_kg"])
-    if observed >= 2.0:
-        return "Achieved", f"Recorded Day 35 weight was {observed:.3f} kg, meeting the 2.0 kg milestone."
-    return "Missed", f"Recorded Day 35 weight was {observed:.3f} kg, below the 2.0 kg milestone."
+    if observed >= DAY35_TARGET_KG:
+        return "Achieved", f"Recorded Day 35 weight was {observed:.3f} kg, meeting the 1.8 kg milestone."
+    return "Missed", f"Recorded Day 35 weight was {observed:.3f} kg, below the 1.8 kg milestone."
 
 
 VIEW_PRIORITIES = "Home"
@@ -645,9 +648,9 @@ def _card_driver(row: pd.Series) -> str:
     """Return the clearest single reason for a building's rating."""
     scores = {
         "weight": row.get("weight_score", pd.NA),
-        "survival": row.get("survival_score", pd.NA),
-        "mortality": row.get("mortality_score", pd.NA),
-        "peer": row.get("peer_score", pd.NA),
+        "population_loss": row.get("population_loss_score", pd.NA),
+        "daily_mortality": row.get("daily_mortality_score", pd.NA),
+        "environment": row.get("environment_score", pd.NA),
     }
     available = {name: float(value) for name, value in scores.items() if pd.notna(value)}
     if not available or max(available.values()) <= 0:
@@ -655,40 +658,31 @@ def _card_driver(row: pd.Series) -> str:
     leading = max(available, key=available.get)
     if leading == "weight" and pd.notna(row.get("weight_gap_pct")):
         return f"Weight is {abs(float(row['weight_gap_pct'])):.1f}% below its age-specific target."
-    if leading == "survival" and pd.notna(row.get("survival_gap_pp")):
-        return f"Survival is {abs(float(row['survival_gap_pp'])):.1f} points below the provisional Day 35 reference path."
-    if leading == "mortality":
-        return "Recent mortality level or trend is above the current rule threshold."
-    if leading == "peer":
-        return "Performance is weaker than comparable buildings in the same cycle."
+    if leading == "population_loss" and pd.notna(row.get("population_loss_pct")):
+        return f"Population loss is {float(row['population_loss_pct']):.1f}% of beginning birds."
+    if leading == "daily_mortality" and pd.notna(row.get("daily_mortality_pct")):
+        return f"Latest daily mortality is {float(row['daily_mortality_pct']):.2f}% of beginning birds."
+    if leading == "environment":
+        driver = str(row.get("environment_driver", "Environmental condition"))
+        return f"{driver} is outside the current provisional rule."
     return str(row.get("risk_pattern", "Recorded warning signal"))
 
 
 PATTERN_DISPLAY = {
-    "Farm-Wide Drift": (
-        "Farm-wide concern",
-        "Several buildings show warning signals at the same time.",
-    ),
-    "Localized Building Drift": (
-        "Building-specific concern",
-        "This building is weaker than comparable buildings in this cycle.",
-    ),
-    "Growth + Survival Drift": (
-        "Weight and survival concern",
-        "Both growth progress and survival signals need attention.",
-    ),
-    "Survival Concern Only": (
-        "Survival concern",
-        "Survival or mortality is off track; weight is not the leading issue.",
-    ),
-    "Weight Lag Only": (
+    "Low Body Weight": (
         "Weight behind target",
         "Measured weight is behind the farm target for this age.",
     ),
-    "No Material Drift": (
+    "High Mortality": ("High daily mortality", "The latest mortality rate exceeds the current limit."),
+    "Rapid Population Loss": ("Population loss", "The surviving population has fallen beyond the current limit."),
+    "Abnormal Temperature Fluctuation": ("Large temperature swing", "The daily maximum-to-minimum temperature range is above the current limit."),
+    "High Humidity": ("Humidity above range", "Recorded humidity is above the current age-specific range."),
+    "Low Humidity": ("Humidity below range", "Recorded humidity is below the current age-specific range."),
+    "No Material Concern": (
         "No material concern",
         "No scored warning sign is above the current thresholds.",
     ),
+    "Missing or Stale Evidence": ("Evidence needs updating", "One or more required measurements is missing or stale."),
 }
 
 
@@ -719,26 +713,15 @@ def _attach_owner_action_context(
     for index, row in output.iterrows():
         if str(row.get("state")) not in {"Active", "Incomplete"}:
             continue
-        alerts = evaluate_operational_alerts(
-            dataset, cycle_id, str(row["building_id"]), pd.Timestamp(as_of)
-        )
-        if alerts:
-            top = alerts[0]
-            output.at[index, "owner_reason_title"] = str(top["title"])
-            output.at[index, "owner_reason_detail"] = str(top["evidence"])
-            output.at[index, "owner_action"] = str(top["next_check"])
-            output.at[index, "owner_action_basis"] = (
-                f"{top['severity']} operational alert · provisional threshold pending Doc Raymond validation"
-            )
-            continue
         risk_score = row.get("risk_score", pd.NA)
         if pd.notna(risk_score) and float(risk_score) > 0:
-            output.at[index, "owner_reason_title"] = "Performance warning; operating cause not yet confirmed"
+            display_title, _ = _pattern_display(row.get("risk_pattern"))
+            output.at[index, "owner_reason_title"] = display_title
             output.at[index, "owner_reason_detail"] = _card_driver(row)
-            output.at[index, "owner_action"] = (
-                "Record or verify current temperature, humidity, feed intake, and water availability; then inspect the specific system that is outside its age-based target."
+            output.at[index, "owner_action"] = str(row.get("recommended_action", "Inspect the leading warning signal."))
+            output.at[index, "owner_action_basis"] = (
+                f"Risk rule {row.get('risk_rule_version', 'unknown')} · action rule {row.get('recommendation_rule_id', 'unknown')}"
             )
-            output.at[index, "owner_action_basis"] = "Performance rule triggered; no current operating alert identified"
         else:
             output.at[index, "owner_reason_title"] = "No material warning signal"
             output.at[index, "owner_reason_detail"] = _card_driver(row)
@@ -844,7 +827,7 @@ def _building_card(row: pd.Series) -> str:
       <div class="driver"><span class="pattern-title">{html.escape(pattern_title)}</span><span class="pattern-subtitle">{html.escape(pattern_subtitle)}<br><strong>Why now:</strong> {html.escape(driver)}</span></div>
       <div class="outcome-stack">
         <div class="outcome-row"><div class="outcome-name">Harvest recovery</div><div class="outcome-detail"><div class="outcome-flow"><span>Current recorded: {_percent(current_recovery)}</span><span class="outcome-arrow">→</span><strong>Projected: {_percent(predicted_recovery)}</strong></div><span class="gap-tag {recovery_class}">{html.escape(recovery_gap)} · harvest goal 95%</span></div></div>
-        <div class="outcome-row"><div class="outcome-name">Average weight (g)</div><div class="outcome-detail"><div class="outcome-flow"><span>Latest: {html.escape(current_weight_text)}</span><span class="outcome-arrow">→</span><strong>Projected Day 35: {weight_value}</strong></div><span class="gap-tag {weight_class}">{html.escape(weight_gap)} · Day 35 goal 2,000 g</span></div></div>
+        <div class="outcome-row"><div class="outcome-name">Average weight (g)</div><div class="outcome-detail"><div class="outcome-flow"><span>Latest: {html.escape(current_weight_text)}</span><span class="outcome-arrow">→</span><strong>Projected Day 35: {weight_value}</strong></div><span class="gap-tag {weight_class}">{html.escape(weight_gap)} · Day 35 goal 1,800 g</span></div></div>
       </div>
       <div class="value-strip"><div class="label">Gross revenue at risk to 95%</div><strong>{_php(revenue_at_risk)}</strong></div>
       <div class="action"><div class="label">Next action · {html.escape(str(row['recommendation_urgency']))}</div>{html.escape(owner_action)}</div>
@@ -1017,7 +1000,7 @@ if selected_view == VIEW_PRIORITIES:
         """
         <div class="hero"><small>PROJECT CANARY · EARLY WARNING AND DECISION SUPPORT</small>
           <h1>Identify at-risk buildings early and act before targets are missed.</h1>
-          <p>Project Canary is an early-warning and decision-support system for broiler farms. It identifies buildings at risk of missing the 2,000 g Day 35 and 95% harvest-recovery targets, projects both outcomes from the latest available data, explains why a building was flagged, and recommends what management should check next.</p>
+          <p>Project Canary is an early-warning and decision-support system for broiler farms. It identifies buildings at risk of missing the 1,800 g Day 35 and 95% harvest-recovery targets, projects both outcomes from the latest available data, explains why a building was flagged, and recommends what management should check next.</p>
         </div>
         <div class="intro-grid">
           <div class="intro-panel"><span class="intro-kicker">The management problem</span><strong>Daily records do not clearly show which building needs attention first.</strong><span>Weight, survival, mortality, feed, and environmental readings are spread across rows and dates, so the six buildings must be compared manually.</span></div>
@@ -1025,7 +1008,7 @@ if selected_view == VIEW_PRIORITIES:
         </div>
         <div class="decision-question">
           <div class="decision-icon">?</div>
-          <div><span class="decision-kicker">The business question</span><strong>Which buildings are at risk of missing the 2,000 g Day 35 or 95% harvest-recovery goals, what results are currently projected, why are they at risk, and what should management do next?</strong><div class="decision-goals"><span class="goal-chip">2,000 g average weight by Day 35</span><span class="goal-chip">95% recovery at harvest</span></div></div>
+          <div><span class="decision-kicker">The business question</span><strong>Which buildings are at risk of missing the 1,800 g Day 35 or 95% harvest-recovery goals, what results are currently projected, why are they at risk, and what should management do next?</strong><div class="decision-goals"><span class="goal-chip">1,800 g average weight by Day 35</span><span class="goal-chip">95% recovery at harvest</span></div></div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -1159,7 +1142,7 @@ if selected_view == VIEW_PRIORITIES:
     st.markdown(
         '<div class="subtitle">Tags 1–3, then Lags 1–3. Earlier cycles show recorded actuals plus a clearly labeled held-out Day 14 model check—never a current risk rating or recommendation.</div>'
         if historical_cycle
-        else '<div class="subtitle">See which buildings are at risk of missing the 2,000 g Day 35 or 95% harvest-recovery goals, why they were flagged, and what management should check next.</div>',
+        else '<div class="subtitle">See which buildings are at risk of missing the 1,800 g Day 35 or 95% harvest-recovery goals, why they were flagged, and what management should check next.</div>',
         unsafe_allow_html=True,
     )
     for start in (0, 3):
@@ -1459,7 +1442,7 @@ if selected_view == VIEW_DETAILS:
     dcols[3].metric(
         "Projected Day 35 weight",
         detail_weight,
-        help="Estimated average liveweight on production Day 35, compared with the 2.0 kg milestone.",
+        help="Estimated average liveweight on production Day 35, compared with the 1.8 kg milestone.",
     )
     dcols[4].metric(
         "Gross revenue at risk",
@@ -1548,7 +1531,7 @@ if selected_view == VIEW_DETAILS:
     )
     st.dataframe(pd.concat([risk_table, risk_total], ignore_index=True), hide_index=True, width="stretch")
     st.caption(
-        "The risk rating is an operational priority score, not the probability of missing the 95% or 2.0 kg goals."
+        "The risk rating is an operational priority score, not the probability of missing the 95% or 1.8 kg goals."
     )
 
     st.subheader("3 · Forecast deep dive")
@@ -1590,7 +1573,7 @@ if selected_view == VIEW_DETAILS:
     with forecast_columns[1]:
         with st.container(border=True):
             st.markdown('<span class="model-badge">OUTCOME 2 · DAY 35 AVERAGE WEIGHT</span>', unsafe_allow_html=True)
-            weight_delta = None if pd.isna(building["day35_weight_target_gap_kg"]) else f"{float(building['day35_weight_target_gap_kg']) * 1000:+.0f} g vs 2.0 kg milestone"
+            weight_delta = None if pd.isna(building["day35_weight_target_gap_kg"]) else f"{float(building['day35_weight_target_gap_kg']) * 1000:+.0f} g vs 1.8 kg milestone"
             weight_metric_label = "Observed result" if building["day35_weight_scope"] == "Recorded Day 35 result" else "Current projection"
             st.metric(weight_metric_label, detail_weight, weight_delta)
             if pd.notna(building["day35_weight_interval_low_kg"]):
@@ -1609,7 +1592,7 @@ if selected_view == VIEW_DETAILS:
         width="stretch",
     )
     st.caption(
-        "Recovery is compared with 95%. Weight is projected specifically to Day 35 and compared with 2.0 kg."
+        "Recovery is compared with 95%. Weight is projected specifically to Day 35 and compared with 1.8 kg."
     )
 
     recovery_contributions = recovery_feature_contributions(
@@ -1630,31 +1613,10 @@ if selected_view == VIEW_DETAILS:
             )
     with driver_columns[1]:
         with st.container(border=True):
-            st.markdown("**Day 35 weight projection · direct drivers**")
-            weight_driver_rows = [
-                {
-                    "Factor": "Latest measured building weight",
-                    "Current evidence": (
-                        "Not recorded"
-                        if pd.isna(building["latest_weight_kg"])
-                        else f"{_grams(building['latest_weight_kg'])} on Day {int(building['weight_measurement_day'])}"
-                    ),
-                    "How it is used": "Starting point for the projection",
-                },
-                {
-                    "Factor": "Measurement day",
-                    "Current evidence": (
-                        "Not available"
-                        if pd.isna(building["weight_measurement_day"])
-                        else f"Day {int(building['weight_measurement_day'])}"
-                    ),
-                    "How it is used": "Selects historical remaining growth to Day 35",
-                },
-            ]
+            st.markdown("**Day 35 weight projection · model reliance**")
+            weight_driver_rows = day35_manifest["selected_method_drivers"]
             st.dataframe(pd.DataFrame(weight_driver_rows), hide_index=True, width="stretch")
-            st.caption(
-                "The selected weight method has two direct drivers. Canary does not invent five importance values for a two-input formula."
-            )
+            st.caption(day35_manifest["feature_importance_interpretation"])
 
     if (
         pd.notna(building.get("weight_score"))
@@ -1691,37 +1653,34 @@ if selected_view == VIEW_DETAILS:
                 )
             st.markdown("**Day 35 weight method: direct drivers**")
             st.dataframe(
-                pd.DataFrame(
-                    [
-                        {
-                            "Driver": "Latest measured building weight",
-                            "Current evidence": (
-                                "Not recorded"
-                                if pd.isna(building["latest_weight_kg"])
-                                else f"{_grams(building['latest_weight_kg'])} on Day {int(building['weight_measurement_day'])}"
-                            ),
-                            "How it affects the result": "Adds directly to the Day 35 projection",
-                        },
-                        {
-                            "Driver": "Measurement day",
-                            "Current evidence": (
-                                "Not available"
-                                if pd.isna(building["weight_measurement_day"])
-                                else f"Day {int(building['weight_measurement_day'])}"
-                            ),
-                            "How it affects the result": "Selects the historically observed remaining gain to Day 35",
-                        },
-                    ]
-                ),
+                pd.DataFrame(day35_manifest["selected_method_drivers"]),
                 hide_index=True,
                 width="stretch",
             )
-            st.caption(
-                "The selected Day 35 method is a transparent formula, so coefficient-based feature importance does not apply. Target progress and recent ADG were tested in competing models but were not used by the winner."
-            )
+            st.caption(day35_manifest["feature_importance_interpretation"])
         with proof_tab:
+            st.markdown("**Recovery model comparison · complete cycles held out**")
+            st.dataframe(
+                _candidate_metrics_table(recovery_manifest, "recovery"),
+                hide_index=True,
+                width="stretch",
+            )
+            st.success(
+                f"Selected: {recovery_manifest['selected_model'].replace('_', ' ').title()}. "
+                f"The selection prioritizes cycle-level MAE, then the simpler method when results are within the stated tolerance."
+            )
+            st.markdown("**Day 35 weight model comparison · complete cycles held out**")
+            st.dataframe(
+                _day35_candidate_metrics_table(day35_manifest),
+                hide_index=True,
+                width="stretch",
+            )
+            st.success(
+                f"Selected: {day35_manifest['selected_model'].replace('_', ' ').title()}. "
+                "It produced the lowest cycle-macro MAE among the tested candidates while remaining explainable."
+            )
             st.dataframe(forecast_trace(building), hide_index=True, width="stretch")
-            st.info("The Day 35 weight method is trained only on bodyweights recorded on Day 35 in Farm Harvest Data. Farm Performance Summary is not the target for this primary projection.")
+            st.info("Primary metric: mean absolute error (MAE), because it answers the business question directly—how far the forecast is typically off. RMSE is also reported because it penalizes large misses more heavily. The Day 35 model is trained only on recorded Day 35 weights in Farm Harvest Data; Farm Performance Summary is not its target.")
 
     st.subheader("4 · Additional operational checks")
     st.caption(
@@ -1767,7 +1726,7 @@ if selected_view == VIEW_DETAILS:
         with hcols[2]:
             st.caption("Projected Day 35 average weight (kg)")
             weight_chart = chart[["projected_day35_weight_kg"]].copy()
-            weight_chart["2.0 kg milestone"] = 2.0
+            weight_chart["1.8 kg milestone"] = DAY35_TARGET_KG
             st.line_chart(weight_chart, height=240)
 
     with st.expander("Technical audit details"):
@@ -1962,19 +1921,19 @@ if selected_view == VIEW_CHECKS:
                     "Why it is kept": "Directly tests whether the flock is following the age-specific growth curve",
                 },
                 {
-                    "Risk check": "2 · Survival position",
-                    "What is measured": "Current survival gap versus the assumed path to 95% on Day 35",
-                    "Why it is kept": "Shows cumulative loss already experienced",
+                    "Risk check": "2 · Population loss",
+                    "What is measured": "Cumulative population loss from beginning inventory",
+                    "Why it is kept": "Directly shows how much of the flock has already been lost",
                 },
                 {
-                    "Risk check": "3 · Mortality momentum",
-                    "What is measured": "Recent 3-day mortality rate versus the preceding baseline",
-                    "Why it is kept": "Shows whether losses are accelerating now",
+                    "Risk check": "3 · Daily mortality",
+                    "What is measured": "Latest daily mortality as a share of beginning birds",
+                    "Why it is kept": "Catches an urgent current loss even before cumulative loss becomes large",
                 },
                 {
-                    "Risk check": "4 · Peer context",
-                    "What is measured": "Worst gap versus comparable buildings at a similar age",
-                    "Why it is kept": "Helps separate a building-specific concern from farm-wide conditions",
+                    "Risk check": "4 · Environmental conditions",
+                    "What is measured": "Higher of daily temperature swing and humidity deviation from the age range",
+                    "Why it is kept": "Connects the warning to an operating condition management can inspect",
                 },
             ]
         ),
@@ -1982,12 +1941,11 @@ if selected_view == VIEW_CHECKS:
         width="stretch",
     )
     st.info(
-        "Audit verdict: keep the four checks for the capstone because they answer different operational questions and match the agreed scope. "
-        "However, survival and mortality are related, and peer context can repeat the same underlying signal. Their cutoffs and point weight remain provisional until farm review and historical calibration."
+        "Design revision: mortality trend and peer comparison no longer add points. Peer results remain useful context, but the formal score now uses simpler building-level evidence that management can verify directly."
     )
     st.caption(
-        "The Farmer Validation Workbook supports separate alerts for body-weight deviation, daily mortality, population loss, temperature, and humidity. "
-        "It does not fully specify Canary's four-level 0–3 scoring cutoffs, survival path, peer points, or final Low/Medium/High/Critical bands."
+        "The Farmer Validation Workbook supplies the starting weight, population-loss, daily-mortality, temperature-range, and humidity references. "
+        "They remain provisional. In particular, the 2/3/5°C temperature-range thresholds flag most recorded environmental days and require Doc Raymond's calibration."
     )
 
     if st.session_state.pop("risk_rules_saved_message", None):
@@ -2001,52 +1959,39 @@ if selected_view == VIEW_CHECKS:
             "**How the point cutoffs work:** 0 points at or below the first cutoff; 1 point above the first through the second; "
             "2 points above the second through the third; and 3 points above the third."
         )
-        age_rows = []
-        for band in rules["age_bands"]:
-            age_rows.append(
+        dimension_specs = [
+            ("Weight gap (%)", "weight_gap_pct"),
+            ("Population loss (%)", "population_loss_pct"),
+            ("Daily mortality (%)", "daily_mortality_pct"),
+            ("Daily temperature range (°C)", "temperature_range_c"),
+            ("Humidity outside age range (points)", "humidity_deviation_pp"),
+        ]
+        dimension_editor = st.data_editor(
+            pd.DataFrame([
                 {
-                    "Age band": band["label"],
-                    "Weight 0 max (%)": band["weight_gap_pct"][0],
-                    "Weight 1 max (%)": band["weight_gap_pct"][1],
-                    "Weight 2 max (%)": band["weight_gap_pct"][2],
-                    "Survival 0 max (pts)": band["survival_gap_pp"][0],
-                    "Survival 1 max (pts)": band["survival_gap_pp"][1],
-                    "Survival 2 max (pts)": band["survival_gap_pp"][2],
-                    "Mortality 0 max (/1,000)": band["mortality_trend_delta_per_1000"][0],
-                    "Mortality 1 max (/1,000)": band["mortality_trend_delta_per_1000"][1],
-                    "Mortality 2 max (/1,000)": band["mortality_trend_delta_per_1000"][2],
+                    "Measure": label,
+                    "0-point maximum": rules["dimension_cutoffs"][key][0],
+                    "1-point maximum": rules["dimension_cutoffs"][key][1],
+                    "2-point maximum": rules["dimension_cutoffs"][key][2],
                 }
-            )
-        age_editor = st.data_editor(
-            pd.DataFrame(age_rows),
-            disabled=["Age band"],
+                for label, key in dimension_specs
+            ]),
+            disabled=["Measure"],
             hide_index=True,
             width="stretch",
-            key="risk_age_threshold_editor",
+            key="risk_dimension_threshold_editor",
         )
 
-        st.markdown("**Peer-context cutoffs**")
-        peer_specs = [
-            ("Weight gap versus peers (%)", "weight_gap_excess_pct"),
-            ("Survival gap versus peers (pts)", "survival_gap_excess_pp"),
-            ("Recent mortality versus peers (/1,000)", "mortality_rate_excess_per_1000"),
-        ]
-        peer_editor = st.data_editor(
-            pd.DataFrame(
-                [
-                    {
-                        "Peer measure": label,
-                        "0-point maximum": rules["peer_comparison"][key][0],
-                        "1-point maximum": rules["peer_comparison"][key][1],
-                        "2-point maximum": rules["peer_comparison"][key][2],
-                    }
-                    for label, key in peer_specs
-                ]
-            ),
-            disabled=["Peer measure"],
+        st.markdown("**Accepted humidity range by age**")
+        humidity_editor = st.data_editor(
+            pd.DataFrame(rules["humidity_ranges_pct"]).rename(columns={
+                "label": "Age band", "minimum_age": "First day", "maximum_age": "Last day",
+                "minimum": "Minimum humidity (%)", "maximum": "Maximum humidity (%)",
+            }),
+            disabled=["Age band", "First day", "Last day"],
             hide_index=True,
             width="stretch",
-            key="risk_peer_threshold_editor",
+            key="risk_humidity_range_editor",
         )
 
         st.markdown("**Final score-to-label bands**")
@@ -2060,25 +2005,10 @@ if selected_view == VIEW_CHECKS:
             key="risk_rating_band_editor",
         )
 
-        target_cols = st.columns(2)
-        with target_cols[0]:
-            risk_survival_target = st.number_input(
-                "Final survival goal (%)",
-                min_value=1.0,
-                max_value=100.0,
-                value=float(rules["survival_target"]["final_target_rate"]) * 100,
-                step=0.1,
-                key="risk_survival_target",
-            )
-        with target_cols[1]:
-            risk_survival_day = st.number_input(
-                "Target day for survival path",
-                min_value=1,
-                max_value=999,
-                value=int(rules["survival_target"]["target_day"]),
-                step=1,
-                key="risk_survival_target_day",
-            )
+        environment_reading_age = st.number_input(
+            "Maximum age of environmental reading (days)", min_value=0, max_value=14,
+            value=int(rules["maximum_environment_reading_age_days"]), step=1,
+        )
         version_cols = st.columns(2)
         with version_cols[0]:
             risk_rule_version = st.text_input(
@@ -2109,32 +2039,16 @@ if selected_view == VIEW_CHECKS:
                 updated_rules = deepcopy(rules)
                 updated_rules["version"] = risk_rule_version.strip()
                 updated_rules["approval_status"] = risk_approval_status
-                updated_rules["survival_target"] = {
-                    "final_target_rate": float(risk_survival_target) / 100,
-                    "target_day": int(risk_survival_day),
-                }
-                for band, (_, edited) in zip(updated_rules["age_bands"], age_editor.iterrows()):
-                    band["weight_gap_pct"] = [
-                        float(edited["Weight 0 max (%)"]),
-                        float(edited["Weight 1 max (%)"]),
-                        float(edited["Weight 2 max (%)"]),
-                    ]
-                    band["survival_gap_pp"] = [
-                        float(edited["Survival 0 max (pts)"]),
-                        float(edited["Survival 1 max (pts)"]),
-                        float(edited["Survival 2 max (pts)"]),
-                    ]
-                    band["mortality_trend_delta_per_1000"] = [
-                        float(edited["Mortality 0 max (/1,000)"]),
-                        float(edited["Mortality 1 max (/1,000)"]),
-                        float(edited["Mortality 2 max (/1,000)"]),
-                    ]
-                for (_, key), (_, edited) in zip(peer_specs, peer_editor.iterrows()):
-                    updated_rules["peer_comparison"][key] = [
+                for (_, key), (_, edited) in zip(dimension_specs, dimension_editor.iterrows()):
+                    updated_rules["dimension_cutoffs"][key] = [
                         float(edited["0-point maximum"]),
                         float(edited["1-point maximum"]),
                         float(edited["2-point maximum"]),
                     ]
+                for band, (_, edited) in zip(updated_rules["humidity_ranges_pct"], humidity_editor.iterrows()):
+                    band["minimum"] = float(edited["Minimum humidity (%)"])
+                    band["maximum"] = float(edited["Maximum humidity (%)"])
+                updated_rules["maximum_environment_reading_age_days"] = int(environment_reading_age)
                 updated_rules["rating_bands"] = [
                     {
                         "label": str(edited["Label"]),
@@ -2178,9 +2092,9 @@ if selected_view == VIEW_EVIDENCE:
             f"{day35_manifest['selected_metrics']['mae_kg'] * 1000:.0f} g",
         )
 
-        st.success(
-            "Strongest useful signal: higher Day 14 weight was associated with higher final harvest recovery in this history. "
-            "This supports Day 14 as an early management checkpoint."
+        st.info(
+            "Most defensible early-weight finding: higher Day 14 weight was moderately associated with higher Day 35 weight in this history. "
+            "The recovery relationship points in the same direction, but is weaker and is not conclusive."
         )
         st.warning(
             "Important limit: association is not proof that improving weight alone causes better recovery. "
@@ -2233,14 +2147,19 @@ if selected_view == VIEW_EVIDENCE:
                 height=320,
             )
             st.caption(
-                f"Within-cycle association is much weaker (r = {relationship['within_cycle_r']:.2f}). Only {day14_met['building_cycles']} of {relationship['n']} records met the 400 g target, and none of the observed Day 35 outcomes reached 2.0 kg. Association is not causal proof."
+                f"Within-cycle association is much weaker (r = {relationship['within_cycle_r']:.2f}). Target-attainment evidence must be interpreted against the revised 380 g Day 14 and 1.8 kg Day 35 goals. Association is not causal proof."
+            )
+            st.warning(
+                f"Only {int(day14_met['building_cycles'])} of {coverage['paired_day14_day35']} historical building-cycles met the revised 380 g Day 14 target. That one flock recorded {float(day14_met['mean_day35_weight_kg']):.2f} kg on Day 35. This is directionally encouraging, but far too small for a reliable met-versus-missed comparison."
             )
 
         with question_tabs[2]:
             relationship = associations["day14_to_final_recovery"]
             st.subheader("Is Day 14 weight associated with harvest recovery?")
             st.write(
-                f"Yes, in this limited history: higher Day 14 weight was associated with higher last-recorded recovery across {relationship['n']} paired building-cycles (r = {relationship['pearson_r']:.2f})."
+                f"The relationship points upward but is weak in this limited history: across {relationship['n']} paired building-cycles, "
+                f"the raw correlation is r = {relationship['pearson_r']:.2f} (p = {relationship['pearson_p']:.2f}). "
+                "That is not strong enough to claim that higher Day 14 weight reliably produces higher recovery."
             )
             recovery_pairs = evidence_rows.dropna(
                 subset=["day14_weight_kg", "recomputed_recovery"]
@@ -2299,7 +2218,7 @@ if selected_view == VIEW_EVIDENCE:
                     width="stretch",
                 )
             st.caption(
-                "Both methods hold out complete cycles. Recovery has only five training cycles; Day 35 weight has 19 outcomes across four cycles and no 2.0 kg target hits. These metrics support planning estimates, not guaranteed target classification."
+                "Both methods hold out complete cycles. Recovery has five eligible training cycles; Day 35 weight uses 31 historical building outcomes across six cycles. These metrics support planning estimates, not guaranteed target classification."
             )
 
         with st.expander("Additional findings worth investigating"):
@@ -2355,11 +2274,11 @@ if selected_view == VIEW_METHODS:
         with st.container(border=True):
             st.markdown("**3 · Day 35 weight outlook**")
             st.write(f"Average held-out error: **{float(wmetrics['mae_kg']) * 1000:.0f} g**")
-            st.caption("The age-aware baseline uses the building’s latest measured weight plus historically observed remaining growth to Day 35.")
+            st.caption("The selected compact Ridge model uses the latest weight, its age, target progress, and recent gain. Historical remaining gain remains the transparent benchmark.")
 
     st.info(
         "How to present this in one minute: ‘Canary keeps three layers separate: transparent risk rules, two predictive outlooks, and a deterministic action playbook. "
-        "The weight output targets 2.0 kg on Day 35. The recovery output targets 95% at harvest, while clearly disclosing that its historical training label is the last recorded population ratio.’"
+        "The weight output targets 1.8 kg on Day 35. The recovery output targets 95% at harvest, while clearly disclosing that its historical training label is the last recorded population ratio."
     )
 
     st.subheader("Data foundation: how the workbook becomes model-ready")
@@ -2389,7 +2308,7 @@ if selected_view == VIEW_METHODS:
             [
                 {
                     "Component": "1 · Rules-based risk",
-                    "Input": "Current weight, survival, mortality trend, and peer evidence",
+                    "Input": "Current weight gap, population loss, daily mortality, temperature range, and humidity evidence",
                     "Process": "Four transparent 0–3 checks; total 0–12",
                     "Output": "Low / Medium / High / Critical, with the exact why",
                     "Business use": "Choose where to inspect first",
@@ -2421,7 +2340,7 @@ if selected_view == VIEW_METHODS:
             2. Canary freezes the data at that date; later records are excluded.
             3. It creates one current snapshot per building from the available flock records.
             4. Canary estimates harvest recovery and projects average weight on Day 35.
-            5. The results are compared with the 95% recovery goal and 2.0 kg Day 35 milestone.
+            5. The results are compared with the 95% recovery goal and 1.8 kg Day 35 milestone.
             6. Only the latest cycle receives predictions. Earlier cycles show completed actuals under the capstone's documented last-recorded-date convention.
             """
         )
@@ -2674,7 +2593,7 @@ if selected_view == VIEW_METHODS:
         )
 
     with weight_tab:
-        st.subheader("Day 35 weight method: age-aware remaining-growth baseline")
+        st.subheader("Day 35 weight method: compact Ridge regression")
         st.dataframe(
             pd.DataFrame(
                 [
@@ -2683,7 +2602,7 @@ if selected_view == VIEW_METHODS:
                     {"Workflow": "Inputs / X", "Plain-language explanation": "Latest measured weight, weighing day, target progress, and recent gain when available."},
                     {"Workflow": "Methods tried", "Plain-language explanation": "Historical mean, target-ratio, recent ADG, historical remaining gain, Ridge, Random Forest, and gradient-boosted trees."},
                     {"Workflow": "Fair comparison", "Plain-language explanation": "Hold out one complete cycle at a time and compare error in grams on unseen buildings."},
-                    {"Workflow": "Winner", "Plain-language explanation": "Age-aware historical remaining gain; transparent and within 5% of the best cycle-balanced result."},
+                    {"Workflow": "Winner", "Plain-language explanation": "Compact Ridge regression; it had the lowest cycle-balanced error and beat the simpler remaining-gain benchmark by more than the 5% simplicity tolerance."},
                 ]
             ),
             hide_index=True,
@@ -2721,7 +2640,30 @@ if selected_view == VIEW_METHODS:
             hide_index=True,
             width="stretch",
         )
-        st.markdown("**What directly drives the selected weight projection**")
+        with st.expander("See the revised daily target-weight curve"):
+            target_view = dataset.targets.loc[
+                dataset.targets["age_day"].le(35),
+                [
+                    "age_day",
+                    "target_weight_linear_g",
+                    "daily_gain_linear_g",
+                    "target_weight_scaled_g",
+                    "daily_gain_scaled_g",
+                ],
+            ].rename(
+                columns={
+                    "age_day": "Day",
+                    "target_weight_linear_g": "Linear target (g)",
+                    "daily_gain_linear_g": "Linear daily gain (g)",
+                    "target_weight_scaled_g": "Smoothed target used by Canary (g)",
+                    "daily_gain_scaled_g": "Smoothed daily gain (g)",
+                }
+            )
+            st.dataframe(target_view, hide_index=True, width="stretch")
+            st.caption(
+                "Doc Raymond’s approved checkpoints are fixed at 170, 380, 800, 1,200, and 1,800 g on Days 7, 14, 21, 28, and 35. The smoothed values preserve the former farm curve’s within-week shape and are used for daily target comparisons."
+            )
+        st.markdown("**What the selected Ridge model relies on most**")
         st.dataframe(
             pd.DataFrame(day35_manifest["selected_method_drivers"]),
             hide_index=True,
@@ -2747,25 +2689,25 @@ if selected_view == VIEW_METHODS:
             width="stretch",
         )
         st.warning(
-            f"All {day35_manifest['actual_target_misses']} historical Day 35 outcomes were below 2.0 kg; there were no target hits. "
-            "Canary can evaluate error in grams, but it cannot yet prove that this method distinguishes Day 35 target hitters from misses."
+            f"The historical Day 35 set contains {day35_manifest['actual_target_hits']} results at/above 1.8 kg and "
+            f"{day35_manifest['actual_target_misses']} below it. Target-side accuracy is now measurable, but the small hit group still limits confidence."
         )
         st.success(
             "Business interpretation: use this as an age-aware estimate of the Day 35 gap. The selected method responds to each building’s latest measured weight instead of giving every building the same average."
         )
-        st.subheader("Why this is stronger than straight-line ADG")
+        st.subheader("Why Ridge was selected")
         st.markdown(
             f"""
             A straight-line ADG projection assumes that the growth rate observed early in life continues unchanged.
             In the historical holdout test it had an MAE of **{day35_candidates.get('recent_linear_adg', wmetrics)['mae_kg'] * 1000:.0f} g**.
-            The selected historical remaining-gain method reduced that to **{wmetrics['mae_kg'] * 1000:.0f} g**.
+            The selected Ridge model reduced that to **{wmetrics['mae_kg'] * 1000:.0f} g**.
 
-            Canary also trained a compact Ridge regression using age, current weight, progress against the target curve,
-            and recent ADG. Ridge reached **{day35_candidates.get('ridge_regression', wmetrics)['mae_kg'] * 1000:.0f} g MAE**—close, but not better.
+            Historical remaining gain reached **{day35_candidates.get('historical_remaining_gain', wmetrics)['mae_kg'] * 1000:.0f} g MAE** and remains the transparent benchmark.
             Random Forest and gradient boosting reached **{day35_candidates.get('random_forest', wmetrics)['mae_kg'] * 1000:.0f} g** and
             **{day35_candidates.get('gradient_boosting', wmetrics)['mae_kg'] * 1000:.0f} g MAE**, respectively, and were less accurate on unseen cycles.
-            Ridge had the slightly lowest cycle-balanced MAE, but the difference was only about 1%.
-            Under Canary's simple-winner rule, the transparent remaining-gain method remains the winner because it is within 5% of the best cycle-balanced result, has lower overall row-level MAE, and is easier to explain.
+            Ridge had the lowest cycle-balanced MAE. The remaining-gain baseline was outside Canary's 5% simplicity tolerance, so Ridge became the champion.
+
+            The **historical remaining-gain method is still retained** as a benchmark and fallback explanation; it is not the live forecast while Ridge remains the validated winner.
             """
         )
         st.subheader("Day 14 projection versus recorded Day 35 weight")
@@ -2799,19 +2741,10 @@ if selected_view == VIEW_METHODS:
         st.warning(
             f"Risk thresholds: {rules['approval_status']}. Farm approval is still required before operational use."
         )
-        st.subheader("Day 35 and harvest are different checkpoints")
-        st.markdown(
-            """
-            - **Day 35 milestone:** the flock should weigh at least **2.0 kg** on average.
-            - **Weight outlook:** projects average weight specifically on Day 35; it is not a final-harvest weight forecast.
-            - **Completed-cycle convention:** cycles before the latest are shown as completed on each building's last recorded date. This is a documented capstone convention—not a verified harvest-event flag.
-            """
-        )
         st.subheader("What the risk score means")
         st.markdown(
             """
-            Canary scores four warning signs from 0 to 3: weight versus the age target,
-            survival versus the age path, recent mortality trend, and performance versus peer buildings.
+            Canary gives 0–3 points to four directly observed building-level checks. The total sets the operational-priority label; it is not a probability of missing either target.
 
             - **Low:** 0–1
             - **Medium:** 2–3
@@ -2830,19 +2763,19 @@ if selected_view == VIEW_METHODS:
                         "Operational meaning": "Is measured weight following the farm growth curve?",
                     },
                     {
-                        "Check": "Survival position",
-                        "Calculation": "Shortfall from a provisional straight-line reference to 95% by Day 35",
-                        "Operational meaning": "How much of the allowed cumulative loss has already been used?",
+                        "Check": "Population loss",
+                        "Calculation": "(Beginning birds − current birds) ÷ beginning birds",
+                        "Operational meaning": "How much of the flock has already been lost?",
                     },
                     {
-                        "Check": "Mortality momentum",
-                        "Calculation": "Recent 3-day rate minus the preceding baseline",
-                        "Operational meaning": "Are losses accelerating now?",
+                        "Check": "Daily mortality",
+                        "Calculation": "Latest daily mortality ÷ beginning birds",
+                        "Operational meaning": "Is there an urgent current loss?",
                     },
                     {
-                        "Check": "Peer context",
-                        "Calculation": "Worst gap versus the median of similar-age buildings",
-                        "Operational meaning": "Is the concern building-specific rather than shared?",
+                        "Check": "Environmental conditions",
+                        "Calculation": "Higher of daily temperature-range score and humidity deviation score",
+                        "Operational meaning": "Is a recorded operating condition outside the provisional limit?",
                     },
                 ]
             ),
@@ -2850,76 +2783,31 @@ if selected_view == VIEW_METHODS:
             width="stretch",
         )
         st.warning(
-            "Validation limit: this is an expert-rule operational priority score, not a trained outcome model. "
-            "In a preliminary audit of 31 historical Day 14 building snapshots, the score bands did not show a consistent step-by-step ordering in either last-recorded recovery or recorded Day 35 weight. "
-            "Canary therefore does not claim that the risk label predicts the final target result; the two separate forecast layers estimate outcomes."
+            "Validation limit: this is an expert-rule priority score, not a trained outcome model. Environmental readings cover about 42% of canonical building-days, and the current 2/3/5°C temperature-range rule flags most recorded days. Missing conditions are not scored as safe, and the environmental cutoffs require farm calibration."
         )
         st.info(
-            "Design review: keep all four checks for the capstone because they match the agreed outcome-warning scope and remain fully traceable. "
-            "Use operating-condition alerts—temperature, humidity, feed, and eventually water—as a separate possible-cause and action layer. This avoids claiming that an environmental reading caused an outcome when coverage and thresholds are still incomplete."
+            "Why this version is clearer: the old mortality-trend and peer points were removed. Peer comparisons remain diagnostic context; daily mortality and environmental conditions now connect the score to checks management can perform."
         )
-        st.markdown("**Straight recommendation for the next scoring version**")
+        threshold_table = pd.DataFrame([
+            {"Check": label, "0 / 1 / 2-point maximums": rules["dimension_cutoffs"][key]}
+            for label, key in [
+                ("Weight gap (%)", "weight_gap_pct"),
+                ("Population loss (%)", "population_loss_pct"),
+                ("Daily mortality (%)", "daily_mortality_pct"),
+                ("Temperature range (°C)", "temperature_range_c"),
+                ("Humidity outside age range (points)", "humidity_deviation_pp"),
+            ]
+        ])
         st.dataframe(
-            pd.DataFrame(
-                [
-                    {"Decision": "Keep now", "Recommendation": "Retain weight, survival, mortality trend, and peer context for the capstone because each is traceable and matches the agreed scope."},
-                    {"Decision": "Validate next", "Recommendation": "Add an absolute daily-mortality guardrail so a persistently high level cannot look safe merely because it is no longer rising."},
-                    {"Decision": "Validate next", "Recommendation": "Test whether peer context should add all 0–3 points or act as a smaller modifier, because it can repeat the same weight, survival, or mortality signal."},
-                    {"Decision": "Use now as action evidence", "Recommendation": "Show temperature, humidity, and feed exceptions as specific operating alerts that can replace a vague owner-facing reason and next check."},
-                    {"Decision": "Do not score yet", "Recommendation": "Do not add environment, THI, or water points until coverage, units, age-based thresholds, and a poultry-specific THI rule are approved."},
-                ]
-            ),
+            threshold_table,
             hide_index=True,
             width="stretch",
         )
         st.caption(
-            "Canary already shows environment and intake evidence as a separate possible-cause layer. That separation keeps the risk label stable while still giving management a practical place to investigate."
+            "At or below the first value = 0 points; above first through second = 1; above second through third = 2; above third = 3. The environmental score uses the worse of temperature range and humidity deviation, so the two related signals are not double-counted."
         )
-        threshold_table = pd.DataFrame(rules["age_bands"]).rename(
-            columns={
-                "label": "Production age",
-                "weight_gap_pct": "Weight-gap cutoffs (%)",
-                "survival_gap_pp": "Survival-gap cutoffs (points)",
-                "mortality_trend_delta_per_1000": "Mortality-trend cutoffs (/1,000)",
-            }
-        )
-        st.dataframe(
-            threshold_table[
-                [
-                    "Production age",
-                    "Weight-gap cutoffs (%)",
-                    "Survival-gap cutoffs (points)",
-                    "Mortality-trend cutoffs (/1,000)",
-                ]
-            ],
-            hide_index=True,
-            width="stretch",
-        )
-        st.markdown("**Peer-context thresholds**")
-        st.dataframe(
-            pd.DataFrame(
-                [
-                    {
-                        "Peer measure": "Weight-gap excess (%)",
-                        "Cutoffs for 0 / 1 / 2 points": rules["peer_comparison"]["weight_gap_excess_pct"],
-                    },
-                    {
-                        "Peer measure": "Survival-gap excess (points)",
-                        "Cutoffs for 0 / 1 / 2 points": rules["peer_comparison"]["survival_gap_excess_pp"],
-                    },
-                    {
-                        "Peer measure": "Recent mortality excess (/1,000)",
-                        "Cutoffs for 0 / 1 / 2 points": rules["peer_comparison"]["mortality_rate_excess_per_1000"],
-                    },
-                ]
-            ),
-            hide_index=True,
-            width="stretch",
-        )
-        st.caption(
-            "For each cutoff list: at or below the first value = 0 points; above the first through second = 1; above second through third = 2; and above third = 3. "
-            "The Farmer Validation Workbook supports several separate alert values, but it does not yet approve this complete point matrix."
-        )
+        st.markdown("**Age-specific humidity reference**")
+        st.dataframe(pd.DataFrame(rules["humidity_ranges_pct"]), hide_index=True, width="stretch")
         if st.button("Review or edit risk thresholds", key="open_risk_rule_admin"):
             st.switch_page(PAGE_CHECKS)
 

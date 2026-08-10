@@ -1,0 +1,171 @@
+{
+  "source": "/Users/jourdan.go/.codex/.chatgpt-projects/g-p-69390cd496c4819189246120c7ca0241/implementation/canary_app/data/FARM HARVEST DATA.xlsx",
+  "quality": {
+    "source_rows": 1785,
+    "canonical_rows": 1666,
+    "temperature_coverage_pct": 42.37695078031212,
+    "humidity_coverage_pct": 40.57623049219688
+  },
+  "coverage_by_cycle": [
+    {
+      "cycle_id": "2025-2",
+      "rows": 75,
+      "buildings": 3,
+      "temperature_avg_pct": 0.0,
+      "temperature_range_pct": 0.0,
+      "humidity_avg_pct": 0.0,
+      "feed_per_bird_pct": 100.0
+    },
+    {
+      "cycle_id": "2025-3",
+      "rows": 240,
+      "buildings": 5,
+      "temperature_avg_pct": 36.666666666666664,
+      "temperature_range_pct": 36.666666666666664,
+      "humidity_avg_pct": 36.666666666666664,
+      "feed_per_bird_pct": 100.0
+    },
+    {
+      "cycle_id": "2025-4",
+      "rows": 242,
+      "buildings": 5,
+      "temperature_avg_pct": 33.88429752066116,
+      "temperature_range_pct": 33.88429752066116,
+      "humidity_avg_pct": 33.88429752066116,
+      "feed_per_bird_pct": 100.0
+    },
+    {
+      "cycle_id": "2025-5",
+      "rows": 293,
+      "buildings": 6,
+      "temperature_avg_pct": 50.51194539249146,
+      "temperature_range_pct": 50.51194539249146,
+      "humidity_avg_pct": 50.51194539249146,
+      "feed_per_bird_pct": 100.0
+    },
+    {
+      "cycle_id": "2026-1",
+      "rows": 290,
+      "buildings": 6,
+      "temperature_avg_pct": 65.86206896551724,
+      "temperature_range_pct": 65.86206896551724,
+      "humidity_avg_pct": 56.55172413793104,
+      "feed_per_bird_pct": 100.0
+    },
+    {
+      "cycle_id": "2026-2",
+      "rows": 233,
+      "buildings": 6,
+      "temperature_avg_pct": 58.36909871244635,
+      "temperature_range_pct": 58.36909871244635,
+      "humidity_avg_pct": 58.36909871244635,
+      "feed_per_bird_pct": 100.0
+    },
+    {
+      "cycle_id": "2026-3",
+      "rows": 66,
+      "buildings": 3,
+      "temperature_avg_pct": 77.27272727272727,
+      "temperature_range_pct": 77.27272727272727,
+      "humidity_avg_pct": 77.27272727272727,
+      "feed_per_bird_pct": 100.0
+    }
+  ],
+  "candidate_risk_inputs": {
+    "temperature_range_c": {
+      "n": 696,
+      "minimum": 0.0,
+      "p10": 3.599999999999998,
+      "p25": 5.300000000000001,
+      "median": 7.75,
+      "p75": 10.0,
+      "p90": 11.7,
+      "maximum": 15.700000000000003
+    },
+    "temperature_range_threshold_counts": {
+      "at_or_below_2c": 33,
+      "above_2_to_3c": 17,
+      "above_3_to_5c": 106,
+      "above_5c": 540
+    },
+    "temperature_avg_c": {
+      "n": 696,
+      "minimum": 23.2895833333333,
+      "p10": 26.19166666666665,
+      "p25": 27.09375,
+      "median": 28.15625,
+      "p75": 30.440820349610526,
+      "p90": 33.09217013888885,
+      "maximum": 35.8066666666667
+    },
+    "humidity_avg_pct": {
+      "n": 669,
+      "minimum": 37.86319444444443,
+      "p10": 65.76400694444445,
+      "p25": 69.94409722222224,
+      "median": 77.3729166666667,
+      "p75": 84.3045454545455,
+      "p90": 87.72832638888889,
+      "maximum": 94.2383680555556
+    },
+    "feed_daily_g_per_bird": {
+      "n": 1439,
+      "minimum": 0.0,
+      "p10": 21.33287850705789,
+      "p25": 41.20880365,
+      "median": 90.09009009009009,
+      "p75": 159.75994945000002,
+      "p90": 85446.02769814675,
+      "maximum": 486898.9057323562
+    }
+  },
+  "gompertz_candidate": {
+    "formula": "A * exp(-B * exp(-k * age))",
+    "parameters": {
+      "asymptote_g": 5564.927652132053,
+      "displacement": 4.644852972589512,
+      "rate_per_day": 0.040266583239551505
+    },
+    "checkpoint_rmse_g": 24.76480049771238,
+    "checkpoint_mae_g": 20.268545548857485,
+    "maximum_absolute_checkpoint_error_g": 42.36497158528516,
+    "checkpoints": [
+      {
+        "age_day": 0,
+        "approved_g": 40.0,
+        "gompertz_g": 53.484200392507205,
+        "error_g": 13.484200392507205
+      },
+      {
+        "age_day": 7,
+        "approved_g": 170.0,
+        "gompertz_g": 167.38217784340804,
+        "error_g": -2.6178221565919557
+      },
+      {
+        "age_day": 14,
+        "approved_g": 380.0,
+        "gompertz_g": 395.81257513544097,
+        "error_g": 15.812575135440966
+      },
+      {
+        "age_day": 21,
+        "approved_g": 800.0,
+        "gompertz_g": 757.6350284147148,
+        "error_g": -42.36497158528516
+      },
+      {
+        "age_day": 28,
+        "approved_g": 1200.0,
+        "gompertz_g": 1236.435385213163,
+        "error_g": 36.435385213163045
+      },
+      {
+        "age_day": 35,
+        "approved_g": 1800.0,
+        "gompertz_g": 1789.1036811898434,
+        "error_g": -10.896318810156572
+      }
+    ]
+  }
+}

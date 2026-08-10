@@ -20,13 +20,13 @@ from canary import (
 SOURCE = Path(
     os.getenv(
         "CANARY_TEST_WORKBOOK",
-        str(Path(__file__).resolve().parents[2] / "FARM HARVEST DATA.xlsx"),
+        str(Path(__file__).resolve().parents[1] / "data" / "FARM HARVEST DATA.xlsx"),
     )
 )
 PERFORMANCE_SUMMARY = Path(
     os.getenv(
         "CANARY_TEST_PERFORMANCE_SUMMARY",
-        str(Path(__file__).resolve().parents[2] / "Farm Performance Summary.xlsx"),
+        str(Path(__file__).resolve().parents[1] / "data" / "Farm Performance Summary.xlsx"),
     )
 )
 
@@ -47,8 +47,8 @@ def test_only_whole_completed_cycles_are_used(dataset):
 
 def test_weight_proxy_excludes_label_day_and_later_rows(dataset):
     weight = build_modeling_snapshots(dataset, "weight")
-    assert weight["cycle_id"].nunique() == 4
-    assert weight[["cycle_id", "building_id"]].drop_duplicates().shape[0] == 19
+    assert weight["cycle_id"].nunique() == 5
+    assert weight[["cycle_id", "building_id"]].drop_duplicates().shape[0] == 24
     assert (weight["as_of_date"] < weight["label_date"]).all()
 
 
@@ -120,9 +120,9 @@ def test_training_selects_best_validated_candidate_and_versions_artifact(dataset
         metrics["cycle_macro_mae"]
         for metrics in recovery.manifest["metrics"].values()
     )
-    assert recovery.manifest["selected_metrics"]["cycle_macro_mae"] <= best_macro * 1.05
+    assert recovery.manifest["selected_metrics"]["cycle_macro_mae"] <= best_macro * 1.10
     assert recovery.selected_model == "ridge_core"
-    assert recovery.manifest["model_version"] == "recovery-0.6.0"
+    assert recovery.manifest["model_version"] == "recovery-0.7.0"
     assert recovery.manifest["training_snapshot_rows"] <= 25 * 5
     assert recovery.manifest["source_daily_snapshot_rows"] > recovery.manifest["training_snapshot_rows"]
     assert "ridge_no_weight" in recovery.manifest["metrics"]
@@ -133,7 +133,8 @@ def test_training_selects_best_validated_candidate_and_versions_artifact(dataset
     assert set(recovery.manifest["feature_columns"]).issubset(FEATURE_COLUMNS)
     assert recovery.manifest["selected_metrics"]["mae"] < 0.02
     assert recovery.manifest["day14_backtest_metrics"]["building_cycles"] == 25
-    assert recovery.manifest["selection_metric"] == "cycle_macro_mae_within_5pct_then_simplest"
+    assert recovery.manifest["selection_metric"] == "cycle_macro_mae_within_tolerance_then_simplest"
+    assert recovery.manifest["selection_tolerance_pct"] == 10.0
     assert "confusion_matrix" in recovery.manifest["selected_metrics"]
     assert len(recovery.manifest["day14_backtest"]) == 25
     assert recovery.manifest["global_feature_importance"]

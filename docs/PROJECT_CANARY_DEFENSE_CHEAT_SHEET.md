@@ -1,658 +1,516 @@
 # Project Canary — Capstone Defense Cheat Sheet
 
-**Purpose:** A concise reference for explaining what Canary is, how it works, what the evidence supports, and where its limits are.
+## 1. The 20-second answer
 
-## 1. The 30-second answer
+**Project Canary is an early-warning and decision-support system for a broiler farm.** It combines daily farm records into one view per building, assigns an explainable operational risk rating, forecasts Day 35 average weight and final harvest recovery, and recommends what management should inspect next.
 
-**What is Project Canary?**
+The two farm goals are:
 
-- A daily early-warning and decision-support system for a broiler farm.
-- It shows which buildings need attention, why they were flagged, what Day 35 weight and harvest recovery are currently expected, and what management should inspect next.
-- It uses Days 1–14 as the early-warning window but continues monitoring the current flock after Day 14.
+- **1,800 g average weight on Day 35**
+- **95% harvest recovery**, defined for this capstone as ending or surviving birds divided by beginning population
 
-**Business question**
+Days 1–14 are the early-warning window. Monitoring continues through the active cycle.
 
-> Based on everything known today, which buildings need attention, what Day 35 weight and harvest recovery should we expect, why are they being flagged, and what should management check next?
+## 2. Business question
 
-**Two targets, one decision workflow**
+> Which buildings are at risk, what Day 35 weight and harvest-recovery outcomes are currently expected, why are they at risk, and what should management check next?
 
-- **Growth target:** at least **2,000 g average weight on Day 35**.
-- **Survival target:** at least **95% harvest recovery**.
-- These represent different outcomes: growth performance and birds remaining.
+## 3. The three components
 
-## 2. The one-minute workflow
-
-1. Load the farm workbook.
-2. Select the current harvest cycle and an as-of review date.
-3. Use only records available on or before that date.
-4. Score four operational warning signs for every building.
-5. Estimate harvest recovery and project Day 35 average weight.
-6. Explain the risk-score components and the model drivers.
-7. Check current temperature, humidity, feed, and mortality against provisional farm thresholds.
-8. Lead with the most specific supported operating alert and match it to a management action.
-
-**Important distinction**
-
-- The **risk score** prioritizes attention.
-- The **models** estimate the two outcomes.
-- The **operational alert layer** identifies a measurable condition management can investigate.
-- The **playbook** recommends the next inspection or adjustment toward an approved target range.
-- The risk label is **not** a probability of missing either target.
-
-## 2A. How every current-building card is produced
-
-| Card output | How Canary produces it |
-|---|---|
-| Current state | Latest population and weight observations recorded on or before the selected review date |
-| Risk rating | Sum of the available 0–3 point weight, survival, mortality-trend, and peer checks; total mapped to Low/Medium/High/Critical |
-| Main reason | Most specific current operational alert when supported; otherwise the strongest rules-based risk driver |
-| Projected harvest recovery | Selected compact Ridge model using age, current survival, mortality, feed, and available temperature/humidity inputs |
-| Projected Day 35 weight | Latest measured weight plus historically expected remaining gain from that measurement age to Day 35 |
-| Identified problem | Deterministic pattern assigned from which risk dimensions are elevated and whether the concern is localized or farm-wide |
-| Next action | Specific operational-alert action when supported; otherwise the deterministic playbook rule for the identified pattern, with urgency from the risk rating |
-| Gross revenue at risk | Beginning birds × recovery gap to 95% × assumed sale weight × assumed PHP price per kg |
-
-### Worked current-cycle example — Tags 2 on Day 22
-
-This is the result using records available through **25 July 2026** for cycle **2026-3**.
-
-### A. Risk rating — Medium, 3/12
-
-| Risk check | Current calculation | Day 22+ threshold and score |
+| Component | What it answers | Output |
 |---|---|---|
-| Weight gap | No measured building weight in the current cycle | Not scored; shown as missing rather than zero |
-| Survival reference gap | Beginning 7,114; latest population 6,763; currently alive = 6,763 ÷ 7,114 = **95.07%**. Provisional reference = 1 − (1 − 95%) × 22 ÷ 35 = **96.86%**. Gap = **1.79 points**. | 0: ≤0.75; 1: >0.75–2; 2: >2–4; 3: >4 points. **Score 1.** |
-| Mortality trend | Recent three-day mortality = 1.36/1,000; preceding baseline = 1.51/1,000. Worsening amount = max(1.36 − 1.51, 0) = **0.00/1,000**. | 0: ≤0.15; 1: >0.15–0.50; 2: >0.50–0.95; 3: >0.95/1,000. **Score 0.** |
-| Peer comparison | Recent mortality is **0.38/1,000 worse** than the median of Tags 1 and Tags 3. | 0: ≤0.10; 1: >0.10–0.30; 2: >0.30–0.60; 3: >0.60/1,000. **Score 2.** |
+| Rules-based risk scoring | Which building needs attention and why? | Low, Medium, High, or Critical; 0–12 score; dimension evidence |
+| Predictive models | What outcome is likely from what is known today? | Projected Day 35 average weight and projected final recovery, with ranges |
+| Recommendation playbook | What should management inspect next? | Pattern-based action, urgency, checklist, and escalation trigger |
 
-**Total:** survival 1 + mortality 0 + peer 2 = **3/12**. Weight is not scored. Rating bands are Low 0–1, Medium 2–3, High 4–5, and Critical 6–12. Therefore **3 = Medium risk**, with **3 of 4 checks supported by data**.
+**Important:** the risk score and predictions are separate. A forecast does not add points to the risk score.
 
-**How to say this:** “By Day 22, the temporary straight-line reference allows 3.14% cumulative loss, so 96.86% would remain. The record shows 95.07% remaining. The 1.79-point shortfall receives 1 point.” This reference is a configurable management benchmark, not a learned biological curve.
+## 4. Data preparation
 
-### B. Projected harvest recovery — 91.9%
+### One reliable building-day table
 
-1. Canary builds the Day 22 input row: age, current survival, latest and recent mortality, mortality trend, latest and cumulative feed, and recent temperature and humidity when available.
-2. Missing values are imputed from training data and represented by explicit missing-data flags; numeric inputs are standardized.
-3. The selected compact Ridge model calculates an unconstrained estimate of **91.8728%**.
-4. Canary applies the accounting safeguard: final recovery cannot exceed survival already recorded today. `min(91.8728%, 95.0661%) = 91.8728%`.
-5. Displayed prediction: **91.9%**. Gap to the 95% goal: **3.13 percentage points below**.
-6. The empirical 80% likely range is approximately **89.6%–94.1%**.
+- Source rows: **1,785**
+- Unique building-day rows: **1,666**
+- Repeated building-days consolidated: **119**
+- Production-value conflicts in repeated rows: **0**
+- Recorded weight-measurement days: **210**
 
-The forecast is a model estimate, not part of the 3/12 risk-score calculation and not proof that a particular input caused the result.
+The canonical key is:
 
-### C. Projected Day 35 average weight — unavailable for this current card
+`Harvest cycle + building + production day`
 
-- Tags 2 has **no measured building weight in cycle 2026-3**.
-- Canary therefore displays **Not available / Needs a measured weight** instead of giving every building a generic prediction.
-- When a measurement exists, the calculation is:
+### Zone A and Zone B
 
-> Projected Day 35 weight = latest measured weight + historical remaining gain from that measurement age
+In 2026-2 and 2026-3, some building-days have one environmental row for Zone A and another for Zone B. Canary does **not** treat these as two independent flock observations.
 
-**Illustrative recorded example:** Lags 2 in cycle 2026-2 measured **172.5 g on Day 14**. The training history's average remaining Day 14-to-35 gain is **1,264.3 g**. The projection is therefore **172.5 + 1,264.3 = 1,436.8 g**, or **563.2 g below** the 2,000 g goal. Its empirical range is approximately **1,197.7–1,675.9 g**. This example demonstrates inference; 2026-2 cannot improve training until a reliable Day 35 outcome is supplied.
+For each affected building-day:
 
-### D. Identified problem
+- average temperature/humidity = unweighted average of the two zone averages
+- minimum = minimum across zones
+- maximum = maximum across zones
+- zone spread = absolute difference between zone averages
+- production fields such as population, mortality, feed, and weight are retained once
 
-- Formal risk pattern: **Localized Building Drift**.
-- Reason: the peer-comparison check is elevated, while the evidence does not meet the farm-wide-drift rule.
-- More specific current operating alert: **Feed intake is 43% below the provisional Day 22 target**—74 g/bird recorded versus 130 g/bird proposed.
-- The operating alert is displayed as the practical main reason because it is more actionable, but it does **not** add points to or alter the 3/12 risk score.
+Why unweighted? Zone-level flock counts or floor-area weights are unavailable. This is transparent and provisional.
 
-### E. Proposed solution
+### Corrected weight records
 
-- Medium risk sets the urgency to **within 24 hours**.
-- The current feed alert supplies the specific action: confirm the unit and reading; check feed availability and quality, feeder allocation and line operation, bird access, water access, house temperature, and flock condition.
-- The fallback pattern rule is **ACT-005**, which calls for comparison with better-performing peers and inspection for a building-specific problem.
-- These rules remain preliminary until Doc Raymond approves them.
+The updated workbook now contains the corrected checkpoint weights:
 
-### F. Gross revenue at risk — approximately PHP 53,392
+- 2026-1: Days 7, 14, 21, 28, and 35 for all six buildings
+- 2026-2: Days 7, 14, 21, 28, and 35 for all six buildings
+- 2026-3: Days 7, 14, 21, 28, and 35 for Tags 1–3
 
-Default planning assumptions are **2.0 kg sale weight** and **PHP 120/kg**, so gross revenue per additional surviving bird is `2.0 × 120 = PHP 240`.
+The latest cycle, 2026-3, is excluded from model training so current/future information cannot leak into validation.
 
-1. Recovery gap = `95.0% − 91.8728% = 3.1272 percentage points`.
-2. Birds associated with the gap = `7,114 × 3.1272% = 222.47 birds`.
-3. Gross revenue at risk = `222.47 × PHP 240 = PHP 53,392.15`.
-4. Displayed rounded value = **PHP 53,392**.
+## 5. Revised target-weight curve
 
-This is gross revenue associated with closing the modeled recovery gap—not profit, guaranteed savings, or proof that Canary caused an improvement. Price and sale-weight assumptions are editable in **Business Value**.
+Doc Raymond’s approved checkpoints are:
 
-### Other card details to defend
+| Day | Target |
+|---:|---:|
+| 7 | 170 g |
+| 14 | 380 g |
+| 21 | 800 g |
+| 28 | 1,200 g |
+| 35 | 1,800 g |
 
-- **Current versus projected:** current recovery is observed so far; projected recovery estimates the later outcome.
-- **Likely range:** derived from held-out historical errors, not a guarantee.
-- **Data coverage:** “3/4 risk checks” warns that weight evidence is missing.
-- **Model/rule versions:** retained in Building View and Canary Methodology for reproducibility.
-- **Review date:** freezes all calculations to information recorded on or before that date.
-- **Separation of layers:** the risk score, forecasts, operational alerts, recommendation rules, and business-value assumptions are intentionally calculated independently and then combined only for presentation.
+Canary creates two daily curves:
 
-## 3. Data foundation
+- **Linear:** spreads each weekly gain evenly across seven days.
+- **Smoothed, used by Canary:** preserves the previous farm curve’s proportional within-week growth shape, then rescales the segment to hit the revised weekly endpoints exactly.
 
-- Primary daily source: **FARM HARVEST DATA.xlsx**.
-- Final average weight for completed-cycle display: **Farm Performance Summary.xlsx**.
-- Age-specific weight targets: farm **Target Weights** sheet.
-- Early detailed weights: **Weights Cleaned.xlsx**, available only for limited buildings/cycles.
-- Farm thresholds and interventions: **Farmer Validation Workbook.xlsx**, excluding its Risk Scoring Matrix as instructed.
+Canary also tested a three-parameter **Gompertz growth curve**, because broiler growth is nonlinear. The fitted curve had about **20 g checkpoint MAE**, but missed individual approved checkpoints by as much as **42 g**. It is therefore shown as a scientific comparison, not used as the operating target. For daily risk comparisons, hitting every farm-approved checkpoint exactly is more important than forcing one global biological curve.
 
-**Cleaning performed**
+The Day 0 anchor remains a **40 g working assumption from the former curve**; it was not part of Doc Raymond's revised checkpoint list. Targets stay at 1,800 g after Day 35 for milestone comparisons.
 
-- Started with **1,785 source rows**.
-- Consolidated **119 repeated rows**.
-- Produced **1,666 unique building-day records**.
-- Found **0 blocking duplicate conflicts**.
-- Normalized dates, building names, age, population, mortality, feed, weight, temperature, and humidity.
-- Kept missing values as missing; blanks were not silently changed to zero.
-- Auditable output: **data/Project_Canary_Canonical_Building_Day_1666.xlsx**.
+The smoothed curve is used for:
 
-**What the 119 repeated rows were**
+- the rules-based weight-gap calculation
+- current-weight-to-age-target progress in the Day 35 model
+- dashboard target charts
 
-- They are 119 cycle-building-age keys that each occurred twice, or **238 source rows in total**.
-- The repeated days are 2026-2 Lags 1 Days 1–30, Lags 2 Days 1–22, Lags 3 Days 1–16, and 2026-3 Tags 1–3 Days 1–17.
-- Production values matched within every repeated key; the rows contained different environmental readings, consistent with multiple environmental sections or zones.
-- Example: 2026-2 Lags 1 Day 1 has identical beginning population, ending population, mortality, feed, and weight values in both source rows. The average-temperature readings are 31.85°C and 33.12°C, so the canonical average is their mean; minimum and maximum readings retain the overall minimum and maximum.
+It is **not** the model target. The model target is the actual recorded Day 35 weight.
 
-**Leakage protection**
-
-- Every prediction uses only information available by the review date.
-- Model validation holds out entire harvest cycles.
-- Daily rows from the same cycle never appear in both training and validation.
-
-## 4. Component 1 — Rules-based risk score
-
-### What it answers
-
-- Which building should management inspect first?
-- Which recorded warning signs explain the concern?
+## 6. Component 1 — Risk scoring
 
 ### Four dimensions
 
-1. **Weight gap:** latest measured weight versus the target for the actual weighing day.
-2. **Survival reference gap:** current percentage alive versus a provisional straight-line path to 95% on Day 35.
-3. **Mortality momentum:** recent three-day mortality versus the preceding baseline.
-4. **Peer context:** performance versus similar-age buildings in the same cycle.
+Each dimension scores 0–3 points.
 
-### Point system
+| Dimension | Question | Evidence |
+|---|---|---|
+| Weight gap | How far below the smoothed target was the latest measured weight at that measurement age? | Actual weight versus target for the weighing day |
+| Population loss | How much of the beginning flock has already been lost? | `(beginning − current population) ÷ beginning` |
+| Daily mortality | Is there an urgent current loss? | Latest daily mortality ÷ beginning population |
+| Environmental conditions | Is the recorded house environment outside the provisional limit? | Worse of daily temperature range and humidity deviation |
 
-- Each available dimension receives **0–3 points**.
-- Total score: **0–12**.
-- Missing evidence is labelled **not scored**, not zero.
+### Weight-gap thresholds
 
-| Total | Rating |
+| Gap below age target | Score |
+|---:|---:|
+| 5% or less | 0 |
+| Above 5% to 10% | 1 |
+| Above 10% to 30% | 2 |
+| Above 30% | 3 |
+
+### Other starting thresholds from the Farmer Validation Workbook
+
+| Check | 0 points up to | 1 point up to | 2 points up to | 3 points above |
+|---|---:|---:|---:|---:|
+| Population loss | 3% | 5% | 7% | 7% |
+| Daily mortality | 0.1% | 0.2% | 0.3% | 0.3% |
+| Daily temperature range | 2°C | 3°C | 5°C | 5°C |
+| Humidity outside age range | 0.1 points | 5 points | 10 points | 10 points |
+
+Humidity reference bands are 60–70% for Days 1–7, 55–65% for Days 8–14, and 50–60% from Day 15 onward. The environmental score is the **higher** of the temperature-range and humidity scores, so related environmental evidence is not counted twice.
+
+### Total score to label
+
+| Total | Label |
 |---:|---|
 | 0–1 | Low |
 | 2–3 | Medium |
 | 4–5 | High |
 | 6–12 | Critical |
 
-### Main thresholds
+### Why mortality trend and peer points were removed
 
-**Weight shortfall at all ages**
+- A worsening-versus-baseline trend can look safe once a high mortality level becomes steady.
+- Peer points can repeat the same weight or mortality problem already scored elsewhere.
+- The replacement checks use simpler building-level values that management can verify directly.
 
-- 0 points: up to 5% below target.
-- 1 point: over 5% through 15%.
-- 2 points: over 15% through 30%.
-- 3 points: over 30%.
+Peer comparison remains useful context, but it no longer adds points. Feed remains an alert only because some cycles contain inconsistent feed-per-bird magnitudes. Water and THI remain deferred until reliable inputs and approved formulas exist.
 
-**Survival and mortality thresholds**
+### Honest limitation
 
-- Become more or less tolerant by production-age band.
-- Full threshold tables and editable settings are available in **Data & Settings**.
-- Peer scoring requires at least three comparable buildings within two days of age.
+Risk thresholds are provisional until Doc Raymond signs them off. Environmental coverage is about **42%** of canonical building-days. The proposed 2/3/5°C temperature-range rule would place **540 of 696** recorded days above the 5°C boundary, so it clearly requires calibration before farm reliance. The score represents operational concern, not a statistical probability of missing a goal.
 
-**Survival-reference formula**
+## 7. Component 2A — Day 35 weight model
 
-> Reference survival on Day d = 100% − (5% × min(d, 35) ÷ 35)
+### Business question and target
 
-- Day 22: `100% − (5% × 22 ÷ 35) = 96.86%`.
-- This simply spreads the allowed 5% loss evenly through Day 35.
-- It is not learned from the historical data and is not claimed to be a biological mortality curve.
+**Question:** Given the checkpoint weights known today, what average building weight should we expect on Day 35?
 
-### How to explain a High/Critical label
+**Y:** observed building average bodyweight on production Day 35.
 
-> “The building is High risk because its total operational-attention score is 5/12: weight gap contributed 3 points and worsening mortality contributed 2 points. Survival and peer checks contributed zero.”
+### Training unit
 
-### Can we trust it?
+- **31 independent building-cycle Day 35 outcomes**
+- **6 historical cycles:** 2025-2 through 2026-2
+- **124 as-of checkpoint rows:** 31 outcomes × Days 7, 14, 21, and 28
 
-**Trust it for:**
+The 124 rows are not 124 independent final outcomes. They are four decision snapshots for each of 31 outcomes.
 
-- Consistent operational prioritization.
-- Exact, traceable calculations.
-- Showing which measurements and thresholds produced the label.
+### Leakage-safe inputs
 
-**Do not claim:**
+At each checkpoint, only weights already known are included:
 
-- It is the statistical probability of missing 2,000 g or 95%.
-- Its current thresholds are fully farm-validated.
-- A higher score independently proves a worse final outcome.
-- A performance-risk dimension identifies the physical root cause by itself.
+- Day 7 row: Day 7 weight only
+- Day 14 row: Days 7 and 14
+- Day 21 row: Days 7, 14, and 21
+- Day 28 row: Days 7, 14, 21, and 28
 
-**Historical audit**
+Additional inputs:
 
-- Day 14 snapshots reviewed: **31**.
-- Score correlation with last-recorded recovery: **+0.19**.
-- Score correlation with recorded Day 35 weight: **+0.04**.
-- Risk bands were not consistently ordered by final outcomes.
-- Conclusion: retain the score as an **operational attention tool**, not an outcome-prediction model.
-
-## 5. Component 2A — Harvest-recovery model
-
-### What it predicts
-
-- Expected recovery at harvest, compared with the **95% goal**.
-
-### Historical target variable (Y)
-
-- **Last recorded population ÷ beginning population** for each completed building-cycle.
-- This is the agreed capstone recovery formula.
-- It is a proxy because the source does not contain a verified harvest-event flag.
-
-### Input features (X)
-
-- Flock age.
-- Current percentage alive.
-- Latest and recent mortality.
-- Mortality trend.
-- Daily and cumulative feed per 1,000 birds.
-- Recent temperature and humidity when available.
-- Missing-data indicators.
-
-Weight inputs were tested but excluded from the winning recovery model because held-out error did not improve.
+- current measurement day
+- current measured weight
+- current weight divided by the smoothed target for that age
+- recent average daily gain when a previous measurement exists
+- cumulative gain from Day 7
+- indicators for whether growth-history inputs are available
 
 ### Models compared
 
-| Candidate | Overall MAE | Result |
+| Candidate | Held-out MAE | Result |
 |---|---:|---|
-| Current-survival projection | 3.55 pts | Transparent but weak |
-| Historical mean | 1.67 pts | Useful baseline |
-| Ridge with weight | 1.40 pts | Competitive |
-| Random forest | 1.48 pts | Did not justify added complexity |
-| Ridge without weight | 1.34 pts | Competitive |
-| **Compact Ridge without weight, inventory, or building identity** | **1.32 pts** | **Selected** |
+| Historical Day 35 mean | about 210 g | Baseline |
+| Target-curve ratio | about 295 g | Not selected |
+| Recent linear ADG | about 432 g | Not selected |
+| Historical remaining gain | about 178 g | Strong transparent benchmark |
+| **Ridge regression** | **about 172 g** | **Selected** |
+| Random Forest | about 176 g | Not selected |
+| Gradient boosting | about 203 g | Not selected |
 
-### Why compact Ridge won
+### Validation and selection
 
-- Lowest overall held-out MAE.
-- Within 5% of the best cycle-balanced candidate.
-- More compact and explainable than the tree model.
-- Removed weight, raw beginning inventory, and Tags/Lagundi identity because those inputs did not strengthen the defensible held-out result.
-- Kept current survival because final recovery uses the same beginning-population denominator: final recovery cannot exceed the share still alive today.
+Canary uses leave-one-cycle-out cross-validation. Every row from a held-out cycle stays out of training.
 
-### Validation results
+Primary selection metric: **cycle-balanced MAE in kilograms**, reported to the business in grams.
 
-- Complete cycles used: **5**.
-- Distinct building outcomes: **25**.
-- Balanced decision snapshots: **122**, sampled from 1,122 eligible daily snapshots.
-- Overall MAE: **1.32 recovery points**.
-- Overall RMSE: **1.76 recovery points**.
-- Day 14 MAE: **1.43 recovery points**.
-- Prototype likely range: approximately prediction ± the 80th-percentile held-out error.
+Rule: choose the simplest candidate within 5% of the best cycle-balanced MAE. Historical remaining gain was more than 5% worse than Ridge, so Ridge became the champion.
 
-### Important classification limitation
+### Selected-model results
 
-- Target-side accuracy: **84%**.
-- Always predicting the historically common “below 95%” result also gives **84%**.
-- At/above-95% recall: **0%**.
-- Use it as a **directional point estimate and gap estimate**, not a proven hit/miss classifier.
+- Overall MAE: **about 172 g**
+- RMSE: **about 232 g**
+- Within 200 g: **about 65%**
+- Correct side of the revised 1.8 kg target: **about 86%**
+- Day 14 MAE: **about 167 g**
+- Day 14 correct target side: **about 87%**
 
-### Top five recorded model inputs
-
-These are model-wide standardized coefficient magnitudes, not causal effects.
-
-| Recorded input | Relative reliance | Fitted direction |
-|---|---:|---|
-| Current survival | 26.9% | Higher raises the estimate |
-| Recent 3-day mortality | 9.8% | Higher lowers the estimate |
-| Cumulative feed per 1,000 birds | 9.4% | Higher raises the estimate |
-| Flock age | 9.4% | Higher raises the fitted estimate |
-| Mortality-trend feature | 9.1% | Fitted positive; interpret cautiously because mortality features overlap |
-
-**Interpret carefully**
-
-- Temperature and humidity values together represent about **4.6%** of coefficient magnitude.
-- Missing temperature/humidity flags represent about **24.4%**.
-- This means data availability is entangled with historical patterns.
-- It does not prove that changing one input will produce the coefficient-sized outcome change.
-
-## 6. Component 2B — Day 35 weight model
-
-### What it predicts
-
-- Expected average building weight specifically on **production Day 35**.
-- It is not final weight at an unknown harvest date.
-
-### Historical target variable (Y)
-
-- Actual recorded average bodyweight on **Day 35** in FARM HARVEST DATA.xlsx.
-- The model does not convert a later final weight by multiplying by 35/49.
-
-### What was one training example?
-
-- One example represented **one building at one standard checkpoint**: Day 7, 14, 21, or 28.
-- Its Y value was that same building's observed Day 35 average weight.
-- The data were pooled across every eligible building and historical cycle; Canary did **not** train six separate building-specific models.
-- There were **19 building-cycles across four complete cycles**. Pooling was necessary because each building alone had far too few completed outcomes.
-- Validation held out an entire cycle at a time, so checkpoints from a cycle under evaluation never appeared in its training data.
-
-### Were Day 7, 14, 21, and 28 four simultaneous X variables?
-
-- **No.** A Day 14 forecast did not require Day 7, Day 21, and Day 28 weights to be present in one row.
-- Each checkpoint was a separate as-of prediction opportunity using only information known by that checkpoint.
-- This avoided using a future Day 21 or Day 28 weight to make a supposed Day 14 prediction.
-- Standard checkpoints made cycles with weekly weighing comparable with cycles that had daily early weights.
-- Daily measurements between checkpoints remain useful for the live latest-weight calculation, target-gap monitoring, and recent-growth features in candidate models.
-- They do not create useful supervised training examples unless that building-cycle also has a reliable observed Day 35 outcome.
-
-### Direct inputs
-
-1. Latest measured building weight.
-2. Measurement day, used to select the historical remaining gain to Day 35.
-
-### What was trained and compared?
-
-- Canary trained or fitted **seven pooled candidate methods** using the historical building-checkpoint rows.
-- The candidates included simple baselines, a recent-ADG projection, and a regularized Ridge machine-learning regression.
-- The Ridge candidate used measurement day, current weight, current-to-target ratio, recent ADG, and an indicator for whether recent ADG was available.
-- Candidate selection used unseen-cycle error, not performance on the same rows used to fit the method.
-
-### Models compared
-
-| Candidate | Overall MAE |
-|---|---:|
-| Historical Day 35 mean | 211 g |
-| Target-curve ratio | 317 g |
-| Recent straight-line ADG | 460 g |
-| **Historical remaining gain** | **198 g** |
-| Ridge regression | 202 g |
-| Random Forest | 253 g |
-| Gradient-boosted trees | 293 g |
-
-### Why historical remaining gain won
-
-- Best overall row-level MAE.
-- Within 5% of the best cycle-balanced candidate.
-- More transparent than Ridge.
-- Much more accurate than projecting recent straight-line ADG.
-- Responds to each building’s latest measured weight instead of giving every building the same result.
-
-### Is the deployed weight forecast machine learning?
-
-- **Not in the strict sense.** A Ridge machine-learning model was trained and evaluated, but it did not win.
-- The deployed champion is an age-aware historical-growth formula because it had slightly lower validation error and was easier to explain.
-- For a live building, Canary uses:
-
-> Projected Day 35 weight = latest measured weight + historical average remaining gain from that measurement age to Day 35
-
-- For each eligible historical building, Canary calculates `observed Day 35 weight − weight at the checkpoint`, then averages those remaining gains across the training buildings.
-- With all eligible historical labels fitted for deployment, the mean allowances are approximately **1,420 g from Day 7**, **1,264 g from Day 14**, **983 g from Day 21**, and **637 g from Day 28**.
-- Example: if the latest weight is 1,100 g on Day 21, the projection is `1,100 + 983 = 2,083 g`.
-- During validation, the gain allowance is recalculated without the held-out cycle. The 983 g value is the final deployment fit, not a value leaked into its own test cycle.
-- For a measurement between checkpoints, Canary interpolates the remaining-growth allowance between the surrounding checkpoint ages.
-- Before Day 7, it uses an explicitly labelled target-curve fallback with wider uncertainty.
-- If no weight has been measured, Canary says the projection is unavailable.
-
-### Standard checkpoint versus farm target curve
-
-- The farm target curve answers: **"What should the bird weigh at this age?"**
-- The weight-gap risk check answers: **"How far is the latest measured weight from that age-specific target?"**
-- The forecast answers: **"Given the latest measured weight and historical remaining growth, where might this building reach by Day 35?"**
-- These are related but separate calculations. Being below target creates a present-day warning; the growth projection estimates the future Day 35 outcome.
-
-### Validation results
-
-- Complete cycles: **4**.
-- Day 35 building outcomes: **19**.
-- Overall MAE: **198 g**.
-- Overall RMSE: **273 g**.
-- Within 200 g: **61.8%**.
-- Day 14 MAE: **183 g**.
-- Day 14 within 200 g: **57.9%**.
-
-### Important limitation
-
-- All 19 historical Day 35 outcomes were below 2,000 g.
-- Error in grams can be evaluated.
-- Ability to distinguish target hits from misses cannot yet be evaluated.
-- No weight projection is shown when a building has no measured weight.
+There are only **5 historical 1.8 kg hits** and 26 misses. The model catches misses well but recognizes only about 20% of the small hit group. Do not oversell target-hit classification.
 
 ### Feature importance
 
-- The selected method is a transparent two-input formula, not a multi-feature fitted model.
-- Its drivers are latest measured weight and measurement day.
-- Do not invent five feature importances for this method.
-- Target progress, recent ADG, and Ridge features were tested in competing methods but were not used by the selected winner.
+Ridge importance is based on absolute standardized coefficients. The leading fitted inputs are target progress, Day 14 weight, recent gain, Day 21 weight, and cumulative gain.
 
-### Best defense wording
+These are model associations—not proof that changing one input causes the final result. Correlated growth variables can share importance or have counterintuitive signs.
 
-> "We did not assume machine learning must win. We compared seven approaches, including Ridge, Random Forest, and gradient-boosted trees, using complete-cycle-held-out validation. The simpler historical remaining-gain method produced the best overall validated error and stayed within 5% of the best cycle-balanced result, so Canary deploys it. The method pools eligible buildings because the sample is too small for reliable building-specific models, while every forecast still starts from that building's own latest measured weight."
+## 8. Historical average remaining gain — full example
 
-## 7. Component 3 — Recommendation playbook
+This method is still important because it is the strongest simple benchmark.
 
-### What it answers
+### How it is computed
 
-- What should management inspect next?
-- How urgently should the building be reviewed?
-- When should management escalate?
+For every eligible historical building-cycle at the same checkpoint:
 
-### How it works
+`Remaining gain = actual Day 35 weight − checkpoint weight`
 
-- Deterministic rule lookup, not generative AI.
-- Inputs: current operating alert when supported; otherwise identified performance pattern + risk severity.
-- Outputs: management focus, inspection checklist, urgency, and escalation condition.
-- Every recommendation shows its rule ID, version, and approval status.
-- Owner cards prefer a specific recorded alert over a generic peer-performance label.
-- When no causal measurement is available, Canary says **cause not confirmed** and names the measurements to collect.
+At Day 14, Canary averages this across the 31 historical building outcomes:
 
-### Main problem patterns
+`Average Day 14-to-35 remaining gain = 1.254981 kg ≈ 1,255 g`
 
-| Pattern | Primary management focus |
-|---|---|
-| No material drift | Continue normal monitoring |
-| Weight lag only | Confirm weight; check feed and water access |
-| Survival concern only | Reconcile counts and investigate mortality/survival |
-| Growth + survival drift | Complete a focused combined flock assessment |
-| Localized building drift | Compare with better peers; inspect building-specific equipment and conditions |
-| Farm-wide drift | Investigate shared feed, water, controller, weather, source, or management factors |
-| Missing or stale evidence | Obtain current measurements before major decisions |
+### End-to-end illustrative forecast
 
-### Urgency
+Suppose a current building weighs **380 g on Day 14**.
 
-- Low: routine monitoring.
-- Medium: within 24 hours.
-- High: current shift.
-- Critical: immediate inspection and appropriate escalation.
+1. Current measured weight = 380 g.
+2. Historical average remaining gain from Day 14 = 1,255 g.
+3. Baseline projection = `380 + 1,255 = 1,635 g`.
+4. Revised Day 35 goal = 1,800 g.
+5. Gap = `1,635 − 1,800 = −165 g`.
 
-### Can we trust it?
+Interpretation: the simple benchmark projects 1,635 g, or 165 g below goal.
 
-**Strengths**
+During cross-validation, the held-out cycle is excluded before calculating the average remaining gain. This prevents the answer from using its own future result.
 
-- Simple, deterministic, editable, and traceable.
-- Based on industry-management references and farm-provided intervention mappings.
-- Does not invent medication or diagnose disease.
+### Do we still use it?
 
-**Limitations**
+- **Yes, as a benchmark and possible fallback.**
+- **No, not as the live champion while Ridge remains better than the 5% tolerance.**
 
-- Wording and thresholds still require Doc Raymond’s approval.
-- Canary has not measured the causal effect of each intervention.
-- Recommendations are inspection guidance, not guaranteed solutions.
+If future retraining shows Ridge no longer beats it reliably, Canary can safely fall back to this simpler formula.
 
-## 8. Temperature, humidity, feed, water, and THI
+## 9. Component 2B — Harvest-recovery model
 
-### What Canary can responsibly do now
+### Business question and target
 
-- Compare recorded temperature and humidity with provisional age-specific ranges.
-- Flag daily mortality against provisional limits.
-- Compare recorded daily feed per bird with provisional age-specific targets, pending unit confirmation.
-- State the current value, target, acceptable range, and size of the gap.
-- Recommend practical checks such as sensors, fans, inlets, curtains, cooling pads, heaters, litter, feed access, and water availability.
-- Direct management toward the target range without prescribing an unapproved equipment setting.
+**Question:** Given the current daily flock evidence, what final recovery should we expect?
 
-### Example owner explanation
+**Y:** last recorded population divided by beginning population for an eligible historical completed-record cycle.
 
-> “Temperature is above the approved age-based range. Verify the reading at bird height, then check fans, inlets or curtains, cooling pads, airflow, and water availability. Bring conditions toward the approved range. Canary does not claim heat caused the performance result.”
+This is the agreed capstone proxy. It is not a verified harvest-event count.
 
-### What Canary cannot claim yet
+### Evidence and inputs
 
-- “Heat caused the mortality.”
-- “Reducing temperature by 1°C will improve recovery by X points.”
-- Water-intake risk when water data is absent.
-- THI risk until one formula and age-specific bands are approved.
-- A direct command such as “lower the controller by 3°C” unless the sensor, housing response, bird behavior, and farm SOP have been verified.
+- **25 independent building-cycle outcomes**
+- **5 eligible historical cycles:** 2025-2 through 2026-1
+- **122 balanced as-of snapshots**
 
-### Why environment is not a fifth risk dimension yet
+Selected compact inputs:
 
-- It may double-count the result of the same problem.
-- Environmental coverage is incomplete.
-- Water is unavailable and the daily feed-per-bird unit needs confirmation.
-- Farm-approved thresholds are incomplete.
-- Current model importance does not establish causation.
+- cycle day
+- current percentage alive
+- latest daily mortality per 1,000 birds
+- recent 3-day mortality per 1,000
+- mortality trend versus baseline
+- latest and cumulative feed per 1,000 birds
+- recent temperature
+- recent humidity
 
-**Current architecture verdict:** keep environment out of the 0–12 outcome-warning score for this capstone, but use supported operating alerts as the owner-facing reason and action. This is more actionable without double-counting the same outcome or pretending that an association is a proven cause.
+Raw beginning population and building identity were removed from the selected model. Corrected bodyweight did not materially improve recovery validation and is not in the champion.
 
-## 9. Business-value estimator
+**Why current survival belongs:** final recovery is ending population ÷ beginning population, while current survival is today’s population ÷ beginning population. It is the best known starting point for estimating how much more loss may occur. It is not future leakage because today’s population is already known at prediction time. Raw beginning population itself was removed because flock size should not mechanically raise or lower the recovery percentage.
 
-### What it estimates
+### Models compared
 
-- Birds represented by a recovery-rate improvement.
-- Estimated gross revenue represented by those birds.
+| Candidate | Held-out MAE |
+|---|---:|
+| Current-survival trend projection | about 3.55 percentage points |
+| Historical mean | about 1.67 points |
+| Ridge with all tested inputs | about 1.50 points |
+| Random Forest | about 1.46 points |
+| Ridge without weight | about 1.34 points |
+| **Compact Ridge** | **about 1.32 points** |
 
-### Formula
+### Selection rule and result
 
-- Birds represented = beginning population × recovery improvement.
-- Gross revenue per bird = assumed sale weight × assumed price per kg.
-- Estimated gross revenue = birds represented × gross revenue per bird.
+Primary metric: cycle-balanced MAE, with a 10% simplicity tolerance for recovery.
 
-### Required defense wording
+Compact Ridge was selected because it had the lowest overall MAE, remained close to the best cycle-balanced candidate, and avoided questionable identity and raw-inventory features.
 
-- This is a scenario estimate, not proven incremental profit.
-- It excludes intervention cost, feed, labor, electricity, treatment, mortality timing, and price changes.
-- It does not prove Canary caused the improvement.
+- Overall MAE: **about 1.32 percentage points**
+- RMSE: **about 1.76 points**
+- Day 14 MAE: **about 1.43 points**
+- Empirical 80% half-width: **about ±2.25 points**
 
-## 10. Actual versus predicted
+### Critical interpretation
 
-### Current/latest cycle
+Target-side accuracy is about 84%, but that equals the always-below majority baseline. At Day 14, all 25 forecasts were below 95%, including four flocks that later finished at or above 95%.
 
-- Shows current risk rating, predicted recovery, projected Day 35 weight when weight is available, and recommended next check.
+Therefore:
 
-### Previous cycles
+- useful as a continuous planning estimate
+- useful for ranking likely recovery gaps
+- **not proven as a classifier of who will hit 95%**
 
-- Shown as completed under the capstone convention.
-- Completion date = each building’s last recorded daily date.
-- Actual recovery = ending recorded population ÷ beginning population.
-- Actual final average weight = matched Farm Performance Summary value when available.
-- Historical Day 14 backtest compares what Canary would have predicted using only Day 14 data with what was later observed.
+### Feature importance
 
-### Why backtesting matters
+Current survival has the strongest fitted reliance at about 27%. Recent three-day mortality lowers the estimate in the fitted model; cumulative feed, age, temperature, humidity, and missing-data indicators also contribute. One mortality-trend coefficient has a counterintuitive positive sign because correlated mortality variables share signal in a small dataset. Feature importance is therefore for model explanation—not a causal intervention rule.
 
-- Demonstrates performance on unseen cycles.
-- Makes errors visible instead of showing only successful examples.
-- Supports discussion of when the model performs well or poorly.
+## 10. Component 3 — Recommendations
 
-## 11. Expected panel questions
+Canary maps the leading scored trigger to Doc Raymond’s deterministic playbook. The action is traceable by rule ID, response time, possible causes to verify, and approval status.
 
-### “Why are there two targets?”
+| Pattern | Plain meaning | Recommended focus |
+|---|---|---|
+| No Material Concern | No scored warning is above the current limits | Continue normal monitoring |
+| Low Body Weight | Weight is behind the age target | Confirm weight; check bird health, feeder allocation, feed/water access, and temperature |
+| High Mortality | Latest daily mortality exceeds the limit | Confirm count; inspect bird condition and ventilation; escalate health concerns |
+| Rapid Population Loss | Cumulative loss exceeds the limit | Reconcile population and mortality records; inspect for continuing loss |
+| Abnormal Temperature Fluctuation | Daily max-minus-min range is too large | Verify sensors; check ventilation, fans, controller, heaters, cooling, and air leaks |
+| High Humidity | Humidity is above the age range | Check ventilation, litter, leaks, drinkers, cooling pads, and pump timing |
+| Low Humidity | Humidity is below the age range | Check sensor, ventilation schedule, air speed, dust, and weather |
+| Low Feed Intake / Rapid Feed Drop | Feed evidence is low or falling | Verify unit and reading; check feed system, quality, access, water, heat, and bird condition |
+| Poor Recovery Prediction | Forecast is materially below 95% | Review health, current loss, continuing mortality, and condemn information when available |
+| Missing or Stale Evidence | Required evidence is absent or old | Collect the missing measurement before a major decision |
 
-- Weight measures growth performance.
-- Recovery measures birds remaining.
-- Both affect farm output and require different forecasts.
+Urgency follows the risk label:
 
-### “Why is Day 14 important?”
+- Low: routine monitoring
+- Medium: within 24 hours
+- High: current shift
+- Critical: immediate inspection and escalation where appropriate
 
-- It is the agreed early-warning checkpoint while management still has time to investigate.
-- Canary continues updating after Day 14.
-- Association between Day 14 and later results is exploratory, not causal proof.
+Possible causes are hypotheses to inspect, not diagnoses. Recommendations do not prescribe medication or automatically change house settings.
 
-### “Why Day 35?”
+## 11. Environment and actionability
 
-- The farm’s key management milestone is at least 2,000 g on Day 35.
-- Day 35 is not automatically the harvest date.
+Temperature range and humidity now contribute through one combined environmental risk dimension. Specific operating alerts remain visible in the building investigation view.
 
-### “Why not scale final weight by 35/49?”
+Current absolute-temperature references remain provisional:
 
-- Broiler growth is not linear.
-- That conversion would create an artificial label.
-- Canary uses actual recorded Day 35 weights instead.
+- Days 1–7: 29–33°C
+- Days 8–14: 25.5–29.5°C
+- Days 15–21: 26–28.5°C
 
-### “Why split validation by cycle?”
+No automatic absolute-temperature alert is issued after Day 21 until the farm approves a later-age range. The formal environmental score currently uses daily temperature range, not an unapproved absolute temperature target. Humidity and feed alerts are also provisional. Water and THI require reliable inputs and approved formulas.
 
-- Daily rows from one flock are highly related.
-- Randomly splitting daily rows would leak flock information and exaggerate accuracy.
-- Holding out complete cycles better represents future use.
+Canary should say “temperature is above the approved range; inspect ventilation/cooling and verify the sensor,” not automatically “lower temperature by 3°C.” A specific adjustment must depend on the verified sensor, bird behavior, equipment, housing, weather, and farm protocol.
 
-### “Why choose a simple model?”
+## 12. Day 14 hypothesis — what the data supports
 
-- The dataset is small.
-- Complex models can overfit.
-- Canary selects the simplest candidate within 5% of the best cycle-balanced error.
+### Do higher Day 14 weights relate to higher Day 35 weights?
 
-### “Is feature importance causal?”
+Yes, **directionally**:
 
-- No. It shows what the fitted model relied on.
-- A farm intervention still requires operational verification and expert judgment.
+- 25 paired building-cycles
+- raw Pearson correlation: **r = 0.50**, p = 0.012
+- within-cycle correlation: **r = 0.18**, p = 0.436
+- interpretation: the overall relationship is moderate, but much weaker after comparing buildings within the same cycle; cycle conditions explain part of the pattern
 
-### “Can Canary diagnose disease or prescribe treatment?”
+Only **1 of 25** historical building-cycles met the revised 380 g Day 14 target. That flock recorded 1.81 kg on Day 35. This is encouraging, but far too little evidence for a reliable “met versus missed” claim.
 
-- No. It supports inspection, escalation, and management decisions.
-- Veterinary diagnosis and treatment remain outside scope.
+### Does Day 14 weight relate to harvest recovery?
 
-### “What is the biggest model limitation?”
+The relationship points upward but is not conclusive:
 
-- Recovery uses only 25 distinct building outcomes and a last-recorded recovery proxy.
-- Weight uses 19 Day 35 outcomes, all below 2,000 g.
-- More standardized completed cycles are needed.
+- raw correlation: **r = 0.25**, p = 0.230
+- within-cycle correlation: **r = 0.29**, p = 0.207
 
-### “Is Canary production-ready?”
+### Do we need a separate Day 14 prediction?
 
-- It is capstone-ready as a local prototype with transparent limitations.
-- It is not yet a validated production control system.
+No. Canary already:
 
-## 12. Three-minute demo path
+- uses Days 1–14 as the early-warning window
+- compares every measured weight with the daily target curve
+- forecasts Day 35 weight from a Day 14 checkpoint
+- reports Day 14 forecast error separately
 
-1. **Home:** explain the two targets and show all six buildings.
-2. **Review first:** identify the highest-priority current building.
-3. **Building View:** show total risk score and the scored reasons.
-4. **Most actionable signal:** show the current temperature, humidity, feed, or mortality gap and the target-based next check.
-5. **Forecasts:** compare current recorded state with predicted recovery and projected Day 35 weight.
-6. **Drivers:** show the five strongest recovery-model contributions and the two direct weight drivers.
-7. **Recommendation:** show urgency, inspection focus, escalation trigger, and rule ID.
-8. **Completed cycle:** show a Day 14 prediction-versus-actual backtest.
-9. **Methodology:** show candidate-model comparison, held-out performance, and limitations.
+A second “predict Day 14” model would add complexity without a new management decision. Before Day 14, the daily target gap already answers whether the flock is on track.
 
-## 13. What is capstone-ready versus future work?
+## 13. Worked building-card example — 2026-3 Tags 2 on Day 22
 
-### Capstone-ready
+### A. Risk score
 
-- Standardized building-day dataset.
-- Six-building decision dashboard.
-- Explainable 0–12 risk score.
-- Separate recovery and Day 35 weight outlooks.
-- Cycle-held-out model evaluation.
-- Global and building-specific model-driver explanations.
-- Deterministic recommendation playbook.
-- Historical Day 14 backtests.
-- Business-value scenario estimator.
+| Dimension | Evidence | Points |
+|---|---|---:|
+| Weight gap | 519.9 g measured on Day 21 versus 800 g target: 35.0% below | 3 |
+| Population loss | `(7,114 − 6,763) ÷ 7,114 = 4.93%` | 1 |
+| Daily mortality | latest daily mortality = 0.197% of beginning birds | 1 |
+| Environment | no sufficiently current environmental reading | Not scored |
 
-### Future improvements
+Total = `3 + 1 + 1 = 5` → **High risk**. Leading trigger: **Low Body Weight**.
 
-- Verified harvest-event flag.
-- More Day 14 and Day 35 weights across cycles.
-- More examples that achieve 2,000 g and 95%.
-- Reliable daily water intake.
-- Farm-approved environmental and THI thresholds.
-- Prospective validation on new cycles.
-- Measurement of intervention effectiveness and net profit.
-- Live integrations, authentication, and production deployment.
+### B. Projected harvest recovery
 
-## 14. Final defense posture
+- Compact Ridge uses evidence available by Day 22.
+- Projection: **91.87%**.
+- Gap to the 95% goal: **3.13 percentage points below**.
+- This is a model output, not a component of the 5-point risk score.
 
-**Strongest claim**
+### C. Projected Day 35 weight
 
-> Canary turns daily farm records into a consistent, explainable workflow for prioritizing buildings, estimating two important outcomes, and deciding what management should inspect next.
+- Ridge uses the known checkpoint weights and growth features available by Day 22.
+- Projection: **1,465 g**.
+- Gap to the 1,800 g goal: **335 g below**.
 
-**Claims to avoid**
+### D. Problem and next action
 
-- “Canary proves what caused the problem.”
-- “Canary guarantees the flock will hit or miss the target.”
-- “The risk score is the probability of missing the target.”
-- “The recommendations have proven causal financial impact.”
+- Identified problem: **Low Body Weight** because the 3-point weight gap is the largest scored trigger.
+- Rule: **DOC-002**.
+- Action: confirm the weight, then check bird health, feeder allocation, feed availability/quality, water access, and house conditions.
 
-**Best closing line**
+### E. Gross revenue at risk
 
-> The capstone demonstrates a defensible decision-support prototype: transparent where the rules are expert-defined, quantitative where historical validation is possible, and explicit where more farm data or expert approval is still needed.
+Default planning assumptions: 2.0 kg sale weight and PHP120/kg.
+
+- Birds at risk = `7,114 × (95% − 91.87%) = about 222 birds`
+- Gross value per bird = `2.0 kg × PHP120 = PHP240`
+- Gross revenue at risk = `222.47 × PHP240 = about PHP53,392`
+
+This is an editable scenario estimate, not guaranteed recoverable profit.
+
+## 14. Business value estimator
+
+For a recovery shortfall:
+
+`Birds at risk = beginning population × recovery gap`
+
+`Gross revenue at risk = birds at risk × assumed sale weight × PHP per kg`
+
+Example:
+
+- beginning population = 10,000 birds
+- projected recovery = 93%
+- goal = 95%
+- gap = 2 percentage points
+- birds at risk = `10,000 × 0.02 = 200`
+- assumed sale weight = 2.0 kg (an editable commercial assumption, separate from the 1.8 kg Day 35 milestone)
+- price = PHP 120/kg
+- revenue at risk = `200 × 2.0 × 120 = PHP 48,000`
+
+This is a scenario estimate, not guaranteed recoverable profit. It excludes costs and assumes recovery improvement is achievable.
+
+## 15. Expected panel questions
+
+### “Why not train one model per building?”
+
+Each building has too few completed outcomes. Canary pools all eligible buildings and cycles, then holds out whole cycles. A per-building model would be unstable and impossible to validate credibly.
+
+### “Why are there 124 weight rows but only 31 outcomes?”
+
+Each building-cycle is recreated at four decision checkpoints. Cross-validation groups the entire cycle so those related rows never split between train and test.
+
+### “Why Ridge rather than Random Forest?”
+
+Ridge had the best cycle-balanced error for Day 35 weight, is more stable on a small dataset, and is easier to explain. Random Forest was close but not better. Gradient boosting was worse.
+
+### “Why not just use average daily gain?”
+
+Straight-line ADG assumes the recent growth rate continues unchanged. In held-out testing its MAE was about 432 g, far worse than Ridge at about 172 g.
+
+### “Why keep historical remaining gain?”
+
+It is transparent, strong, and easy to audit. It is the benchmark the ML model must beat. Ridge beat it beyond the 5% tolerance, so Ridge is champion today.
+
+### “Can we trust the recovery model?”
+
+Trust it as a limited-data continuous estimate with about 1.3 points MAE—not as proof that a building will hit 95%. It did not beat the majority baseline for target classification.
+
+### “Do temperature and humidity drive the forecast?”
+
+They are recovery-model inputs and operating checks. Temperature range and humidity also form one provisional environmental risk dimension. Sparse coverage prevents causal claims: use them to guide inspection, not to promise that one adjustment will change the outcome.
+
+### “Is the app production ready?”
+
+No. It is capstone-prototype ready after final farm validation. Production use still needs stronger data governance, confirmed harvest events, threshold approval, secure deployment, monitoring, and more cycles.
+
+## 16. What we can defend strongly
+
+- one-row-per-building-day data preparation
+- correct handling of Zone A/B records without double-counting production
+- corrected checkpoint-weight coverage
+- rules-based score traceability
+- cycle-held-out model validation
+- three ML candidates plus transparent baselines for Day 35 weight
+- compact, leakage-safe recovery model
+- visible uncertainty and limitations
+- deterministic recommendation mapping
+- replacement of opaque trend/peer points with direct population, mortality, and environmental evidence
+
+## 17. What we must not overclaim
+
+- risk score is not a probability
+- feature importance is not causality
+- recovery target classification is not proven
+- five Day 35 target hits are a small group
+- unweighted zone averaging assumes equal relevance of Zones A and B
+- the recovery target is a last-recorded proxy, not a verified harvest-event result
+- recommended actions support inspection; they do not guarantee recovered revenue or target attainment
+- environmental thresholds are expert starting rules, not historically calibrated causal cutoffs
+
+## 18. Final one-sentence defense
+
+> Project Canary converts daily building data into transparent operational priorities, leakage-safe outcome forecasts, and practical inspection guidance, while clearly separating what the evidence supports from what still requires farm validation.

@@ -114,47 +114,47 @@
   "training_snapshot_rows": 742,
   "source_daily_snapshot_rows": 742,
   "snapshot_sampling": "Every eligible leakage-safe daily snapshot",
-  "target": 2.0,
+  "target": 1.8,
   "label_definition": "Building-level Ave Live Weight (kg) from Farm Performance Summary.xlsx, used directly as the final-harvest label",
   "status": "Prototype - cycle-held-out validation",
   "metrics": {
     "trend_naive": {
-      "mae": 0.5050548958374784,
-      "cycle_macro_mae": 0.46559339533834854,
-      "rmse": 0.6060330141397742,
-      "bias": -0.48599336097733525,
-      "fold_mae_std": 0.20241263276058763,
-      "target_side_accuracy": 0.4474393530997305,
-      "majority_side_accuracy": 0.6401617250673854,
-      "below_target_recall": 0.8164794007490637,
-      "at_or_above_target_recall": 0.24,
+      "mae": 0.5713421137845126,
+      "cycle_macro_mae": 0.5373645741344361,
+      "rmse": 0.6490451266574301,
+      "bias": -0.5544354945152332,
+      "fold_mae_std": 0.1565184056602108,
+      "target_side_accuracy": 0.16037735849056603,
+      "majority_side_accuracy": 1.0,
+      "below_target_recall": NaN,
+      "at_or_above_target_recall": 0.16037735849056603,
       "confusion_matrix": {
-        "actual_below_predicted_below": 218,
-        "actual_below_predicted_at_or_above": 49,
-        "actual_at_or_above_predicted_below": 361,
-        "actual_at_or_above_predicted_at_or_above": 114
+        "actual_below_predicted_below": 0,
+        "actual_below_predicted_at_or_above": 0,
+        "actual_at_or_above_predicted_below": 623,
+        "actual_at_or_above_predicted_at_or_above": 119
       },
-      "uncertainty_half_width_80": 0.7656000000000003,
+      "uncertainty_half_width_80": 0.8328368421052634,
       "horizon": {
         "Days 1-7": {
           "rows": 119,
-          "mae": 0.18007799976392402,
-          "rmse": 0.2974316616533165
+          "mae": 0.19959670960998457,
+          "rmse": 0.3317150356232513
         },
         "Days 8-14": {
           "rows": 119,
-          "mae": 0.6626626956022097,
-          "rmse": 0.7257653221917757
+          "mae": 0.7959996747925175,
+          "rmse": 0.8201803800788051
         },
         "Days 15-21": {
           "rows": 119,
-          "mae": 0.5680400065265794,
-          "rmse": 0.6406723921032909
+          "mae": 0.6877723418841225,
+          "rmse": 0.7305668415808476
         },
         "Day 22+": {
           "rows": 385,
-          "mae": 0.5373190368472108,
-          "rmse": 0.6251545748313521
+          "mae": 0.5808181038961039,
+          "rmse": 0.6363777948783927
         }
       }
     },
@@ -164,15 +164,15 @@
       "rmse": 0.1068971068057327,
       "bias": -0.006086604707310013,
       "fold_mae_std": 0.03331605564998512,
-      "target_side_accuracy": 0.3221024258760108,
-      "majority_side_accuracy": 0.6401617250673854,
-      "below_target_recall": 0.0,
-      "at_or_above_target_recall": 0.5031578947368421,
+      "target_side_accuracy": 1.0,
+      "majority_side_accuracy": 1.0,
+      "below_target_recall": NaN,
+      "at_or_above_target_recall": 1.0,
       "confusion_matrix": {
         "actual_below_predicted_below": 0,
-        "actual_below_predicted_at_or_above": 267,
-        "actual_at_or_above_predicted_below": 236,
-        "actual_at_or_above_predicted_at_or_above": 239
+        "actual_below_predicted_at_or_above": 0,
+        "actual_at_or_above_predicted_below": 0,
+        "actual_at_or_above_predicted_at_or_above": 742
       },
       "uncertainty_half_width_80": 0.13340016694490853,
       "horizon": {
@@ -199,82 +199,82 @@
       }
     },
     "ridge": {
-      "mae": 0.31473975923675185,
-      "cycle_macro_mae": 0.26264791404872384,
-      "rmse": 0.5418504537439747,
-      "bias": 0.18828162584096397,
-      "fold_mae_std": 0.2003879596281178,
-      "target_side_accuracy": 0.42452830188679247,
-      "majority_side_accuracy": 0.6401617250673854,
-      "below_target_recall": 0.0449438202247191,
-      "at_or_above_target_recall": 0.6378947368421053,
+      "mae": 0.311507216852644,
+      "cycle_macro_mae": 0.26104516804380884,
+      "rmse": 0.5423888940014765,
+      "bias": 0.17760358152498817,
+      "fold_mae_std": 0.1973593155617095,
+      "target_side_accuracy": 0.9460916442048517,
+      "majority_side_accuracy": 1.0,
+      "below_target_recall": NaN,
+      "at_or_above_target_recall": 0.9460916442048517,
       "confusion_matrix": {
-        "actual_below_predicted_below": 12,
-        "actual_below_predicted_at_or_above": 255,
-        "actual_at_or_above_predicted_below": 172,
-        "actual_at_or_above_predicted_at_or_above": 303
+        "actual_below_predicted_below": 0,
+        "actual_below_predicted_at_or_above": 0,
+        "actual_at_or_above_predicted_below": 40,
+        "actual_at_or_above_predicted_at_or_above": 702
       },
-      "uncertainty_half_width_80": 0.2673036093606636,
+      "uncertainty_half_width_80": 0.2787496777091497,
       "horizon": {
         "Days 1-7": {
           "rows": 119,
-          "mae": 0.3120711738888958,
-          "rmse": 0.5344611272781532
+          "mae": 0.3120669097814239,
+          "rmse": 0.5349952816991098
         },
         "Days 8-14": {
           "rows": 119,
-          "mae": 0.30466515844934,
-          "rmse": 0.5291851495726969
+          "mae": 0.3056839295045016,
+          "rmse": 0.5303282427696145
         },
         "Days 15-21": {
           "rows": 119,
-          "mae": 0.3000951391430438,
-          "rmse": 0.5269167997103937
+          "mae": 0.3023081525628351,
+          "rmse": 0.5285876726906336
         },
         "Day 22+": {
           "rows": 385,
-          "mae": 0.32320508116207164,
-          "rmse": 0.5524366693116068
+          "mae": 0.31597749318093343,
+          "rmse": 0.5524630106178686
         }
       }
     },
     "random_forest": {
-      "mae": 0.11290990853462178,
-      "cycle_macro_mae": 0.1107555242182546,
-      "rmse": 0.13289100828182893,
-      "bias": -0.002891015497871812,
-      "fold_mae_std": 0.04517610910612847,
-      "target_side_accuracy": 0.42183288409703507,
-      "majority_side_accuracy": 0.6401617250673854,
-      "below_target_recall": 0.2808988764044944,
-      "at_or_above_target_recall": 0.5010526315789474,
+      "mae": 0.11045600923174954,
+      "cycle_macro_mae": 0.10854017869324455,
+      "rmse": 0.1294938988561424,
+      "bias": -0.0018526056468574185,
+      "fold_mae_std": 0.04459279200984041,
+      "target_side_accuracy": 1.0,
+      "majority_side_accuracy": 1.0,
+      "below_target_recall": NaN,
+      "at_or_above_target_recall": 1.0,
       "confusion_matrix": {
-        "actual_below_predicted_below": 75,
-        "actual_below_predicted_at_or_above": 192,
-        "actual_at_or_above_predicted_below": 237,
-        "actual_at_or_above_predicted_at_or_above": 238
+        "actual_below_predicted_below": 0,
+        "actual_below_predicted_at_or_above": 0,
+        "actual_at_or_above_predicted_below": 0,
+        "actual_at_or_above_predicted_at_or_above": 742
       },
-      "uncertainty_half_width_80": 0.18011476974790774,
+      "uncertainty_half_width_80": 0.18010000000000836,
       "horizon": {
         "Days 1-7": {
           "rows": 119,
-          "mae": 0.10600214591243874,
-          "rmse": 0.1260439683688524
+          "mae": 0.10492365470826978,
+          "rmse": 0.12415670263564527
         },
         "Days 8-14": {
           "rows": 119,
-          "mae": 0.10408412512290162,
-          "rmse": 0.12525066359099563
+          "mae": 0.10250445985931753,
+          "rmse": 0.12319479313928736
         },
         "Days 15-21": {
           "rows": 119,
-          "mae": 0.10559026338142884,
-          "rmse": 0.12777885860860824
+          "mae": 0.10362603486425077,
+          "rmse": 0.12505966068794963
         },
         "Day 22+": {
           "rows": 385,
-          "mae": 0.12003544035608785,
-          "rmse": 0.1386705659872976
+          "mae": 0.11673484433134915,
+          "rmse": 0.13426832287265358
         }
       }
     }
@@ -285,15 +285,15 @@
     "rmse": 0.1068971068057327,
     "bias": -0.006086604707310013,
     "fold_mae_std": 0.03331605564998512,
-    "target_side_accuracy": 0.3221024258760108,
-    "majority_side_accuracy": 0.6401617250673854,
-    "below_target_recall": 0.0,
-    "at_or_above_target_recall": 0.5031578947368421,
+    "target_side_accuracy": 1.0,
+    "majority_side_accuracy": 1.0,
+    "below_target_recall": NaN,
+    "at_or_above_target_recall": 1.0,
     "confusion_matrix": {
       "actual_below_predicted_below": 0,
-      "actual_below_predicted_at_or_above": 267,
-      "actual_at_or_above_predicted_below": 236,
-      "actual_at_or_above_predicted_at_or_above": 239
+      "actual_below_predicted_at_or_above": 0,
+      "actual_at_or_above_predicted_below": 0,
+      "actual_at_or_above_predicted_at_or_above": 742
     },
     "uncertainty_half_width_80": 0.13340016694490853,
     "horizon": {
@@ -319,8 +319,9 @@
       }
     }
   },
-  "selection_metric": "cycle_macro_mae_within_5pct_then_simplest",
+  "selection_metric": "cycle_macro_mae_within_tolerance_then_simplest",
   "selection_tolerance_pct": 5.0,
+  "selection_note": "Select the simplest candidate within 5% of the best cycle-balanced MAE.",
   "global_feature_importance": [],
   "feature_importance_interpretation": "Formal coefficient importance is not available for the selected formula or baseline model.",
   "day14_backtest_metrics": {
@@ -328,14 +329,14 @@
     "mae": 0.09705648416435905,
     "rmse": 0.11053165648022238,
     "mean_error": 0.006222524328055812,
-    "target_side_accuracy": 0.29411764705882354,
-    "majority_side_accuracy": 0.5882352941176471,
-    "below_target_recall": 0.0,
-    "at_or_above_target_recall": 0.5,
-    "actual_at_or_above_target": 10,
-    "actual_below_target": 7,
-    "predicted_at_or_above_target": 12,
-    "predicted_below_target": 5
+    "target_side_accuracy": 1.0,
+    "majority_side_accuracy": 1.0,
+    "below_target_recall": NaN,
+    "at_or_above_target_recall": 1.0,
+    "actual_at_or_above_target": 17,
+    "actual_below_target": 0,
+    "predicted_at_or_above_target": 17,
+    "predicted_below_target": 0
   },
   "day14_backtest": [
     {

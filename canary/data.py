@@ -7,12 +7,24 @@ from io import BytesIO
 from pathlib import Path
 from typing import BinaryIO, Iterable
 
+import numpy as np
 import pandas as pd
 
 
 DAILY_SHEET = "Farm Harvest Data (Daily)"
 CYCLE_SHEET = "Farm Harvest Data (By Cycle)"
 TARGET_SHEET = "Target Weights"
+APPROVED_WEIGHT_TARGETS_G = {
+    # Day 0 is a working placement anchor retained from the existing farm curve;
+    # Doc Raymond's revised approved checkpoints begin on Day 7.
+    0: 40.0,
+    7: 170.0,
+    14: 380.0,
+    21: 800.0,
+    28: 1200.0,
+    35: 1800.0,
+}
+TEMPERATURE_SHEET = "Temperature"
 
 DAILY_REQUIRED = {
     "Harvest Cycle",
@@ -76,6 +88,8 @@ class DataQualityReport:
     duplicate_keys: int
     duplicate_rows_consolidated: int
     multi_environment_days: int
+    zone_aggregated_days: int
+    maximum_environment_sections: int
     production_conflict_keys: int
     operationally_missing_days: int
     incomplete_daily_records: int
@@ -153,7 +167,93 @@ def _validate_sheets(book: dict[str, pd.DataFrame]) -> None:
             )
 
 
-def _prepare_daily(raw: pd.DataFrame) -> tuple[pd.DataFrame, DataQualityReport]:
+def _prepare_environment(raw: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate building-level or Zone A/Zone B readings to building-day grain.
+
+    Section averages are combined using an unweighted mean because the source
+    workbook does not contain section-size weights.  Minimum and maximum values
+    retain the full observed building envelope.  Section-to-section spreads are
+    preserved as diagnostics but are not automatically used as model features.
+    """
+
+    environment = raw.copy().map(_normalize_blank).rename(
+        columns={
+            "Harvest Cycle": "cycle_id",
+            "Bldg.": "building_id",
+            "Age": "age_day",
+            "Date": "environment_record_date",
+            "Building Section": "environment_section",
+            "Min Temperature": "temperature_min_c",
+            "Max Temperature": "temperature_max_c",
+            "Average Temperature": "temperature_avg_c",
+            "Min Humidity ": "humidity_min_pct",
+            "Max Humidity": "humidity_max_pct",
+            "Average Humidity": "humidity_avg_pct",
+        }
+    )
+    for column in ["environment_section", *ENVIRONMENT_FIELDS]:
+        if column not in environment:
+            environment[column] = pd.NA
+    environment["cycle_id"] = environment["cycle_id"].astype("string").str.strip()
+    environment["building_id"] = environment["building_id"].map(_normalize_building)
+    environment["environment_record_date"] = pd.to_datetime(
+        environment["environment_record_date"], errors="coerce"
+    ).dt.normalize()
+    _as_numeric(environment, ["age_day", *ENVIRONMENT_FIELDS])
+    key = ["cycle_id", "building_id", "age_day"]
+    environment = environment.dropna(subset=key).copy()
+    environment["age_day"] = environment["age_day"].astype(int)
+    environment["has_environment_reading"] = environment[ENVIRONMENT_FIELDS].notna().any(axis=1)
+
+    rows: list[dict[str, object]] = []
+    for group_key, group in environment.groupby(key, sort=False, dropna=False):
+        observed = group.loc[group["has_environment_reading"]].copy()
+        labels = sorted(
+            {
+                str(value).strip()
+                for value in observed["environment_section"].dropna()
+                if str(value).strip()
+            }
+        )
+        section_count = int(len(observed))
+        temperature_averages = observed["temperature_avg_c"].dropna()
+        humidity_averages = observed["humidity_avg_pct"].dropna()
+        rows.append(
+            {
+                **dict(zip(key, group_key)),
+                "environment_record_date": _first_valid(group["environment_record_date"]),
+                "temperature_min_c": observed["temperature_min_c"].min(),
+                "temperature_max_c": observed["temperature_max_c"].max(),
+                "temperature_avg_c": temperature_averages.mean(),
+                "humidity_min_pct": observed["humidity_min_pct"].min(),
+                "humidity_max_pct": observed["humidity_max_pct"].max(),
+                "humidity_avg_pct": humidity_averages.mean(),
+                "environment_section_count": section_count,
+                "environment_sections": ", ".join(labels) if labels else "Building-level",
+                "zone_aggregated": section_count > 1,
+                "temperature_zone_spread_c": (
+                    float(temperature_averages.max() - temperature_averages.min())
+                    if len(temperature_averages) > 1
+                    else pd.NA
+                ),
+                "humidity_zone_spread_pct": (
+                    float(humidity_averages.max() - humidity_averages.min())
+                    if len(humidity_averages) > 1
+                    else pd.NA
+                ),
+                "environment_aggregation_method": (
+                    "Unweighted mean of section averages; envelope min/max"
+                    if section_count > 1
+                    else "Single building reading"
+                ),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _prepare_daily(
+    raw: pd.DataFrame, raw_environment: pd.DataFrame | None = None
+) -> tuple[pd.DataFrame, DataQualityReport]:
     daily = raw.copy()
     daily = daily.map(_normalize_blank)
     rename = {
@@ -246,6 +346,32 @@ def _prepare_daily(raw: pd.DataFrame) -> tuple[pd.DataFrame, DataQualityReport]:
         }
     )
     canonical = daily.groupby(key, as_index=False, sort=False).agg(aggregations)
+    if raw_environment is not None:
+        environment = _prepare_environment(raw_environment)
+        if not environment.empty:
+            environment_columns = [
+                *ENVIRONMENT_FIELDS,
+                "environment_record_date",
+                "environment_section_count",
+                "environment_sections",
+                "zone_aggregated",
+                "temperature_zone_spread_c",
+                "humidity_zone_spread_pct",
+                "environment_aggregation_method",
+            ]
+            canonical = canonical.drop(columns=ENVIRONMENT_FIELDS).merge(
+                environment[key + environment_columns],
+                on=key,
+                how="left",
+                validate="one_to_one",
+            )
+    if "environment_section_count" not in canonical:
+        canonical["environment_section_count"] = canonical[ENVIRONMENT_FIELDS].notna().any(axis=1).astype(int)
+        canonical["environment_sections"] = "Building-level"
+        canonical["zone_aggregated"] = canonical["source_row_count"] > 1 if "source_row_count" in canonical else False
+        canonical["temperature_zone_spread_c"] = pd.NA
+        canonical["humidity_zone_spread_pct"] = pd.NA
+        canonical["environment_aggregation_method"] = "Daily-sheet fallback aggregation"
     canonical["temperature_range_c"] = (
         canonical["temperature_max_c"] - canonical["temperature_min_c"]
     )
@@ -283,7 +409,7 @@ def _prepare_daily(raw: pd.DataFrame) -> tuple[pd.DataFrame, DataQualityReport]:
     warnings: list[str] = []
     if duplicate_rows_consolidated:
         warnings.append(
-            f"Consolidated {duplicate_rows_consolidated} repeated source row(s), primarily multiple environmental sections."
+            f"Consolidated {duplicate_rows_consolidated} repeated source row(s) created by multiple environmental sections. Section averages use an unweighted mean because section-size weights are unavailable."
         )
     operationally_missing = int((~canonical["operational_recorded"]).sum())
     if operationally_missing:
@@ -301,7 +427,9 @@ def _prepare_daily(raw: pd.DataFrame) -> tuple[pd.DataFrame, DataQualityReport]:
         unique_source_keys=unique_source_keys,
         duplicate_keys=duplicate_keys,
         duplicate_rows_consolidated=duplicate_rows_consolidated,
-        multi_environment_days=int(canonical["had_source_duplicates"].sum()),
+        multi_environment_days=int(canonical["zone_aggregated"].fillna(False).sum()),
+        zone_aggregated_days=int(canonical["zone_aggregated"].fillna(False).sum()),
+        maximum_environment_sections=int(canonical["environment_section_count"].fillna(0).max()),
         production_conflict_keys=len(conflict_keys),
         operationally_missing_days=operationally_missing,
         incomplete_daily_records=incomplete_daily,
@@ -367,18 +495,57 @@ def _prepare_targets(raw: pd.DataFrame, maximum_age: int) -> pd.DataFrame:
     targets["age_day"] = targets["age_day"].astype(int)
     targets = targets.drop_duplicates("age_day", keep="last").sort_values("age_day")
 
-    last_age = int(targets["age_day"].max())
-    last_target = float(targets.loc[targets["age_day"] == last_age, "target_weight_scaled_g"].iloc[0])
-    floor_target = max(last_target, 2000.0)
-    if maximum_age > last_age:
-        extension = pd.DataFrame(
-            {
-                "age_day": range(last_age + 1, maximum_age + 1),
-                "target_weight_scaled_g": floor_target,
-                "target_weight_linear_g": floor_target,
-            }
-        )
-        targets = pd.concat([targets, extension], ignore_index=True)
+    legacy_scaled = targets.set_index("age_day")["target_weight_scaled_g"].copy()
+
+    # Farm-approved checkpoint targets supersede the legacy checkpoint values.
+    # We retain two daily views: a straight-line interpolation and a smoothed
+    # curve that reuses the former farm curve's within-week proportional shape.
+    # Both hit every approved checkpoint exactly and remain flat after Day 35.
+    checkpoint_days = np.asarray(list(APPROVED_WEIGHT_TARGETS_G), dtype=float)
+    checkpoint_weights = np.asarray(list(APPROVED_WEIGHT_TARGETS_G.values()), dtype=float)
+    target_days = np.arange(0, max(maximum_age, 35) + 1, dtype=int)
+    linear = np.interp(target_days, checkpoint_days, checkpoint_weights)
+    smoothed = linear.copy()
+    checkpoint_items = list(APPROVED_WEIGHT_TARGETS_G.items())
+    for (start_day, start_weight), (end_day, end_weight) in zip(
+        checkpoint_items[:-1], checkpoint_items[1:]
+    ):
+        segment_days = np.arange(start_day, end_day + 1, dtype=int)
+        if start_day in legacy_scaled and end_day in legacy_scaled:
+            old_start = float(legacy_scaled.loc[start_day])
+            old_end = float(legacy_scaled.loc[end_day])
+            if old_end > old_start:
+                progress = (
+                    legacy_scaled.reindex(segment_days).interpolate().to_numpy(float)
+                    - old_start
+                ) / (old_end - old_start)
+            else:
+                progress = (segment_days - start_day) / (end_day - start_day)
+        else:
+            progress = (segment_days - start_day) / (end_day - start_day)
+        smoothed[segment_days] = start_weight + progress * (end_weight - start_weight)
+    targets = pd.DataFrame(
+        {
+            "age_day": target_days,
+            "target_weight_scaled_g": np.rint(smoothed),
+            "target_weight_linear_g": np.rint(linear),
+        }
+    )
+    targets["target_source"] = np.select(
+        [
+            targets["age_day"].eq(0),
+            targets["age_day"].isin([7, 14, 21, 28, 35]),
+            targets["age_day"].between(1, 34),
+        ],
+        [
+            "Working placement anchor retained from former farm curve",
+            "Farm-approved revised checkpoint",
+            "Estimated daily target; former curve shape rescaled between approved checkpoints",
+        ],
+        default="Day 35 target carried forward for post-milestone monitoring",
+    )
+    targets["daily_gain_scaled_g"] = targets["target_weight_scaled_g"].diff()
+    targets["daily_gain_linear_g"] = targets["target_weight_linear_g"].diff()
     targets["target_weight_kg"] = targets["target_weight_scaled_g"] / 1000.0
     return targets.reset_index(drop=True)
 
@@ -401,7 +568,7 @@ def load_workbook(
         raise WorkbookValidationError(f"Could not read the workbook: {exc}") from exc
 
     _validate_sheets(book)
-    daily, quality = _prepare_daily(book[DAILY_SHEET])
+    daily, quality = _prepare_daily(book[DAILY_SHEET], book.get(TEMPERATURE_SHEET))
     cycles = _prepare_cycles(book[CYCLE_SHEET])
     targets = _prepare_targets(book[TARGET_SHEET], int(daily["age_day"].max()))
 
