@@ -1,0 +1,582 @@
+{
+  "outcome": "weight",
+  "model_version": "weight-final-0.4.0",
+  "selected_model": "historical_mean",
+  "model_kind": "fitted",
+  "feature_schema_version": "features-0.3.0",
+  "feature_columns": [
+    "cycle_day",
+    "beginning_inventory",
+    "percentage_alive",
+    "cumulative_mortality_rate",
+    "mortality_daily_per_1000",
+    "mortality_recent_3d_per_1000",
+    "mortality_trend_delta_per_1000",
+    "feed_daily_per_1000_birds",
+    "feed_cumulative_per_1000_birds",
+    "latest_weight_kg",
+    "weight_target_kg",
+    "weight_gap_pct",
+    "weight_measurement_day",
+    "weight_staleness_days",
+    "temperature_recent_avg_c",
+    "humidity_recent_avg_pct",
+    "is_lags_building"
+  ],
+  "all_candidate_features": {
+    "trend_naive": [
+      "cycle_day",
+      "beginning_inventory",
+      "percentage_alive",
+      "cumulative_mortality_rate",
+      "mortality_daily_per_1000",
+      "mortality_recent_3d_per_1000",
+      "mortality_trend_delta_per_1000",
+      "feed_daily_per_1000_birds",
+      "feed_cumulative_per_1000_birds",
+      "latest_weight_kg",
+      "weight_target_kg",
+      "weight_gap_pct",
+      "weight_measurement_day",
+      "weight_staleness_days",
+      "temperature_recent_avg_c",
+      "humidity_recent_avg_pct",
+      "is_lags_building"
+    ],
+    "historical_mean": [
+      "cycle_day",
+      "beginning_inventory",
+      "percentage_alive",
+      "cumulative_mortality_rate",
+      "mortality_daily_per_1000",
+      "mortality_recent_3d_per_1000",
+      "mortality_trend_delta_per_1000",
+      "feed_daily_per_1000_birds",
+      "feed_cumulative_per_1000_birds",
+      "latest_weight_kg",
+      "weight_target_kg",
+      "weight_gap_pct",
+      "weight_measurement_day",
+      "weight_staleness_days",
+      "temperature_recent_avg_c",
+      "humidity_recent_avg_pct",
+      "is_lags_building"
+    ],
+    "ridge": [
+      "cycle_day",
+      "beginning_inventory",
+      "percentage_alive",
+      "cumulative_mortality_rate",
+      "mortality_daily_per_1000",
+      "mortality_recent_3d_per_1000",
+      "mortality_trend_delta_per_1000",
+      "feed_daily_per_1000_birds",
+      "feed_cumulative_per_1000_birds",
+      "latest_weight_kg",
+      "weight_target_kg",
+      "weight_gap_pct",
+      "weight_measurement_day",
+      "weight_staleness_days",
+      "temperature_recent_avg_c",
+      "humidity_recent_avg_pct",
+      "is_lags_building"
+    ],
+    "random_forest": [
+      "cycle_day",
+      "beginning_inventory",
+      "percentage_alive",
+      "cumulative_mortality_rate",
+      "mortality_daily_per_1000",
+      "mortality_recent_3d_per_1000",
+      "mortality_trend_delta_per_1000",
+      "feed_daily_per_1000_birds",
+      "feed_cumulative_per_1000_birds",
+      "latest_weight_kg",
+      "weight_target_kg",
+      "weight_gap_pct",
+      "weight_measurement_day",
+      "weight_staleness_days",
+      "temperature_recent_avg_c",
+      "humidity_recent_avg_pct",
+      "is_lags_building"
+    ]
+  },
+  "training_source": "FARM HARVEST DATA.xlsx + Farm Performance Summary.xlsx (final average weight only)",
+  "source_complete_date": "2026-07-25",
+  "training_cycles": [
+    "2025-2",
+    "2025-3",
+    "2025-4",
+    "2025-5",
+    "2026-1"
+  ],
+  "training_building_cycles": 17,
+  "training_snapshot_rows": 742,
+  "source_daily_snapshot_rows": 742,
+  "snapshot_sampling": "Every eligible leakage-safe daily snapshot",
+  "target": 2.0,
+  "label_definition": "Building-level Ave Live Weight (kg) from Farm Performance Summary.xlsx, used directly as the final-harvest label",
+  "status": "Prototype - cycle-held-out validation",
+  "metrics": {
+    "trend_naive": {
+      "mae": 0.5050548958374784,
+      "cycle_macro_mae": 0.46559339533834854,
+      "rmse": 0.6060330141397742,
+      "bias": -0.48599336097733525,
+      "fold_mae_std": 0.20241263276058763,
+      "target_side_accuracy": 0.4474393530997305,
+      "majority_side_accuracy": 0.6401617250673854,
+      "below_target_recall": 0.8164794007490637,
+      "at_or_above_target_recall": 0.24,
+      "confusion_matrix": {
+        "actual_below_predicted_below": 218,
+        "actual_below_predicted_at_or_above": 49,
+        "actual_at_or_above_predicted_below": 361,
+        "actual_at_or_above_predicted_at_or_above": 114
+      },
+      "uncertainty_half_width_80": 0.7656000000000003,
+      "horizon": {
+        "Days 1-7": {
+          "rows": 119,
+          "mae": 0.18007799976392402,
+          "rmse": 0.2974316616533165
+        },
+        "Days 8-14": {
+          "rows": 119,
+          "mae": 0.6626626956022097,
+          "rmse": 0.7257653221917757
+        },
+        "Days 15-21": {
+          "rows": 119,
+          "mae": 0.5680400065265794,
+          "rmse": 0.6406723921032909
+        },
+        "Day 22+": {
+          "rows": 385,
+          "mae": 0.5373190368472108,
+          "rmse": 0.6251545748313521
+        }
+      }
+    },
+    "historical_mean": {
+      "mae": 0.09327295366931873,
+      "cycle_macro_mae": 0.09823325383283713,
+      "rmse": 0.1068971068057327,
+      "bias": -0.006086604707310013,
+      "fold_mae_std": 0.03331605564998512,
+      "target_side_accuracy": 0.3221024258760108,
+      "majority_side_accuracy": 0.6401617250673854,
+      "below_target_recall": 0.0,
+      "at_or_above_target_recall": 0.5031578947368421,
+      "confusion_matrix": {
+        "actual_below_predicted_below": 0,
+        "actual_below_predicted_at_or_above": 267,
+        "actual_at_or_above_predicted_below": 236,
+        "actual_at_or_above_predicted_at_or_above": 239
+      },
+      "uncertainty_half_width_80": 0.13340016694490853,
+      "horizon": {
+        "Days 1-7": {
+          "rows": 119,
+          "mae": 0.09705648416435902,
+          "rmse": 0.11053165648022238
+        },
+        "Days 8-14": {
+          "rows": 119,
+          "mae": 0.09705648416435902,
+          "rmse": 0.11053165648022238
+        },
+        "Days 15-21": {
+          "rows": 119,
+          "mae": 0.09705648416435902,
+          "rmse": 0.11053165648022238
+        },
+        "Day 22+": {
+          "rows": 385,
+          "mae": 0.08976458902846314,
+          "rmse": 0.10341280839492346
+        }
+      }
+    },
+    "ridge": {
+      "mae": 0.31473975923675185,
+      "cycle_macro_mae": 0.26264791404872384,
+      "rmse": 0.5418504537439747,
+      "bias": 0.18828162584096397,
+      "fold_mae_std": 0.2003879596281178,
+      "target_side_accuracy": 0.42452830188679247,
+      "majority_side_accuracy": 0.6401617250673854,
+      "below_target_recall": 0.0449438202247191,
+      "at_or_above_target_recall": 0.6378947368421053,
+      "confusion_matrix": {
+        "actual_below_predicted_below": 12,
+        "actual_below_predicted_at_or_above": 255,
+        "actual_at_or_above_predicted_below": 172,
+        "actual_at_or_above_predicted_at_or_above": 303
+      },
+      "uncertainty_half_width_80": 0.2673036093606636,
+      "horizon": {
+        "Days 1-7": {
+          "rows": 119,
+          "mae": 0.3120711738888958,
+          "rmse": 0.5344611272781532
+        },
+        "Days 8-14": {
+          "rows": 119,
+          "mae": 0.30466515844934,
+          "rmse": 0.5291851495726969
+        },
+        "Days 15-21": {
+          "rows": 119,
+          "mae": 0.3000951391430438,
+          "rmse": 0.5269167997103937
+        },
+        "Day 22+": {
+          "rows": 385,
+          "mae": 0.32320508116207164,
+          "rmse": 0.5524366693116068
+        }
+      }
+    },
+    "random_forest": {
+      "mae": 0.11290990853462178,
+      "cycle_macro_mae": 0.1107555242182546,
+      "rmse": 0.13289100828182893,
+      "bias": -0.002891015497871812,
+      "fold_mae_std": 0.04517610910612847,
+      "target_side_accuracy": 0.42183288409703507,
+      "majority_side_accuracy": 0.6401617250673854,
+      "below_target_recall": 0.2808988764044944,
+      "at_or_above_target_recall": 0.5010526315789474,
+      "confusion_matrix": {
+        "actual_below_predicted_below": 75,
+        "actual_below_predicted_at_or_above": 192,
+        "actual_at_or_above_predicted_below": 237,
+        "actual_at_or_above_predicted_at_or_above": 238
+      },
+      "uncertainty_half_width_80": 0.18011476974790774,
+      "horizon": {
+        "Days 1-7": {
+          "rows": 119,
+          "mae": 0.10600214591243874,
+          "rmse": 0.1260439683688524
+        },
+        "Days 8-14": {
+          "rows": 119,
+          "mae": 0.10408412512290162,
+          "rmse": 0.12525066359099563
+        },
+        "Days 15-21": {
+          "rows": 119,
+          "mae": 0.10559026338142884,
+          "rmse": 0.12777885860860824
+        },
+        "Day 22+": {
+          "rows": 385,
+          "mae": 0.12003544035608785,
+          "rmse": 0.1386705659872976
+        }
+      }
+    }
+  },
+  "selected_metrics": {
+    "mae": 0.09327295366931873,
+    "cycle_macro_mae": 0.09823325383283713,
+    "rmse": 0.1068971068057327,
+    "bias": -0.006086604707310013,
+    "fold_mae_std": 0.03331605564998512,
+    "target_side_accuracy": 0.3221024258760108,
+    "majority_side_accuracy": 0.6401617250673854,
+    "below_target_recall": 0.0,
+    "at_or_above_target_recall": 0.5031578947368421,
+    "confusion_matrix": {
+      "actual_below_predicted_below": 0,
+      "actual_below_predicted_at_or_above": 267,
+      "actual_at_or_above_predicted_below": 236,
+      "actual_at_or_above_predicted_at_or_above": 239
+    },
+    "uncertainty_half_width_80": 0.13340016694490853,
+    "horizon": {
+      "Days 1-7": {
+        "rows": 119,
+        "mae": 0.09705648416435902,
+        "rmse": 0.11053165648022238
+      },
+      "Days 8-14": {
+        "rows": 119,
+        "mae": 0.09705648416435902,
+        "rmse": 0.11053165648022238
+      },
+      "Days 15-21": {
+        "rows": 119,
+        "mae": 0.09705648416435902,
+        "rmse": 0.11053165648022238
+      },
+      "Day 22+": {
+        "rows": 385,
+        "mae": 0.08976458902846314,
+        "rmse": 0.10341280839492346
+      }
+    }
+  },
+  "selection_metric": "cycle_macro_mae_within_5pct_then_simplest",
+  "selection_tolerance_pct": 5.0,
+  "global_feature_importance": [],
+  "feature_importance_interpretation": "Formal coefficient importance is not available for the selected formula or baseline model.",
+  "day14_backtest_metrics": {
+    "building_cycles": 17,
+    "mae": 0.09705648416435905,
+    "rmse": 0.11053165648022238,
+    "mean_error": 0.006222524328055812,
+    "target_side_accuracy": 0.29411764705882354,
+    "majority_side_accuracy": 0.5882352941176471,
+    "below_target_recall": 0.0,
+    "at_or_above_target_recall": 0.5,
+    "actual_at_or_above_target": 10,
+    "actual_below_target": 7,
+    "predicted_at_or_above_target": 12,
+    "predicted_below_target": 5
+  },
+  "day14_backtest": [
+    {
+      "cycle_id": "2025-2",
+      "building_id": "Tags 1",
+      "as_of_date": "2025-04-11",
+      "predicted": 2.0419086956521744,
+      "actual": 1.853,
+      "error": 0.18890869565217439,
+      "absolute_error": 0.18890869565217439
+    },
+    {
+      "cycle_id": "2025-2",
+      "building_id": "Tags 2",
+      "as_of_date": "2025-04-11",
+      "predicted": 2.0419086956521744,
+      "actual": 1.9348,
+      "error": 0.10710869565217429,
+      "absolute_error": 0.10710869565217429
+    },
+    {
+      "cycle_id": "2025-2",
+      "building_id": "Tags 3",
+      "as_of_date": "2025-04-11",
+      "predicted": 2.0419086956521744,
+      "actual": 1.9122,
+      "error": 0.12970869565217447,
+      "absolute_error": 0.12970869565217447
+    },
+    {
+      "cycle_id": "2025-3",
+      "building_id": "Lags 1",
+      "as_of_date": "2025-07-23",
+      "predicted": 1.9986851778656125,
+      "actual": 2.0431,
+      "error": -0.04441482213438741,
+      "absolute_error": 0.04441482213438741
+    },
+    {
+      "cycle_id": "2025-3",
+      "building_id": "Lags 2",
+      "as_of_date": "2025-07-29",
+      "predicted": 1.9986851778656125,
+      "actual": 2.0148,
+      "error": -0.01611482213438764,
+      "absolute_error": 0.01611482213438764
+    },
+    {
+      "cycle_id": "2025-3",
+      "building_id": "Tags 1",
+      "as_of_date": "2025-06-27",
+      "predicted": 1.9986851778656125,
+      "actual": 2.1437,
+      "error": -0.14501482213438743,
+      "absolute_error": 0.14501482213438743
+    },
+    {
+      "cycle_id": "2025-3",
+      "building_id": "Tags 2",
+      "as_of_date": "2025-06-27",
+      "predicted": 1.9986851778656125,
+      "actual": 2.1229,
+      "error": -0.1242148221343875,
+      "absolute_error": 0.1242148221343875
+    },
+    {
+      "cycle_id": "2025-3",
+      "building_id": "Tags 3",
+      "as_of_date": "2025-06-27",
+      "predicted": 1.9986851778656125,
+      "actual": 2.1167,
+      "error": -0.1180148221343873,
+      "absolute_error": 0.1180148221343873
+    },
+    {
+      "cycle_id": "2025-4",
+      "building_id": "Tags 1",
+      "as_of_date": "2025-09-09",
+      "predicted": 2.0206998330550916,
+      "actual": 2.0642,
+      "error": -0.043500166944908436,
+      "absolute_error": 0.043500166944908436
+    },
+    {
+      "cycle_id": "2025-4",
+      "building_id": "Tags 2",
+      "as_of_date": "2025-09-09",
+      "predicted": 2.0206998330550916,
+      "actual": 2.1541,
+      "error": -0.13340016694490853,
+      "absolute_error": 0.13340016694490853
+    },
+    {
+      "cycle_id": "2025-4",
+      "building_id": "Tags 3",
+      "as_of_date": "2025-09-09",
+      "predicted": 2.0206998330550916,
+      "actual": 1.9527,
+      "error": 0.0679998330550915,
+      "absolute_error": 0.0679998330550915
+    },
+    {
+      "cycle_id": "2025-5",
+      "building_id": "Tags 1",
+      "as_of_date": "2025-11-25",
+      "predicted": 2.052415217391304,
+      "actual": 1.9636,
+      "error": 0.08881521739130394,
+      "absolute_error": 0.08881521739130394
+    },
+    {
+      "cycle_id": "2025-5",
+      "building_id": "Tags 2",
+      "as_of_date": "2025-11-25",
+      "predicted": 2.052415217391304,
+      "actual": 1.9527,
+      "error": 0.09971521739130385,
+      "absolute_error": 0.09971521739130385
+    },
+    {
+      "cycle_id": "2025-5",
+      "building_id": "Tags 3",
+      "as_of_date": "2025-11-25",
+      "predicted": 2.052415217391304,
+      "actual": 1.8568,
+      "error": 0.19561521739130394,
+      "absolute_error": 0.19561521739130394
+    },
+    {
+      "cycle_id": "2026-1",
+      "building_id": "Tags 1",
+      "as_of_date": "2026-02-13",
+      "predicted": 2.0180285953177255,
+      "actual": 2.0476,
+      "error": -0.029571404682274594,
+      "absolute_error": 0.029571404682274594
+    },
+    {
+      "cycle_id": "2026-1",
+      "building_id": "Tags 2",
+      "as_of_date": "2026-02-13",
+      "predicted": 2.0180285953177255,
+      "actual": 2.0391,
+      "error": -0.02107140468227442,
+      "absolute_error": 0.02107140468227442
+    },
+    {
+      "cycle_id": "2026-1",
+      "building_id": "Tags 3",
+      "as_of_date": "2026-02-13",
+      "predicted": 2.0180285953177255,
+      "actual": 2.1148,
+      "error": -0.0967714046822743,
+      "absolute_error": 0.0967714046822743
+    }
+  ],
+  "verified_outcomes": [
+    {
+      "cycle_id": "2025-2",
+      "building_id": "Tags 1",
+      "final_average_weight_kg": 1.853
+    },
+    {
+      "cycle_id": "2025-2",
+      "building_id": "Tags 2",
+      "final_average_weight_kg": 1.9348
+    },
+    {
+      "cycle_id": "2025-2",
+      "building_id": "Tags 3",
+      "final_average_weight_kg": 1.9122
+    },
+    {
+      "cycle_id": "2025-3",
+      "building_id": "Lags 1",
+      "final_average_weight_kg": 2.0431
+    },
+    {
+      "cycle_id": "2025-3",
+      "building_id": "Lags 2",
+      "final_average_weight_kg": 2.0148
+    },
+    {
+      "cycle_id": "2025-3",
+      "building_id": "Tags 1",
+      "final_average_weight_kg": 2.1437
+    },
+    {
+      "cycle_id": "2025-3",
+      "building_id": "Tags 2",
+      "final_average_weight_kg": 2.1229
+    },
+    {
+      "cycle_id": "2025-3",
+      "building_id": "Tags 3",
+      "final_average_weight_kg": 2.1167
+    },
+    {
+      "cycle_id": "2025-4",
+      "building_id": "Tags 1",
+      "final_average_weight_kg": 2.0642
+    },
+    {
+      "cycle_id": "2025-4",
+      "building_id": "Tags 2",
+      "final_average_weight_kg": 2.1541
+    },
+    {
+      "cycle_id": "2025-4",
+      "building_id": "Tags 3",
+      "final_average_weight_kg": 1.9527
+    },
+    {
+      "cycle_id": "2025-5",
+      "building_id": "Tags 1",
+      "final_average_weight_kg": 1.9636
+    },
+    {
+      "cycle_id": "2025-5",
+      "building_id": "Tags 2",
+      "final_average_weight_kg": 1.9527
+    },
+    {
+      "cycle_id": "2025-5",
+      "building_id": "Tags 3",
+      "final_average_weight_kg": 1.8568
+    },
+    {
+      "cycle_id": "2026-1",
+      "building_id": "Tags 1",
+      "final_average_weight_kg": 2.0476
+    },
+    {
+      "cycle_id": "2026-1",
+      "building_id": "Tags 2",
+      "final_average_weight_kg": 2.0391
+    },
+    {
+      "cycle_id": "2026-1",
+      "building_id": "Tags 3",
+      "final_average_weight_kg": 2.1148
+    }
+  ]
+}

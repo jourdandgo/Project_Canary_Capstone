@@ -21,7 +21,7 @@ Thank you for already confirming these three items:
 The risk score is separate from the forecasts. Canary checks four warning signs and gives each one **0 to 3 points**:
 
 1. **Weight gap:** how far the latest measured weight is below the target for that bird age. Current point boundaries are 5%, 15%, and 30% below target.
-2. **Survival path:** how far the percentage alive is below the expected path toward the 95% goal. The allowance is tighter for young birds and wider later in the cycle.
+2. **Survival reference gap:** how far the percentage alive is below a temporary straight-line reference toward 95% on Day 35. For example, the Day 22 reference is 96.86%. This is a configurable management assumption—not a biological curve—and we need your approval or correction.
 3. **Mortality trend:** whether the latest three days of mortality are worse than the preceding seven-day pattern, with age-adjusted thresholds.
 4. **Peer comparison:** whether the building is performing worse than other buildings of a similar age.
 

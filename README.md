@@ -70,7 +70,7 @@ uv run streamlit run app.py
 
 When the app lives inside the Project Canary folder, it automatically finds `../FARM HARVEST DATA.xlsx`. A different default workbook can be supplied with `CANARY_DEFAULT_WORKBOOK`.
 
-For GitHub or Streamlit Community Cloud, the raw farm workbooks are intentionally excluded. Upload the daily farm workbook through **Farm workbook** and, when completed-cycle actual average weights are needed, upload `Farm Performance Summary.xlsx` through **Final-weight workbook (optional)**. See [DEPLOYMENT.md](DEPLOYMENT.md).
+The GitHub/Streamlit capstone package may bundle an approved current daily workbook and final-weight summary under `data/` so the dashboard opens immediately. A newer daily workbook can be supplied through **Update daily farm data (optional)**, and a newer final-weight summary through **Update final-weight data (optional)**. An upload replaces the bundled file only for that session. See [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Test
 

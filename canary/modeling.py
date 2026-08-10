@@ -56,6 +56,11 @@ RECOVERY_NO_WEIGHT_FEATURE_COLUMNS = [
     if column not in WEIGHT_PROGRESS_FEATURES
     and column != "cumulative_mortality_rate"
 ]
+RECOVERY_CORE_FEATURE_COLUMNS = [
+    column
+    for column in RECOVERY_NO_WEIGHT_FEATURE_COLUMNS
+    if column not in {"beginning_inventory", "is_lags_building"}
+]
 RECOVERY_DECISION_DAYS = (7, 14, 21, 28)
 
 
@@ -473,10 +478,12 @@ def train_outcome_model(
     groups = snapshots["cycle_id"].astype(str).to_numpy()
     candidates = ["trend_naive", "historical_mean", "ridge", "random_forest"]
     if outcome == "recovery":
-        candidates.append("ridge_no_weight")
+        candidates.extend(["ridge_no_weight", "ridge_core"])
     candidate_features = {
         candidate: (
-            RECOVERY_NO_WEIGHT_FEATURE_COLUMNS
+            RECOVERY_CORE_FEATURE_COLUMNS
+            if candidate == "ridge_core"
+            else RECOVERY_NO_WEIGHT_FEATURE_COLUMNS
             if candidate == "ridge_no_weight"
             else FEATURE_COLUMNS
         )
@@ -494,7 +501,11 @@ def train_outcome_model(
                 raw = snapshots.iloc[test_index][column].to_numpy(float)
                 prediction = np.where(np.isnan(raw), fallback, raw)
             else:
-                model = _pipeline("ridge" if candidate == "ridge_no_weight" else candidate)
+                model = _pipeline(
+                    "ridge"
+                    if candidate in {"ridge_no_weight", "ridge_core"}
+                    else candidate
+                )
                 columns = candidate_features[candidate]
                 model.fit(x.iloc[train_index][columns], y[train_index])
                 prediction = model.predict(x.iloc[test_index][columns])
@@ -568,6 +579,7 @@ def train_outcome_model(
     simplicity_order = [
         "trend_naive",
         "historical_mean",
+        "ridge_core",
         "ridge_no_weight",
         "ridge",
         "random_forest",
@@ -617,19 +629,21 @@ def train_outcome_model(
     if selected == "trend_naive":
         final_model = None
     else:
-        final_model = _pipeline("ridge" if selected == "ridge_no_weight" else selected)
+        final_model = _pipeline(
+            "ridge" if selected in {"ridge_no_weight", "ridge_core"} else selected
+        )
         final_model.fit(x[candidate_features[selected]], y)
 
     global_feature_importance = (
         _ridge_importance(final_model, candidate_features[selected])
-        if selected in {"ridge", "ridge_no_weight"}
+        if selected in {"ridge", "ridge_no_weight", "ridge_core"}
         else []
     )
 
     manifest = {
         "outcome": outcome,
         "model_version": (
-            "recovery-0.5.0"
+            "recovery-0.6.0"
             if outcome == "recovery"
             else ("weight-final-0.4.0" if final_weight_labels is not None else "weight-proxy-0.3.0")
         ),

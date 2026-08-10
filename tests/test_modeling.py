@@ -121,11 +121,15 @@ def test_training_selects_best_validated_candidate_and_versions_artifact(dataset
         for metrics in recovery.manifest["metrics"].values()
     )
     assert recovery.manifest["selected_metrics"]["cycle_macro_mae"] <= best_macro * 1.05
-    assert recovery.selected_model == "ridge_no_weight"
-    assert recovery.manifest["model_version"] == "recovery-0.5.0"
+    assert recovery.selected_model == "ridge_core"
+    assert recovery.manifest["model_version"] == "recovery-0.6.0"
     assert recovery.manifest["training_snapshot_rows"] <= 25 * 5
     assert recovery.manifest["source_daily_snapshot_rows"] > recovery.manifest["training_snapshot_rows"]
     assert "ridge_no_weight" in recovery.manifest["metrics"]
+    assert "ridge_core" in recovery.manifest["metrics"]
+    assert "beginning_inventory" not in recovery.manifest["feature_columns"]
+    assert "is_lags_building" not in recovery.manifest["feature_columns"]
+    assert "percentage_alive" in recovery.manifest["feature_columns"]
     assert set(recovery.manifest["feature_columns"]).issubset(FEATURE_COLUMNS)
     assert recovery.manifest["selected_metrics"]["mae"] < 0.02
     assert recovery.manifest["day14_backtest_metrics"]["building_cycles"] == 25

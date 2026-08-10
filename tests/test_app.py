@@ -20,8 +20,8 @@ def test_dashboard_renders_without_streamlit_errors(monkeypatch):
 
     assert not app.exception
     assert [uploader.label for uploader in app.file_uploader] == [
-        "Farm workbook",
-        "Final-weight workbook (optional)",
+        "Update daily farm data (optional)",
+        "Update final-weight data (optional)",
     ]
     cycle = next(widget for widget in app.selectbox if widget.label == "Harvest cycle")
     as_of = next(widget for widget in app.date_input if widget.label == "Review date")

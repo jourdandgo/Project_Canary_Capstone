@@ -369,6 +369,7 @@ def recovery_feature_contributions(
     if feature is None or model is None or manifest["selected_model"] not in {
         "ridge",
         "ridge_no_weight",
+        "ridge_core",
     }:
         return pd.DataFrame()
 

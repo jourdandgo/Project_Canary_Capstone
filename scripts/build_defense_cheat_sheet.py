@@ -338,6 +338,9 @@ def build() -> Path:
         elif line.startswith("> "):
             table = doc.add_table(rows=1, cols=1)
             set_table_geometry(table, [9360])
+            row_props = table.rows[0]._tr.get_or_add_trPr()
+            cant_split = OxmlElement("w:cantSplit")
+            row_props.append(cant_split)
             cell = table.cell(0, 0)
             set_cell_fill(cell, "F2F8D9")
             p = cell.paragraphs[0]

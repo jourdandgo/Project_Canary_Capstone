@@ -174,7 +174,11 @@ st.markdown(
 
 def _default_workbook() -> Path:
     configured = os.getenv("CANARY_DEFAULT_WORKBOOK")
-    return Path(configured).expanduser() if configured else Path(__file__).resolve().parent.parent / "FARM HARVEST DATA.xlsx"
+    if configured:
+        return Path(configured).expanduser()
+    app_root = Path(__file__).resolve().parent
+    bundled = app_root / "data" / "FARM HARVEST DATA.xlsx"
+    return bundled if bundled.exists() else app_root.parent / "FARM HARVEST DATA.xlsx"
 
 
 def _default_performance_workbook() -> Path:
@@ -302,10 +306,17 @@ def _candidate_metrics_table(manifest: dict[str, object], outcome: str) -> pd.Da
     rows = []
     factor = 100 if outcome == "recovery" else 1
     unit = "percentage points" if outcome == "recovery" else "kg"
+    candidate_names = {
+        "trend_naive": "Current-survival projection",
+        "ridge_core": "Compact Ridge",
+        "ridge_no_weight": "Ridge without weight",
+        "ridge": "Ridge with all tested inputs",
+        "random_forest": "Random Forest",
+    }
     for candidate, metrics in manifest["metrics"].items():
         rows.append(
             {
-                "Candidate": candidate.replace("_", " ").title(),
+                "Candidate": candidate_names.get(candidate, candidate.replace("_", " ").title()),
                 "Selected": "Yes" if candidate == manifest["selected_model"] else "",
                 f"MAE ({unit})": round(float(metrics["mae"]) * factor, 3),
                 f"Cycle-balanced MAE ({unit})": round(
@@ -645,7 +656,7 @@ def _card_driver(row: pd.Series) -> str:
     if leading == "weight" and pd.notna(row.get("weight_gap_pct")):
         return f"Weight is {abs(float(row['weight_gap_pct'])):.1f}% below its age-specific target."
     if leading == "survival" and pd.notna(row.get("survival_gap_pp")):
-        return f"Survival is {abs(float(row['survival_gap_pp'])):.1f} points below the expected path."
+        return f"Survival is {abs(float(row['survival_gap_pp'])):.1f} points below the provisional Day 35 reference path."
     if leading == "mortality":
         return "Recent mortality level or trend is above the current rule threshold."
     if leading == "peer":
@@ -843,11 +854,15 @@ def _building_card(row: pd.Series) -> str:
 
 with st.sidebar:
     st.header("Choose what to review")
-    uploaded = st.file_uploader("Farm workbook", type=["xlsx"], help="Canary reads the file but never changes it.")
-    uploaded_performance = st.file_uploader(
-        "Final-weight workbook (optional)",
+    uploaded = st.file_uploader(
+        "Update daily farm data (optional)",
         type=["xlsx"],
-        help="Upload Farm Performance Summary.xlsx to show actual final average weights for completed cycles. Canary reads only its final average-weight field.",
+        help="The app starts with its bundled capstone data. Upload a newer standardized FARM HARVEST DATA.xlsx to replace it for this session and recalculate the dashboard.",
+    )
+    uploaded_performance = st.file_uploader(
+        "Update final-weight data (optional)",
+        type=["xlsx"],
+        help="The bundled final-weight summary is used by default. Upload a newer Farm Performance Summary.xlsx to replace it for this session. Canary reads only its final average-weight field.",
     )
 
 try:
@@ -857,7 +872,7 @@ try:
     else:
         default_path = _default_workbook()
         if not default_path.exists():
-            st.info("Upload FARM HARVEST DATA.xlsx to begin.")
+            st.info("No bundled farm data was found. Upload FARM HARVEST DATA.xlsx to begin.")
             st.stop()
         dataset = _load_path(str(default_path), default_path.stat().st_mtime_ns)
         source_description = default_path.name
@@ -2466,10 +2481,12 @@ if selected_view == VIEW_METHODS:
     )
 
     with recovery_tab:
-        recovery_name = (
-            "Ridge regression (without weight inputs)"
-            if recovery_manifest["selected_model"] == "ridge_no_weight"
-            else recovery_manifest["selected_model"].replace("_", " ").title()
+        recovery_name = {
+            "ridge_core": "Compact Ridge regression",
+            "ridge_no_weight": "Ridge regression (without weight inputs)",
+        }.get(
+            recovery_manifest["selected_model"],
+            recovery_manifest["selected_model"].replace("_", " ").title(),
         )
         st.subheader(f"Recovery model: {recovery_name}")
         st.dataframe(
@@ -2477,8 +2494,8 @@ if selected_view == VIEW_METHODS:
                 [
                     {"Workflow": "Business question", "Plain-language explanation": "Given what is known on the review date, what last-recorded recovery should we expect for this building?"},
                     {"Workflow": "Goal / Y", "Plain-language explanation": "Estimate each building’s recovery at harvest. Historical proxy: population on the last recorded date ÷ beginning population."},
-                    {"Workflow": "Inputs / X", "Plain-language explanation": "Age, building group, survival, mortality, feed, and available environment signals known on the review date."},
-                    {"Workflow": "Methods tried", "Plain-language explanation": "Historical mean, Ridge regression with weight signals, and Ridge regression without weight signals."},
+                    {"Workflow": "Inputs / X", "Plain-language explanation": "Age, current survival, mortality, feed, and available temperature/humidity signals known on the review date."},
+                    {"Workflow": "Methods tried", "Plain-language explanation": "Current-survival projection, historical mean, three Ridge variants, and Random Forest."},
                     {"Workflow": "Fair comparison", "Plain-language explanation": "Leave one complete cycle out, predict it, and repeat. No daily row from that cycle remains in training."},
                     {"Workflow": "Winner", "Plain-language explanation": f"{recovery_name}; simplest method within 5% of the best cycle-balanced error."},
                 ]
@@ -2519,7 +2536,7 @@ if selected_view == VIEW_METHODS:
         selected_recovery_features = set(recovery_manifest["feature_columns"])
         recovery_features = pd.DataFrame(
             [
-                {"Feature group": "Flock timing and identity", "Inputs": "Cycle day, beginning inventory, Tags/Lags indicator"},
+                {"Feature group": "Flock timing", "Inputs": "Cycle day"},
                 {"Feature group": "Survival and mortality", "Inputs": "% alive, daily mortality, recent 3-day mortality, mortality trend"},
                 {"Feature group": "Feed", "Inputs": "Daily and cumulative feed per 1,000 birds"},
                 {"Feature group": "Weight progress", "Inputs": "Tested, but excluded from the winner because held-out accuracy did not improve"},
@@ -2528,7 +2545,7 @@ if selected_view == VIEW_METHODS:
         )
         st.dataframe(recovery_features, hide_index=True, width="stretch")
         st.caption(
-            f"Selected model uses {len(selected_recovery_features)} inputs. It intentionally excludes weight-progress inputs because they did not improve held-out MAE, and removes the mathematically redundant cumulative-mortality-rate copy. Missing numeric inputs are filled from the training-data median and marked with missing-value indicators."
+            f"Selected model uses {len(selected_recovery_features)} inputs. It excludes weight progress, raw beginning inventory, and the Tags/Lags identity because they did not improve the defensible held-out result. Current survival remains because final recovery uses the same beginning-population denominator and can only stay level or fall. Missing numeric inputs are filled from the training-data median and marked with missing-value indicators."
         )
         st.markdown("**Which inputs the selected recovery model relies on**")
         global_importance = _global_recovery_importance_table(recovery_manifest)
@@ -2664,7 +2681,7 @@ if selected_view == VIEW_METHODS:
                     {"Workflow": "Business question", "Plain-language explanation": "Given the latest measured weight, what average building weight should we expect on Day 35?"},
                     {"Workflow": "Goal / Y", "Plain-language explanation": "Estimate the building’s recorded average liveweight specifically on production Day 35."},
                     {"Workflow": "Inputs / X", "Plain-language explanation": "Latest measured weight, weighing day, target progress, and recent gain when available."},
-                    {"Workflow": "Methods tried", "Plain-language explanation": "Historical remaining gain, recent straight-line ADG, and compact Ridge regression."},
+                    {"Workflow": "Methods tried", "Plain-language explanation": "Historical mean, target-ratio, recent ADG, historical remaining gain, Ridge, Random Forest, and gradient-boosted trees."},
                     {"Workflow": "Fair comparison", "Plain-language explanation": "Hold out one complete cycle at a time and compare error in grams on unseen buildings."},
                     {"Workflow": "Winner", "Plain-language explanation": "Age-aware historical remaining gain; transparent and within 5% of the best cycle-balanced result."},
                 ]
@@ -2745,6 +2762,8 @@ if selected_view == VIEW_METHODS:
 
             Canary also trained a compact Ridge regression using age, current weight, progress against the target curve,
             and recent ADG. Ridge reached **{day35_candidates.get('ridge_regression', wmetrics)['mae_kg'] * 1000:.0f} g MAE**—close, but not better.
+            Random Forest and gradient boosting reached **{day35_candidates.get('random_forest', wmetrics)['mae_kg'] * 1000:.0f} g** and
+            **{day35_candidates.get('gradient_boosting', wmetrics)['mae_kg'] * 1000:.0f} g MAE**, respectively, and were less accurate on unseen cycles.
             Ridge had the slightly lowest cycle-balanced MAE, but the difference was only about 1%.
             Under Canary's simple-winner rule, the transparent remaining-gain method remains the winner because it is within 5% of the best cycle-balanced result, has lower overall row-level MAE, and is easier to explain.
             """
@@ -2812,8 +2831,8 @@ if selected_view == VIEW_METHODS:
                     },
                     {
                         "Check": "Survival position",
-                        "Calculation": "Shortfall from the assumed path to 95% by Day 35",
-                        "Operational meaning": "How much cumulative survival loss is already visible?",
+                        "Calculation": "Shortfall from a provisional straight-line reference to 95% by Day 35",
+                        "Operational meaning": "How much of the allowed cumulative loss has already been used?",
                     },
                     {
                         "Check": "Mortality momentum",
@@ -2836,8 +2855,8 @@ if selected_view == VIEW_METHODS:
             "Canary therefore does not claim that the risk label predicts the final target result; the two separate forecast layers estimate outcomes."
         )
         st.info(
-            "Design review: keep all four checks for now because they answer different operational questions and match the agreed scope. "
-            "Survival and mortality are related, while peer context may repeat the same underlying signal. Their thresholds and additive points remain provisional until farm approval and calibration."
+            "Design review: keep all four checks for the capstone because they match the agreed outcome-warning scope and remain fully traceable. "
+            "Use operating-condition alerts—temperature, humidity, feed, and eventually water—as a separate possible-cause and action layer. This avoids claiming that an environmental reading caused an outcome when coverage and thresholds are still incomplete."
         )
         st.markdown("**Straight recommendation for the next scoring version**")
         st.dataframe(
@@ -2846,7 +2865,8 @@ if selected_view == VIEW_METHODS:
                     {"Decision": "Keep now", "Recommendation": "Retain weight, survival, mortality trend, and peer context for the capstone because each is traceable and matches the agreed scope."},
                     {"Decision": "Validate next", "Recommendation": "Add an absolute daily-mortality guardrail so a persistently high level cannot look safe merely because it is no longer rising."},
                     {"Decision": "Validate next", "Recommendation": "Test whether peer context should add all 0–3 points or act as a smaller modifier, because it can repeat the same weight, survival, or mortality signal."},
-                    {"Decision": "Do not add yet", "Recommendation": "Do not put temperature, humidity, THI, feed, or water directly into the score until their age-based thresholds and units are approved."},
+                    {"Decision": "Use now as action evidence", "Recommendation": "Show temperature, humidity, and feed exceptions as specific operating alerts that can replace a vague owner-facing reason and next check."},
+                    {"Decision": "Do not score yet", "Recommendation": "Do not add environment, THI, or water points until coverage, units, age-based thresholds, and a poultry-specific THI rule are approved."},
                 ]
             ),
             hide_index=True,

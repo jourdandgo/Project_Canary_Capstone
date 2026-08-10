@@ -10,8 +10,11 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.ensemble import HistGradientBoostingRegressor, RandomForestRegressor
+from sklearn.impute import SimpleImputer
 from sklearn.linear_model import Ridge
 from sklearn.model_selection import LeaveOneGroupOut
+from sklearn.pipeline import Pipeline
 
 from .data import CanaryDataset
 
@@ -131,6 +134,8 @@ def train_day35_weight_baseline(dataset: CanaryDataset) -> dict[str, Any]:
         "recent_linear_adg",
         "historical_remaining_gain",
         "ridge_regression",
+        "random_forest",
+        "gradient_boosting",
     )
     predictions = {candidate: np.full(len(rows), np.nan) for candidate in candidates}
     groups = rows["cycle_id"].to_numpy(str)
@@ -167,6 +172,38 @@ def train_day35_weight_baseline(dataset: CanaryDataset) -> dict[str, Any]:
         predictions["ridge_regression"][test_index] = ridge.predict(
             (ridge_test - means) / scales
         )
+        tree_candidates = {
+            "random_forest": RandomForestRegressor(
+                n_estimators=500,
+                max_depth=3,
+                min_samples_leaf=3,
+                random_state=42,
+                n_jobs=1,
+            ),
+            "gradient_boosting": HistGradientBoostingRegressor(
+                max_iter=150,
+                max_leaf_nodes=7,
+                min_samples_leaf=8,
+                l2_regularization=1.0,
+                random_state=42,
+            ),
+        }
+        for name, estimator in tree_candidates.items():
+            model = Pipeline(
+                [
+                    (
+                        "imputer",
+                        SimpleImputer(
+                            strategy="median",
+                            add_indicator=True,
+                            keep_empty_features=True,
+                        ),
+                    ),
+                    ("model", estimator),
+                ]
+            )
+            model.fit(ridge_features.iloc[train_index], rows.iloc[train_index]["actual_day35_weight_kg"])
+            predictions[name][test_index] = model.predict(ridge_features.iloc[test_index])
 
     actual = rows["actual_day35_weight_kg"].to_numpy(float)
     candidate_metrics: dict[str, dict[str, object]] = {}
@@ -206,6 +243,8 @@ def train_day35_weight_baseline(dataset: CanaryDataset) -> dict[str, Any]:
         "historical_remaining_gain",
         "recent_linear_adg",
         "ridge_regression",
+        "random_forest",
+        "gradient_boosting",
     )
     selected = next(name for name in simplicity_order if name in eligible)
     selected_predictions = np.clip(predictions[selected], 0.1, 3.5)
@@ -266,7 +305,7 @@ def train_day35_weight_baseline(dataset: CanaryDataset) -> dict[str, Any]:
     }
     return {
         "outcome": "day35_average_liveweight",
-        "model_version": "day35-weight-0.2.0",
+        "model_version": "day35-weight-0.3.0",
         "selected_model": selected,
         "model_kind": "formula",
         "target_day": 35,

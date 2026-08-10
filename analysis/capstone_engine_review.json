@@ -1,0 +1,319 @@
+{
+  "report": "Project Canary engine review",
+  "generated_at_utc": "2026-08-09T12:24:30.217664+00:00",
+  "survival_path_formula": "1 - (1 - 0.95) * min(age, 35) / 35",
+  "data_quality": {
+    "temperature_coverage_pct": 42.37695078031212,
+    "humidity_coverage_pct": 40.57623049219688,
+    "weight_measurement_days": 137,
+    "operationally_missing_days": 227
+  },
+  "duplicates": {
+    "source_rows": 1785,
+    "canonical_rows": 1666,
+    "duplicate_keys": 119,
+    "rows_consolidated": 119,
+    "production_conflicts": 0,
+    "summary": [
+      {
+        "Harvest Cycle": "2026-2",
+        "Bldg.": "Lags 1",
+        "duplicate_days": 30,
+        "first_day": 1,
+        "last_day": 30
+      },
+      {
+        "Harvest Cycle": "2026-2",
+        "Bldg.": "Lags 2",
+        "duplicate_days": 22,
+        "first_day": 1,
+        "last_day": 22
+      },
+      {
+        "Harvest Cycle": "2026-2",
+        "Bldg.": "Lags 3",
+        "duplicate_days": 16,
+        "first_day": 1,
+        "last_day": 16
+      },
+      {
+        "Harvest Cycle": "2026-3",
+        "Bldg.": "Tags 1",
+        "duplicate_days": 17,
+        "first_day": 1,
+        "last_day": 17
+      },
+      {
+        "Harvest Cycle": "2026-3",
+        "Bldg.": "Tags 2",
+        "duplicate_days": 17,
+        "first_day": 1,
+        "last_day": 17
+      },
+      {
+        "Harvest Cycle": "2026-3",
+        "Bldg.": "Tags 3",
+        "duplicate_days": 17,
+        "first_day": 1,
+        "last_day": 17
+      }
+    ],
+    "examples": [
+      {
+        "Harvest Cycle": "2026-2",
+        "Bldg.": "Lags 1",
+        "Age": 1,
+        "Date": "2026-06-02 00:00:00",
+        "Beginning Inventory": 11190,
+        "Population": 11174,
+        "mortality_daily": 16.0,
+        "feedconsumption_daily": 2.0,
+        "Bodyweight (kgs)": null,
+        "Min Temperature": 30.1,
+        "Max Temperature": 34.1,
+        "Average Temperature": 31.8532773109243,
+        "Min Humidity ": 66.1,
+        "Max Humidity": 94.1,
+        "Average Humidity": 83.6852100840336
+      },
+      {
+        "Harvest Cycle": "2026-2",
+        "Bldg.": "Lags 1",
+        "Age": 1,
+        "Date": "2026-06-02 00:00:00",
+        "Beginning Inventory": 11190,
+        "Population": 11174,
+        "mortality_daily": 16.0,
+        "feedconsumption_daily": 2.0,
+        "Bodyweight (kgs)": null,
+        "Min Temperature": 31.1,
+        "Max Temperature": 35.4,
+        "Average Temperature": 33.1220168067227,
+        "Min Humidity ": 62.4,
+        "Max Humidity": 84.6,
+        "Average Humidity": 76.9285714285714
+      },
+      {
+        "Harvest Cycle": "2026-2",
+        "Bldg.": "Lags 1",
+        "Age": 2,
+        "Date": "2026-06-03 00:00:00",
+        "Beginning Inventory": 11190,
+        "Population": 11160,
+        "mortality_daily": 14.0,
+        "feedconsumption_daily": 2.0,
+        "Bodyweight (kgs)": null,
+        "Min Temperature": 29.2,
+        "Max Temperature": 35.9,
+        "Average Temperature": 31.2742370475514,
+        "Min Humidity ": 73.7,
+        "Max Humidity": 95.4,
+        "Average Humidity": 89.8459900638751
+      },
+      {
+        "Harvest Cycle": "2026-2",
+        "Bldg.": "Lags 1",
+        "Age": 2,
+        "Date": "2026-06-03 00:00:00",
+        "Beginning Inventory": 11190,
+        "Population": 11160,
+        "mortality_daily": 14.0,
+        "feedconsumption_daily": 2.0,
+        "Bodyweight (kgs)": null,
+        "Min Temperature": 30.6,
+        "Max Temperature": 37.1,
+        "Average Temperature": 32.5037562012757,
+        "Min Humidity ": 69.0,
+        "Max Humidity": 86.6,
+        "Average Humidity": 81.1677533664068
+      },
+      {
+        "Harvest Cycle": "2026-2",
+        "Bldg.": "Lags 1",
+        "Age": 3,
+        "Date": "2026-06-04 00:00:00",
+        "Beginning Inventory": 11190,
+        "Population": 11139,
+        "mortality_daily": 21.0,
+        "feedconsumption_daily": 3.0,
+        "Bodyweight (kgs)": 0.065,
+        "Min Temperature": 30.0,
+        "Max Temperature": 36.5,
+        "Average Temperature": 32.6862499999999,
+        "Min Humidity ": 62.4,
+        "Max Humidity": 86.3,
+        "Average Humidity": 78.6676388888891
+      },
+      {
+        "Harvest Cycle": "2026-2",
+        "Bldg.": "Lags 1",
+        "Age": 3,
+        "Date": "2026-06-04 00:00:00",
+        "Beginning Inventory": 11190,
+        "Population": 11139,
+        "mortality_daily": 21.0,
+        "feedconsumption_daily": 3.0,
+        "Bodyweight (kgs)": 0.065,
+        "Min Temperature": 29.2,
+        "Max Temperature": 35.4,
+        "Average Temperature": 31.7289583333334,
+        "Min Humidity ": 65.3,
+        "Max Humidity": 95.7,
+        "Average Humidity": 84.9510416666666
+      }
+    ]
+  },
+  "recovery_ablation": {
+    "building_outcomes": 25,
+    "checkpoint_rows": 122,
+    "cycles": [
+      "2025-2",
+      "2025-3",
+      "2025-4",
+      "2025-5",
+      "2026-1"
+    ],
+    "candidates": {
+      "current_survival": {
+        "mae": 0.03552903486677992,
+        "rmse": 0.043242632283090394,
+        "bias": 0.0355290348667799,
+        "cycle_macro_mae": 0.03340553513528599,
+        "day14_mae": 0.048468232850389065,
+        "target_side_accuracy": 0.38524590163934425,
+        "actual_target_hits": 19,
+        "predicted_target_hits": 94
+      },
+      "ridge_current": {
+        "mae": 0.01339832785579222,
+        "rmse": 0.01694066595833172,
+        "bias": 0.000629370628377794,
+        "cycle_macro_mae": 0.01381180982616646,
+        "day14_mae": 0.014390274974456099,
+        "target_side_accuracy": 0.8442622950819673,
+        "actual_target_hits": 19,
+        "predicted_target_hits": 0
+      },
+      "ridge_no_inventory_or_group": {
+        "mae": 0.013217753489506764,
+        "rmse": 0.017591940270075487,
+        "bias": -0.0007043415341901911,
+        "cycle_macro_mae": 0.014242867478619931,
+        "day14_mae": 0.014311694648986793,
+        "target_side_accuracy": 0.8442622950819673,
+        "actual_target_hits": 19,
+        "predicted_target_hits": 0
+      },
+      "ridge_core": {
+        "mae": 0.013217753489506764,
+        "rmse": 0.017591940270075487,
+        "bias": -0.0007043415341901911,
+        "cycle_macro_mae": 0.014242867478619931,
+        "day14_mae": 0.014311694648986793,
+        "target_side_accuracy": 0.8442622950819673,
+        "actual_target_hits": 19,
+        "predicted_target_hits": 0
+      },
+      "ridge_no_environment": {
+        "mae": 0.013245977112449358,
+        "rmse": 0.01755760689534127,
+        "bias": -0.00015584366812070426,
+        "cycle_macro_mae": 0.014616130241290149,
+        "day14_mae": 0.013730917908404847,
+        "target_side_accuracy": 0.8442622950819673,
+        "actual_target_hits": 19,
+        "predicted_target_hits": 0
+      },
+      "ridge_outcome_only": {
+        "mae": 0.01324633352804995,
+        "rmse": 0.017450776683295893,
+        "bias": 0.000113804898621917,
+        "cycle_macro_mae": 0.01457228657280124,
+        "day14_mae": 0.013807719795634608,
+        "target_side_accuracy": 0.8442622950819673,
+        "actual_target_hits": 19,
+        "predicted_target_hits": 0
+      },
+      "random_forest_core": {
+        "mae": 0.015057206648170505,
+        "rmse": 0.019109139158500585,
+        "bias": 0.00028874570833432205,
+        "cycle_macro_mae": 0.016127893563492972,
+        "day14_mae": 0.013588851842180363,
+        "target_side_accuracy": 0.8442622950819673,
+        "actual_target_hits": 19,
+        "predicted_target_hits": 0
+      }
+    }
+  },
+  "weight_tree_benchmark": {
+    "building_outcomes": 19,
+    "checkpoint_rows": 76,
+    "cycles": [
+      "2025-2",
+      "2025-3",
+      "2025-4",
+      "2025-5"
+    ],
+    "candidates": {
+      "random_forest": {
+        "mae": 0.2532071660502204,
+        "rmse": 0.31444504754347063,
+        "bias": 0.017797900833843572,
+        "cycle_macro_mae": 0.2513050250740627,
+        "within_200g_rate": 0.42105263157894735,
+        "horizon": {
+          "Day 7": {
+            "mae": 0.23085557710619328,
+            "rmse": 0.28202013077329696,
+            "bias": -0.013759276869899972
+          },
+          "Day 14": {
+            "mae": 0.265567969258965,
+            "rmse": 0.32177033676193045,
+            "bias": 0.0429636361357347
+          },
+          "Day 21": {
+            "mae": 0.2697647490639785,
+            "rmse": 0.3312913216689362,
+            "bias": 0.07219230419171485
+          },
+          "Day 28": {
+            "mae": 0.2466403687717448,
+            "rmse": 0.32043300095969807,
+            "bias": -0.030205060122175265
+          }
+        }
+      },
+      "hist_gradient_boosting": {
+        "mae": 0.2925173014431664,
+        "rmse": 0.349760674323816,
+        "bias": 0.00580688442216568,
+        "cycle_macro_mae": 0.28998391433810033,
+        "within_200g_rate": 0.3026315789473684,
+        "horizon": {
+          "Day 7": {
+            "mae": 0.2536682364445233,
+            "rmse": 0.2896979138516874,
+            "bias": -0.028996685117578386
+          },
+          "Day 14": {
+            "mae": 0.3059973500517475,
+            "rmse": 0.35262520712633555,
+            "bias": 0.04134665752012151
+          },
+          "Day 21": {
+            "mae": 0.329296360777811,
+            "rmse": 0.3997831953419423,
+            "bias": 0.04346655177148369
+          },
+          "Day 28": {
+            "mae": 0.2811072584985837,
+            "rmse": 0.3481868692887165,
+            "bias": -0.03258898648536409
+          }
+        }
+      }
+    }
+  }
+}

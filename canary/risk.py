@@ -343,8 +343,8 @@ def _score_evidence(row: pd.Series) -> dict[str, str]:
         )
     if pd.notna(row.get("survival_score")):
         evidence["survival"] = (
-            f"Survival path: {float(row['percentage_alive']):.1%} alive versus "
-            f"{float(row['expected_alive_rate']):.1%} expected on recorded Day {int(row['latest_operational_day'])} "
+            f"Survival reference: {float(row['percentage_alive']):.1%} alive versus "
+            f"{float(row['expected_alive_rate']):.1%} provisional reference on recorded Day {int(row['latest_operational_day'])} "
             f"({float(row['survival_gap_pp']):.2f} pp gap; score {int(row['survival_score'])}; "
             f"{row['data_freshness']})."
         )
@@ -414,12 +414,12 @@ def build_dimension_trace(
             "Raw observations": (
                 "Unavailable"
                 if pd.isna(row.get("percentage_alive"))
-                else f"{float(row['percentage_alive']):.2%} alive; {float(row['expected_alive_rate']):.2%} expected on recorded Day {int(row['latest_operational_day'])}"
+                else f"{float(row['percentage_alive']):.2%} alive; {float(row['expected_alive_rate']):.2%} provisional reference on recorded Day {int(row['latest_operational_day'])}"
             ),
             "Calculation": (
                 "Not scored"
                 if pd.isna(row.get("survival_gap_pp"))
-                else f"max(expected - actual, 0) = {float(row['survival_gap_pp']):.2f} pp"
+                else f"max(provisional reference - actual, 0) = {float(row['survival_gap_pp']):.2f} pp"
             ),
             "Applied thresholds": _threshold_description(band["survival_gap_pp"], " pp"),
             "Score": row.get("survival_score", pd.NA),
