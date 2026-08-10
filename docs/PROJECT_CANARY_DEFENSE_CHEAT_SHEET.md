@@ -1,5 +1,38 @@
 # Project Canary — Capstone Defense Cheat Sheet
 
+## Memorize This — One-Page Defense Summary
+
+### The 20-second answer
+
+**Project Canary is an early-warning and decision-support system for a broiler farm.** It identifies which buildings need attention, explains the recorded warning signs, forecasts Day 35 average weight and final harvest recovery, and recommends what management should inspect next.
+
+### The two targets
+
+- **1,800 g average weight on Day 35**
+- **95% harvest recovery**, defined for this capstone as ending or surviving birds divided by beginning population
+
+### The three engines
+
+- **Risk score:** four transparent rules—weight gap, population loss, daily mortality, and environmental conditions—produce a 0–12 operational-priority score and a Low/Medium/High/Critical label.
+- **Predictive models:** Compact Ridge models separately estimate Day 35 weight and final recovery using only evidence available by the selected review date.
+- **Recommendations:** a deterministic playbook maps the strongest recorded trigger to a farm-informed inspection, urgency, and escalation rule.
+
+### Numbers to remember
+
+- Clean data: **1,785 source rows → 1,666 unique building-days**
+- Weight model: **31 outcomes, 124 snapshots, about 172 g MAE; Day 14 MAE about 167 g**
+- Recovery model: **25 outcomes, 122 snapshots, about 1.32 percentage-point MAE; Day 14 MAE about 1.43 points**
+- Validation: **leave one complete harvest cycle out**, train on the others, and repeat—never split related daily rows randomly
+
+### What to say carefully
+
+- The **risk score is operational concern, not a probability** of missing a target.
+- Forecasts are **limited-data estimates, not guarantees**.
+- Recovery is trained on a **last-recorded population proxy**, not a verified harvest-event count.
+- Feature importance shows **model association, not causation**.
+- Recommendations are **inspection guidance, not disease diagnosis or automatic treatment**.
+- The recovery model is useful as a continuous estimate, but it is **not proven as a 95% hit-versus-miss classifier**.
+
 ## New transparent evidence package
 
 Canary no longer asks the panel to trust an in-memory transformation. The repository includes:
@@ -22,7 +55,7 @@ The versioned model manifests are the single source for metrics displayed in the
 
 The comparison framework is ready, but the actual comparison is pending the teammate’s notebook, trusted model artifact, environment file, and preprocessing/feature specification. Canary first inventories the pickle without executing it, then reproduces the notebook approach on the canonical exports. The model must pass the same complete-cycle holdouts and leakage rules before it can replace a champion.
 
-## 1. The 20-second answer
+## 1. Project overview and scope
 
 **Project Canary is an early-warning and decision-support system for a broiler farm.** It combines daily farm records into one view per building, assigns an explainable operational risk rating, forecasts Day 35 average weight and final harvest recovery, and recommends what management should inspect next.
 
@@ -46,6 +79,40 @@ Days 1–14 are the early-warning window. Monitoring continues through the activ
 | Recommendation playbook | What should management inspect next? | Pattern-based action, urgency, checklist, and escalation trigger |
 
 **Important:** the risk score and predictions are separate. A forecast does not add points to the risk score.
+
+## 3A. Explain Every Engine in Five Steps
+
+### Engine 1 — Rules-based risk scoring
+
+1. **Question:** Which building needs management attention first, and which recorded conditions explain the concern?
+2. **Inputs:** Latest weight versus its age target, cumulative population loss, latest daily mortality, and sufficiently fresh temperature/humidity evidence.
+3. **Process:** Score each available dimension from 0 to 3, add the points, map the total to Low/Medium/High/Critical, and expose every measurement, threshold, and point contribution.
+4. **Output:** A 0–12 risk score, priority label, leading trigger, and deterministic “why.”
+5. **Limitation:** It is an expert-rule priority score—not a trained probability. Missing evidence can leave the total incomplete, and provisional thresholds still require farm approval.
+
+### Engine 2A — Day 35 weight forecasting
+
+1. **Question:** Using only bodyweight information known today, what average building weight should we expect on Day 35?
+2. **Inputs:** Available Day 7/14/21/28 weights, current measurement day and weight, progress versus the age target, recent gain, cumulative gain, and availability indicators.
+3. **Process:** Create leakage-safe checkpoint snapshots, impute missing numeric values within each training fold, standardize the Ridge inputs, leave one complete cycle out at a time, and compare Ridge with tree models and transparent baselines.
+4. **Output:** Projected Day 35 weight, gap to 1,800 g, uncertainty range, model version, and explanatory feature reliance.
+5. **Limitation:** Only 31 independent outcomes and five historical target hits exist. The estimate is useful for planning, but target-hit classification and unusual future conditions remain uncertain.
+
+### Engine 2B — Harvest-recovery forecasting
+
+1. **Question:** Using only daily flock evidence known today, what final recovery should we expect?
+2. **Inputs:** Cycle day, current percentage alive, daily and recent mortality, mortality trend, feed measures, recent temperature/humidity, and missing-data indicators.
+3. **Process:** Build balanced as-of snapshots, median-impute within each training fold, standardize Ridge inputs, leave one complete cycle out at a time, and compare compact/full Ridge variants, Random Forest, and simple baselines.
+4. **Output:** Projected final recovery, gap to 95%, uncertainty range, model version, and explanatory feature reliance.
+5. **Limitation:** The Y label is a last-recorded population proxy from only 25 outcomes. The model estimates the continuous rate, but it did not beat the majority baseline for identifying which flocks will reach 95%.
+
+### Engine 3 — Recommendation playbook
+
+1. **Question:** Given the strongest recorded problem, what should management inspect next and how urgently?
+2. **Inputs:** Leading scored trigger, specific operating alerts, risk severity, data freshness, and Doc Raymond’s intervention mappings.
+3. **Process:** Select the strongest evidence-backed trigger, look up the deterministic rule ID, attach the approved or pending checklist, and set urgency from the risk label.
+4. **Output:** Plain-language problem, next inspection, response time, escalation guidance, rule ID, and approval status.
+5. **Limitation:** The rule suggests what to verify; it does not prove the root cause, prescribe medication, automatically adjust equipment, or guarantee target recovery.
 
 ## 4. Data preparation
 
@@ -218,6 +285,16 @@ Additional inputs:
 | **Ridge regression** | **about 172 g** | **Selected** |
 | Random Forest | about 176 g | Not selected |
 | Gradient boosting | about 206 g | Not selected |
+
+### Why Ridge instead of ordinary linear regression?
+
+Ridge **is a linear regression model**, with an L2 penalty that shrinks unstable coefficients. Plain ordinary least squares (OLS) was not retained as a separate reported candidate in the current comparison. That is a transparent scope choice—not evidence that OLS was tested and lost.
+
+Ridge was the more defensible linear candidate because the effective sample is small and several inputs—checkpoint weights, current weight, target progress, and growth rates—are correlated. With these conditions, unregularized OLS can fit large, unstable coefficients that change sharply across held-out cycles. Ridge keeps the linear relationship easy to explain while reducing that variance.
+
+The formal baselines answer simpler questions: historical mean, target-curve ratio, recent linear ADG, and historical remaining gain for weight; historical mean and current-survival trend for recovery. The panel-safe answer is:
+
+> We used transparent operational formulas as baselines and Ridge as the regularized linear ML candidate. Ordinary least squares was not separately reported because the dataset is small and the inputs are correlated; we disclose that choice instead of claiming OLS performed worse. A future audit can add OLS under the identical complete-cycle holdouts.
 
 ### Validation and selection
 
@@ -500,6 +577,10 @@ Each building-cycle is recreated at four decision checkpoints. Cross-validation 
 
 Ridge had the best cycle-balanced error for Day 35 weight, is more stable on a small dataset, and is easier to explain. Random Forest was close but not better. Gradient boosting was worse.
 
+### “Why did you not report ordinary linear regression as a baseline?”
+
+Ridge is the regularized linear-regression candidate. Plain OLS was not separately retained in the recorded comparison because the effective outcome sample is small and the checkpoint/growth inputs are correlated, which can make unregularized coefficients unstable. Canary instead used simple operational formulas as baselines. We state this as a limitation and do not claim OLS was tested and lost.
+
 ### “Why not just use average daily gain?”
 
 Straight-line ADG assumes the recent growth rate continues unchanged. In held-out testing its MAE was about 432 g, far worse than Ridge at about 172 g.
@@ -546,8 +627,3 @@ No. It is capstone-prototype ready after final farm validation. Production use s
 - unweighted zone averaging assumes equal relevance of Zones A and B
 - the recovery target is a last-recorded proxy, not a verified harvest-event result
 - recommended actions support inspection; they do not guarantee recovered revenue or target attainment
-- environmental thresholds are expert starting rules, not historically calibrated causal cutoffs
-
-## 18. Final one-sentence defense
-
-> Project Canary converts daily building data into transparent operational priorities, leakage-safe outcome forecasts, and practical inspection guidance, while clearly separating what the evidence supports from what still requires farm validation.

@@ -320,6 +320,11 @@ def build() -> Path:
             active_numbering_id = None
             i += 1
             continue
+        if line == "<!-- PAGE BREAK -->":
+            doc.add_page_break()
+            active_numbering_id = None
+            i += 1
+            continue
         if line.startswith("|"):
             table_rows: list[list[str]] = []
             while i < len(lines) and lines[i].startswith("|"):
