@@ -39,6 +39,19 @@ def _predict(
     manifest: dict[str, Any],
     model: object | None,
 ) -> float:
+    if outcome == "recovery" and manifest.get("prediction_target") == "additional_population_loss_after_review_date":
+        current = float(feature["percentage_alive"])
+        if manifest["model_kind"] == "formula":
+            age = int(feature["cycle_day"])
+            band = 7 if age <= 7 else 14 if age <= 14 else 21 if age <= 21 else 28
+            loss = float(manifest["additional_loss_by_age_band"][str(band)])
+        else:
+            columns = manifest["feature_columns"]
+            values = pd.DataFrame(
+                [{column: feature.get(column, np.nan) for column in columns}]
+            )
+            loss = float(model.predict(values)[0])
+        return float(current - np.clip(loss, 0.0, current))
     if manifest["model_kind"] == "formula":
         key = "naive_recovery_projection" if outcome == "recovery" else "naive_weight_projection"
         value = feature.get(key)
@@ -366,25 +379,53 @@ def recovery_feature_contributions(
 
     feature = extract_feature_row(dataset, cycle_id, building_id, as_of)
     manifest, model = load_model_bundle("recovery", model_dir)
-    if feature is None or model is None or manifest["selected_model"] not in {
-        "linear_regression",
-        "ridge",
-        "ridge_no_weight",
-        "ridge_core",
+    if feature is None:
+        return pd.DataFrame()
+
+    if manifest["selected_model"] == "age_band_remaining_loss":
+        cycle_day = int(feature.get("cycle_day", 0) or 0)
+        age_band = (
+            "7" if cycle_day <= 7 else "14" if cycle_day <= 14 else "21"
+            if cycle_day <= 21 else "28" if cycle_day <= 28 else "35"
+        )
+        expected_loss = float(
+            manifest.get("additional_loss_by_age_band", {}).get(age_band, 0.0)
+        )
+        return pd.DataFrame(
+            [
+                {
+                    "Model input": "Current survival",
+                    "Current value": f"{float(feature['percentage_alive']):.1%}",
+                    "Effect on raw estimate": float(feature["percentage_alive"]),
+                    "Direction": "Pushes estimate up as the starting survival level",
+                },
+                {
+                    "Model input": f"Historical remaining loss after Day {age_band}",
+                    "Current value": f"{expected_loss * 100:.2f} percentage points",
+                    "Effect on raw estimate": -expected_loss,
+                    "Direction": "Pushes estimate down when expected remaining loss is larger",
+                },
+            ]
+        )
+
+    if model is None or manifest["selected_model"] not in {
+        "remaining_loss_linear",
+        "remaining_loss_ridge",
+        "remaining_loss_huber",
     }:
         return pd.DataFrame()
 
     columns = manifest["feature_columns"]
     frame = pd.DataFrame([{column: feature.get(column, np.nan) for column in columns}])
-    regressor = model.regressor_
-    imputer = regressor.named_steps["imputer"]
-    scaler = regressor.named_steps["scale"]
-    ridge = regressor.named_steps["model"]
+    imputer = model.named_steps["imputer"]
+    scaler = model.named_steps["scale"]
+    estimator = model.named_steps["model"]
     imputed = imputer.transform(frame)
     standardized = scaler.transform(imputed)
     names = list(imputer.get_feature_names_out(columns))
-    target_scale = float(np.asarray(model.transformer_.scale_).reshape(-1)[0])
-    contributions = standardized[0] * np.asarray(ridge.coef_).reshape(-1) * target_scale
+    # The fitted target is additional loss.  Negating its contribution gives
+    # the corresponding direction on final recovery.
+    contributions = -standardized[0] * np.asarray(estimator.coef_).reshape(-1)
     rows = []
     for name, contribution in zip(names, contributions):
         raw_name = str(name)

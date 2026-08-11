@@ -27,7 +27,8 @@ Product definition: **Day 35 is the primary 1.8 kg management milestone.** Canar
 - Project Day 35 average weight with the leakage-safe historical remaining-gain fallback because no learned candidate passed the predeclared champion gates. Ridge remains the best learned challenger, not the operational winner.
 - Keep forecasting fully independent of the rules-based risk score.
 - Present a simple owner-first view: how many buildings need attention and which ones, the inventory-weighted projected harvest recovery and target gap, estimated gross revenue at risk, and the first building/action to review.
-- Use a multipage sidebar shell: owner pages (Home, Building View, Business Value), capstone-evidence pages (EDA & Insights, Canary Methodology), and administration pages (Action Playbook, Data & Settings).
+- Use a multipage sidebar shell: owner pages (Home, Building View, Harvest Analysis, Business Value), capstone-evidence pages (EDA & Insights, Canary Methodology), and administration pages (Action Playbook, Data & Settings).
+- Provide an all-cycle Harvest Analysis page with recovery and Day 35 weight trends, building comparisons, target lines, target-specific model eligibility, and a downloadable cycle-building table. Historical proxies and current projections remain visibly separate.
 - Show current recovery and latest measured weight beside predicted recovery and the projected Day 35 result.
 - Constrain predicted final recovery so it never exceeds survival already recorded today under the agreed accounting rule.
 - Compare exactly five declared Day 35 candidates—historical remaining gain, ordinary linear regression, Ridge, constrained Gradient Boosting, and constrained XGBoost. Retain historical remaining gain operationally because the learned candidates did not improve cycle-balanced MAE by at least 10%, maintain at least 70% within 200 g, and improve target-side usefulness.

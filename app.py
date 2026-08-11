@@ -11,10 +11,12 @@ from pathlib import Path
 
 import pandas as pd
 import numpy as np
+import altair as alt
 import streamlit as st
 
 from canary import (
     ALLOWED_APPROVAL_STATUSES,
+    CANONICAL_BUILDINGS,
     DEFAULT_RECOMMENDATIONS_PATH,
     DEFAULT_RULES_PATH,
     RecommendationConfigurationError,
@@ -44,6 +46,12 @@ from canary import (
     save_risk_rules,
     recovery_feature_contributions,
     DAY35_TARGET_KG,
+)
+from canary.harvest_analysis import (
+    build_harvest_analysis_rows,
+    recovery_cycle_summary,
+    summarize_harvest_analysis,
+    weight_cycle_summary,
 )
 from canary.outcomes import build_historical_outcomes, latest_cycle_id
 from canary.operational_alerts import evaluate_operational_alerts
@@ -308,6 +316,16 @@ def _candidate_metrics_table(manifest: dict[str, object], outcome: str) -> pd.Da
     factor = 100 if outcome == "recovery" else 1
     unit = "percentage points" if outcome == "recovery" else "kg"
     candidate_names = {
+        "age_band_remaining_loss": "Age-band remaining-loss baseline",
+        "remaining_loss_linear": "Linear remaining-loss regression",
+        "remaining_loss_ridge": "Ridge remaining-loss regression",
+        "remaining_loss_huber": "Robust Huber remaining-loss regression",
+        "remaining_loss_gradient_boosting": "Gradient Boosting remaining-loss",
+        "historical_remaining_gain": "Historical remaining-gain baseline",
+        "checkpoint_linear_remaining_gain": "Checkpoint linear remaining-gain",
+        "ridge_remaining_gain": "Ridge remaining-gain",
+        "huber_remaining_gain": "Robust Huber remaining-gain",
+        "gradient_boosting_remaining_gain": "Gradient Boosting remaining-gain",
         "trend_naive": "Current-survival projection",
         "historical_mean": "Historical mean",
         "linear_regression": "Ordinary linear regression",
@@ -474,6 +492,40 @@ def _day35_horizon_metrics_table(manifest: dict[str, object]) -> pd.DataFrame:
     )
 
 
+def _rolling_origin_summary(manifest: dict[str, object], outcome: str) -> pd.DataFrame:
+    """Summarize the secondary train-on-earlier, test-on-later-cycle check."""
+
+    name_map = {
+        "age_band_remaining_loss": "Age-band remaining-loss baseline",
+        "remaining_loss_linear": "Linear remaining-loss regression",
+        "remaining_loss_ridge": "Ridge remaining-loss regression",
+        "remaining_loss_huber": "Robust Huber remaining-loss regression",
+        "remaining_loss_gradient_boosting": "Gradient Boosting remaining-loss",
+        "historical_remaining_gain": "Historical remaining-gain baseline",
+        "checkpoint_linear_remaining_gain": "Checkpoint linear remaining-gain",
+        "ridge_remaining_gain": "Ridge remaining-gain",
+        "huber_remaining_gain": "Robust Huber remaining-gain",
+        "gradient_boosting_remaining_gain": "Gradient Boosting remaining-gain",
+    }
+    rows = []
+    for candidate, metrics in manifest.get("rolling_origin_validation", {}).items():
+        factor = 100 if outcome == "recovery" else 1000
+        unit = "pts" if outcome == "recovery" else "g"
+        rows.append(
+            {
+                "Model": name_map.get(candidate, candidate.replace("_", " ").title()),
+                f"Rolling-origin cycle MAE ({unit})": round(
+                    float(metrics["cycle_macro_mae"]) * factor, 2 if outcome == "recovery" else 0
+                ),
+                f"Rolling-origin RMSE ({unit})": round(
+                    float(metrics["rmse"]) * factor, 2 if outcome == "recovery" else 0
+                ),
+                "Later cycles tested": len(metrics.get("folds", [])),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
 def _recovery_cycle_metrics_table(manifest: dict[str, object]) -> pd.DataFrame:
     return pd.DataFrame(
         [
@@ -529,7 +581,10 @@ def _global_recovery_importance_table(manifest: dict[str, object]) -> pd.DataFra
     rows = []
     coefficient_records = manifest.get("global_feature_importance", [])
     if not coefficient_records:
-        for item in manifest.get("held_out_permutation_importance", []):
+        importance = manifest.get("held_out_permutation_importance", []) or manifest.get(
+            "research_champion_permutation_importance", []
+        )
+        for item in importance:
             feature = str(item["feature"])
             rows.append(
                 {
@@ -777,6 +832,7 @@ def _day35_milestone(dataset, cycle_id: str, building_id: str, as_of: object, ro
 
 VIEW_PRIORITIES = "Home"
 VIEW_DETAILS = "Building View"
+VIEW_HARVEST = "Harvest Analysis"
 VIEW_VALUE = "Business Value"
 VIEW_ACTIONS = "Action Playbook"
 VIEW_CHECKS = "Data & Settings"
@@ -787,6 +843,9 @@ VIEW_METHODS = "Canary Methodology"
 PAGE_HOME = st.Page("pages/home.py", title="Home", icon=":material/home:", default=True)
 PAGE_BUILDING = st.Page(
     "pages/building.py", title="Building View", icon=":material/domain:"
+)
+PAGE_HARVEST = st.Page(
+    "pages/harvest_analysis.py", title="Harvest Analysis", icon=":material/monitoring:"
 )
 PAGE_VALUE = st.Page(
     "pages/business_value.py", title="Business Value", icon=":material/payments:"
@@ -804,7 +863,7 @@ PAGE_DATA = st.Page(
 
 navigation = st.navigation(
     {
-        "Farm owner": [PAGE_HOME, PAGE_BUILDING, PAGE_VALUE],
+        "Farm owner": [PAGE_HOME, PAGE_BUILDING, PAGE_HARVEST, PAGE_VALUE],
         "Capstone evidence": [PAGE_EDA, PAGE_METHODS],
         "Administration": [PAGE_ACTIONS, PAGE_DATA],
     }
@@ -1111,50 +1170,66 @@ with st.sidebar:
     st.success("Workbook ready")
     st.caption(source_description)
     cycle_options = dataset.cycles.groupby("cycle_id")["start_date"].min().sort_values().index.tolist()
-    st.caption("Choose the production batch you want to review.")
-    # Streamlit treats a widget on each page as a separate widget, even when it
-    # has the same visible label. Keep the business selection in a page-neutral
-    # shadow value so Overview -> Building View -> Overview never changes cycle.
-    remembered_cycle = st.session_state.get("canary_cycle_choice", cycle_options[-1])
-    if remembered_cycle not in cycle_options:
-        remembered_cycle = cycle_options[-1]
-    cycle_widget_key = f"canary_cycle_widget_{selected_view.lower().replace(' ', '_')}"
-    # A page may retain an older widget value. Remove it only when it conflicts
-    # with the page-neutral choice, then let ``index`` initialize the widget.
-    # This avoids Streamlit's "default plus Session State value" warning.
-    if st.session_state.get(cycle_widget_key) != remembered_cycle:
-        st.session_state.pop(cycle_widget_key, None)
-    selected_cycle = st.selectbox(
-        "Harvest cycle",
-        cycle_options,
-        index=cycle_options.index(remembered_cycle),
-        key=cycle_widget_key,
-        on_change=_remember_selected_cycle,
-        args=(cycle_widget_key,),
-        help="Choose the production batch or growing round you want to review.",
-    )
-    st.session_state["canary_cycle_choice"] = selected_cycle
     current_cycle = latest_cycle_id(dataset)
-    historical_cycle = selected_cycle != current_cycle
-    minimum_date, maximum_date = cycle_date_bounds(dataset, selected_cycle)
-    if historical_cycle:
-        selected_date = maximum_date
-        st.info(
-            "Historical cycle: Canary shows completed outcomes at each building’s last recorded date."
+    if selected_view == VIEW_HARVEST:
+        selected_cycle = current_cycle
+        historical_cycle = False
+        minimum_date, maximum_date = cycle_date_bounds(dataset, current_cycle)
+        st.caption(
+            "Harvest Analysis starts with all recorded cycles. Use the page filters to narrow the history."
         )
-    else:
         selected_date = st.date_input(
             "Review date",
-            value=default_as_of_date(dataset, selected_cycle),
+            value=default_as_of_date(dataset, current_cycle),
             min_value=minimum_date,
             max_value=maximum_date,
             format="DD/MM/YYYY",
-            help="Choose the day you want Canary to stand on. Only information recorded on or before this day is used.",
+            help="Historical results stay fixed. Current-cycle observations and projections use only records available by this date.",
         )
         st.caption(
-            "Review date means: ‘What would Canary have shown using only records available by this date?’ "
-            "Moving it backward replays an earlier decision point; risk scores, forecasts, and actions are recomputed, and later records are excluded."
+            "Changing this date replays the current cycle from that point in time. Historical recorded outcomes are not changed."
         )
+    else:
+        st.caption("Choose the production batch you want to review.")
+        # Streamlit treats a widget on each page as a separate widget, even when it
+        # has the same visible label. Keep the business selection in a page-neutral
+        # shadow value so Overview -> Building View -> Overview never changes cycle.
+        remembered_cycle = st.session_state.get("canary_cycle_choice", cycle_options[-1])
+        if remembered_cycle not in cycle_options:
+            remembered_cycle = cycle_options[-1]
+        cycle_widget_key = f"canary_cycle_widget_{selected_view.lower().replace(' ', '_')}"
+        if st.session_state.get(cycle_widget_key) != remembered_cycle:
+            st.session_state.pop(cycle_widget_key, None)
+        selected_cycle = st.selectbox(
+            "Harvest cycle",
+            cycle_options,
+            index=cycle_options.index(remembered_cycle),
+            key=cycle_widget_key,
+            on_change=_remember_selected_cycle,
+            args=(cycle_widget_key,),
+            help="Choose the production batch or growing round you want to review.",
+        )
+        st.session_state["canary_cycle_choice"] = selected_cycle
+        historical_cycle = selected_cycle != current_cycle
+        minimum_date, maximum_date = cycle_date_bounds(dataset, selected_cycle)
+        if historical_cycle:
+            selected_date = maximum_date
+            st.info(
+                "Historical cycle: Canary shows completed outcomes at each building’s last recorded date."
+            )
+        else:
+            selected_date = st.date_input(
+                "Review date",
+                value=default_as_of_date(dataset, selected_cycle),
+                min_value=minimum_date,
+                max_value=maximum_date,
+                format="DD/MM/YYYY",
+                help="Choose the day you want Canary to stand on. Only information recorded on or before this day is used.",
+            )
+            st.caption(
+                "Review date means: ‘What would Canary have shown using only records available by this date?’ "
+                "Moving it backward replays an earlier decision point; risk scores, forecasts, and actions are recomputed, and later records are excluded."
+            )
 
 rules = load_risk_rules()
 recommendation_playbook = load_recommendation_playbook()
@@ -1180,6 +1255,11 @@ if hasattr(load_day35_manifest, "cache_clear"):
     load_day35_manifest.cache_clear()
 recovery_manifest, _recovery_model = load_model_bundle("recovery")
 day35_manifest = load_day35_manifest()
+with st.sidebar:
+    st.caption(
+        f"Model release · Recovery {recovery_manifest['model_version']} · "
+        f"Day 35 weight {day35_manifest['model_version']}"
+    )
 performance_path = _default_performance_workbook()
 final_weight_labels = None
 performance_source_status = "Farm Performance Summary is not available."
@@ -1268,16 +1348,30 @@ if selected_view == VIEW_PRIORITIES:
         unsafe_allow_html=True,
     )
 
-st.markdown(
-    f"""
-    <div class="context">
-      <strong>Cycle {html.escape(str(selected_cycle))}</strong>
-      <span class="dot">•</span>
-      <span>{'Completion summary' if historical_cycle else 'Showing what was known by'} <strong>{pd.Timestamp(selected_date).strftime('%d %b %Y')}</strong></span>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+if selected_view == VIEW_HARVEST:
+    st.markdown(
+        f"""
+        <div class="context">
+          <strong>All recorded harvest cycles</strong>
+          <span class="dot">•</span>
+          <span>Current-cycle projections use records available by <strong>{pd.Timestamp(selected_date).strftime('%d %b %Y')}</strong></span>
+          <span class="dot">•</span>
+          <span>Historical outcomes remain fixed</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+else:
+    st.markdown(
+        f"""
+        <div class="context">
+          <strong>Cycle {html.escape(str(selected_cycle))}</strong>
+          <span class="dot">•</span>
+          <span>{'Completion summary' if historical_cycle else 'Showing what was known by'} <strong>{pd.Timestamp(selected_date).strftime('%d %b %Y')}</strong></span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 if selected_view == VIEW_PRIORITIES:
     if historical_cycle:
@@ -1439,6 +1533,472 @@ if selected_view == VIEW_PRIORITIES:
             f"Business-value estimate uses an editable planning assumption of ₱{value_assumptions.price_php_per_kg:,.0f}/kg and "
             f"{value_assumptions.sale_weight_kg:.2f} kg per recovered bird. Adjust these in Business Value."
         )
+
+if selected_view == VIEW_HARVEST:
+    st.markdown('<div class="title">Harvest Analysis</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="subtitle">Compare recorded recovery and Day 35 weight across cycles and buildings. Historical results are shown as recorded proxies; only the latest cycle receives current projections.</div>',
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        f"Model release · Recovery {recovery_manifest['model_version']} · Day 35 weight {day35_manifest['model_version']}"
+    )
+
+    harvest_rows = build_harvest_analysis_rows(
+        dataset,
+        final_weight_labels,
+        snapshot,
+        recovery_manifest,
+        day35_manifest,
+    )
+
+    with st.container(border=True):
+        st.markdown("**Filter the history**")
+        filter_columns = st.columns(4)
+        with filter_columns[0]:
+            cycle_filter = st.selectbox(
+                "Cycle filter",
+                options=["All cycles", *cycle_options],
+                help="All recorded cycles are selected when this page opens.",
+            )
+        with filter_columns[1]:
+            building_filter = st.selectbox(
+                "Building filter",
+                options=["All buildings", *CANONICAL_BUILDINGS],
+            )
+        with filter_columns[2]:
+            status_options = harvest_rows["reporting_status"].drop_duplicates().tolist()
+            status_filter = st.selectbox(
+                "Status filter",
+                options=["All statuses", *status_options],
+            )
+        with filter_columns[3]:
+            building_group = st.selectbox(
+                "Building group",
+                ["All", "Tags", "Lags"],
+            )
+
+    filtered_harvest = harvest_rows.copy()
+    if cycle_filter != "All cycles":
+        filtered_harvest = filtered_harvest.loc[
+            filtered_harvest["cycle_id"].eq(cycle_filter)
+        ]
+    if building_filter != "All buildings":
+        filtered_harvest = filtered_harvest.loc[
+            filtered_harvest["building_id"].eq(building_filter)
+        ]
+    if status_filter != "All statuses":
+        filtered_harvest = filtered_harvest.loc[
+            filtered_harvest["reporting_status"].eq(status_filter)
+        ]
+    if building_group != "All":
+        filtered_harvest = filtered_harvest.loc[
+            filtered_harvest["building_id"].str.startswith(building_group)
+        ]
+
+    harvest_kpis = summarize_harvest_analysis(filtered_harvest)
+    historical_kpi_columns = st.columns(3)
+    historical_kpi_columns[0].metric(
+        "History in view",
+        f"{harvest_kpis['cycles']} cycles",
+        f"{harvest_kpis['building_records']} recorded building histories",
+        help="Cycle-building combinations with a recorded placement. Missing physical buildings remain visible in the detail table.",
+    )
+    historical_recovery = harvest_kpis["historical_recovery"]
+    recovery_delta = (
+        f"{(float(historical_recovery) - 0.95) * 100:+.1f} pts vs 95%"
+        if pd.notna(historical_recovery)
+        else "No eligible historical rows"
+    )
+    historical_kpi_columns[1].metric(
+        "Historical recovery proxy",
+        _percent(historical_recovery),
+        recovery_delta,
+        help=f"Total recorded ending population ÷ total beginning population across {harvest_kpis['historical_recovery_buildings']} filtered historical building records.",
+    )
+    historical_weight = harvest_kpis["historical_day35_weight_kg"]
+    weight_delta = (
+        f"{(float(historical_weight) - DAY35_TARGET_KG) * 1000:+.0f} g vs 1,800 g"
+        if pd.notna(historical_weight)
+        else "No observed Day 35 weights"
+    )
+    historical_kpi_columns[2].metric(
+        "Recorded Day 35 weight",
+        _grams(historical_weight),
+        weight_delta,
+        help=f"Bird-count-weighted average of {harvest_kpis['historical_day35_weight_buildings']} filtered building-level Day 35 observations.",
+    )
+    projected_recovery = harvest_kpis["current_projected_recovery"]
+    projected_recovery_delta = (
+        f"{(float(projected_recovery) - 0.95) * 100:+.1f} pts vs 95%"
+        if pd.notna(projected_recovery)
+        else "No current forecast"
+    )
+    current_kpi_columns = st.columns(2)
+    current_kpi_columns[0].metric(
+        "Current projected recovery",
+        _percent(projected_recovery),
+        projected_recovery_delta,
+        help=f"Beginning-inventory-weighted projection for {harvest_kpis['current_recovery_buildings']} current building(s) in the filtered view.",
+    )
+    projected_weight = harvest_kpis["current_projected_day35_weight_kg"]
+    projected_weight_delta = (
+        f"{(float(projected_weight) - DAY35_TARGET_KG) * 1000:+.0f} g vs 1,800 g"
+        if pd.notna(projected_weight)
+        else "No current forecast"
+    )
+    current_kpi_columns[1].metric(
+        "Current projected Day 35 weight",
+        _grams(projected_weight),
+        projected_weight_delta,
+        help=f"Current-population-weighted projection for {harvest_kpis['current_weight_buildings']} current building(s) in the filtered view.",
+    )
+
+    st.info(
+        "How to read this page: solid historical points are recorded outcomes or agreed proxies. The latest-cycle point is a projection using only records available by the selected review date. A projection is never presented as an actual result."
+    )
+
+    recovery_tab, weight_tab, history_tab = st.tabs(
+        ["Harvest recovery", "Day 35 weight", "Detailed history"]
+    )
+
+    with recovery_tab:
+        st.subheader("Harvest recovery across cycles")
+        recovery_trend = recovery_cycle_summary(filtered_harvest)
+        if recovery_trend.empty:
+            st.info("No recovery results match the current filters.")
+        else:
+            recovery_chart = (
+                alt.Chart(recovery_trend)
+                .mark_line(point=alt.OverlayMarkDef(size=85), strokeWidth=3)
+                .encode(
+                    x=alt.X(
+                        "cycle_id:N",
+                        title="Harvest cycle",
+                        sort=cycle_options,
+                        axis=alt.Axis(labelAngle=0),
+                    ),
+                    y=alt.Y(
+                        "recovery:Q",
+                        title="Recovery",
+                        axis=alt.Axis(format=".0%"),
+                        scale=alt.Scale(zero=False, domainMin=0.84, domainMax=1.0),
+                    ),
+                    color=alt.Color(
+                        "result_type:N",
+                        title="Result type",
+                        scale=alt.Scale(
+                            domain=["Recorded historical proxy", "Current projection"],
+                            range=["#286245", "#d18b22"],
+                        ),
+                    ),
+                    strokeDash=alt.StrokeDash(
+                        "result_type:N",
+                        scale=alt.Scale(
+                            domain=["Recorded historical proxy", "Current projection"],
+                            range=[[1, 0], [6, 4]],
+                        ),
+                        legend=None,
+                    ),
+                    tooltip=[
+                        alt.Tooltip("cycle_id:N", title="Cycle"),
+                        alt.Tooltip("recovery:Q", title="Recovery", format=".1%"),
+                        alt.Tooltip("result_type:N", title="Basis"),
+                        alt.Tooltip("buildings:Q", title="Buildings"),
+                    ],
+                )
+                .properties(height=330)
+            )
+            recovery_target = (
+                alt.Chart(pd.DataFrame({"target": [0.95]}))
+                .mark_rule(color="#52645b", strokeDash=[4, 4], strokeWidth=2)
+                .encode(y="target:Q")
+            )
+            st.altair_chart(recovery_chart + recovery_target, width="stretch")
+            st.caption(
+                "Historical cycle value = total recorded ending birds ÷ total beginning birds for the buildings in view. The grey reference line is the 95% goal."
+            )
+
+        st.subheader("Recovery comparison across buildings")
+        historical_building = filtered_harvest.loc[
+            filtered_harvest["reporting_status"].eq("Historical records ended")
+            & filtered_harvest["beginning_inventory"].notna()
+            & filtered_harvest["recorded_ending_population"].notna()
+        ]
+        if historical_building.empty:
+            st.info("No historical building recovery results match the filters.")
+        else:
+            recovery_building = (
+                historical_building.groupby("building_id", as_index=False)
+                .agg(
+                    beginning_population=("beginning_inventory", "sum"),
+                    ending_population=("recorded_ending_population", "sum"),
+                    cycles=("cycle_id", "nunique"),
+                )
+            )
+            recovery_building["recovery"] = (
+                recovery_building["ending_population"]
+                / recovery_building["beginning_population"]
+            )
+            building_chart = (
+                alt.Chart(recovery_building)
+                .mark_bar(color="#286245", cornerRadiusEnd=5)
+                .encode(
+                    y=alt.Y("building_id:N", title=None, sort=list(CANONICAL_BUILDINGS)),
+                    x=alt.X(
+                        "recovery:Q",
+                        title="Inventory-weighted historical recovery",
+                        axis=alt.Axis(format=".0%"),
+                        scale=alt.Scale(zero=False, domainMin=0.84, domainMax=1.0),
+                    ),
+                    tooltip=[
+                        alt.Tooltip("building_id:N", title="Building"),
+                        alt.Tooltip("recovery:Q", title="Recovery", format=".1%"),
+                        alt.Tooltip("cycles:Q", title="Cycles"),
+                        alt.Tooltip("beginning_population:Q", title="Beginning birds", format=","),
+                    ],
+                )
+                .properties(height=300)
+            )
+            building_target = (
+                alt.Chart(pd.DataFrame({"target": [0.95]}))
+                .mark_rule(color="#52645b", strokeDash=[4, 4], strokeWidth=2)
+                .encode(x="target:Q")
+            )
+            st.altair_chart(building_chart + building_target, width="stretch")
+
+    with weight_tab:
+        st.subheader("Average bodyweight on Day 35 across cycles")
+        weight_trend = weight_cycle_summary(filtered_harvest)
+        if weight_trend.empty:
+            st.info("No recorded or projected Day 35 weights match the filters.")
+        else:
+            weight_chart = (
+                alt.Chart(weight_trend)
+                .mark_line(point=alt.OverlayMarkDef(size=85), strokeWidth=3)
+                .encode(
+                    x=alt.X(
+                        "cycle_id:N",
+                        title="Harvest cycle",
+                        sort=cycle_options,
+                        axis=alt.Axis(labelAngle=0),
+                    ),
+                    y=alt.Y(
+                        "weight_kg:Q",
+                        title="Average weight (kg)",
+                        scale=alt.Scale(zero=False),
+                    ),
+                    color=alt.Color(
+                        "result_type:N",
+                        title="Result type",
+                        scale=alt.Scale(
+                            domain=["Recorded Day 35", "Current projection"],
+                            range=["#286245", "#d18b22"],
+                        ),
+                    ),
+                    strokeDash=alt.StrokeDash(
+                        "result_type:N",
+                        scale=alt.Scale(
+                            domain=["Recorded Day 35", "Current projection"],
+                            range=[[1, 0], [6, 4]],
+                        ),
+                        legend=None,
+                    ),
+                    tooltip=[
+                        alt.Tooltip("cycle_id:N", title="Cycle"),
+                        alt.Tooltip("weight_kg:Q", title="Average weight", format=".3f"),
+                        alt.Tooltip("result_type:N", title="Basis"),
+                        alt.Tooltip("buildings:Q", title="Buildings"),
+                    ],
+                )
+                .properties(height=330)
+            )
+            weight_target = (
+                alt.Chart(pd.DataFrame({"target": [DAY35_TARGET_KG]}))
+                .mark_rule(color="#52645b", strokeDash=[4, 4], strokeWidth=2)
+                .encode(y="target:Q")
+            )
+            st.altair_chart(weight_chart + weight_target, width="stretch")
+            st.caption(
+                "Historical values use observed Day 35 building weights and the recorded Day 35 population where available. The grey reference line is the 1,800 g milestone."
+            )
+
+        st.subheader("Day 35 weight comparison across buildings")
+        historical_weights = filtered_harvest.loc[
+            filtered_harvest["reporting_status"].eq("Historical records ended")
+            & filtered_harvest["historical_day35_weight_kg"].notna()
+        ].copy()
+        if historical_weights.empty:
+            st.info("No historical Day 35 weight results match the filters.")
+        else:
+            historical_weights["weighting_population"] = historical_weights[
+                "day35_population"
+            ].fillna(historical_weights["beginning_inventory"])
+            historical_weights["weighted_weight"] = (
+                historical_weights["historical_day35_weight_kg"]
+                * historical_weights["weighting_population"]
+            )
+            weight_building = (
+                historical_weights.groupby("building_id", as_index=False)
+                .agg(
+                    weighted_weight=("weighted_weight", "sum"),
+                    weighting_population=("weighting_population", "sum"),
+                    cycles=("cycle_id", "nunique"),
+                )
+            )
+            weight_building["weight_kg"] = (
+                weight_building["weighted_weight"]
+                / weight_building["weighting_population"]
+            )
+            building_weight_chart = (
+                alt.Chart(weight_building)
+                .mark_bar(color="#286245", cornerRadiusEnd=5)
+                .encode(
+                    y=alt.Y("building_id:N", title=None, sort=list(CANONICAL_BUILDINGS)),
+                    x=alt.X(
+                        "weight_kg:Q",
+                        title="Bird-count-weighted recorded Day 35 weight (kg)",
+                        scale=alt.Scale(zero=False),
+                    ),
+                    tooltip=[
+                        alt.Tooltip("building_id:N", title="Building"),
+                        alt.Tooltip("weight_kg:Q", title="Average weight", format=".3f"),
+                        alt.Tooltip("cycles:Q", title="Cycles"),
+                    ],
+                )
+                .properties(height=300)
+            )
+            building_weight_target = (
+                alt.Chart(pd.DataFrame({"target": [DAY35_TARGET_KG]}))
+                .mark_rule(color="#52645b", strokeDash=[4, 4], strokeWidth=2)
+                .encode(x="target:Q")
+            )
+            st.altair_chart(
+                building_weight_chart + building_weight_target, width="stretch"
+            )
+
+    with history_tab:
+        st.subheader("All cycle-building records")
+        st.caption(
+            "Historical rows show recorded outcomes. Current rows show the latest observation and projection as of the review date. ‘Last recorded date’ is not a verified harvest date."
+        )
+        display_history = filtered_harvest[
+            [
+                "cycle_id",
+                "building_id",
+                "reporting_status",
+                "start_date",
+                "last_recorded_date",
+                "as_of_date",
+                "cycle_day",
+                "beginning_inventory",
+                "recorded_ending_population",
+                "current_population",
+                "historical_recovery_proxy",
+                "current_survival",
+                "projected_recovery",
+                "historical_day35_weight_kg",
+                "historical_final_average_weight_kg",
+                "current_latest_weight_kg",
+                "weight_measurement_day",
+                "projected_day35_weight_kg",
+                "recovery_gap_to_95_pp",
+                "weight_gap_to_1800_g",
+                "model_training_eligibility",
+                "data_quality_note",
+            ]
+        ].copy()
+        for percentage_column in [
+            "historical_recovery_proxy",
+            "current_survival",
+            "projected_recovery",
+        ]:
+            display_history[percentage_column] = display_history[percentage_column] * 100
+        display_history = display_history.rename(
+            columns={
+                "cycle_id": "Cycle",
+                "building_id": "Building",
+                "reporting_status": "Status",
+                "start_date": "Start date",
+                "last_recorded_date": "Last recorded date",
+                "as_of_date": "Current as-of date",
+                "cycle_day": "Current day",
+                "beginning_inventory": "Beginning population",
+                "recorded_ending_population": "Recorded ending population",
+                "current_population": "Current population",
+                "historical_recovery_proxy": "Recorded recovery proxy (%)",
+                "current_survival": "Current survival (%)",
+                "projected_recovery": "Projected recovery (%)",
+                "historical_day35_weight_kg": "Recorded Day 35 weight (kg)",
+                "historical_final_average_weight_kg": "Farm-summary final avg weight (kg)",
+                "current_latest_weight_kg": "Latest current weight (kg)",
+                "weight_measurement_day": "Weight measured on day",
+                "projected_day35_weight_kg": "Projected Day 35 weight (kg)",
+                "recovery_gap_to_95_pp": "Recovery gap to 95% (pts)",
+                "weight_gap_to_1800_g": "Weight gap to 1,800 g (g)",
+                "model_training_eligibility": "Model-training eligibility",
+                "data_quality_note": "Data note",
+            }
+        )
+        st.dataframe(
+            display_history,
+            hide_index=True,
+            width="stretch",
+            column_config={
+                "Start date": st.column_config.DateColumn(format="DD MMM YYYY"),
+                "Last recorded date": st.column_config.DateColumn(format="DD MMM YYYY"),
+                "Current as-of date": st.column_config.DateColumn(format="DD MMM YYYY"),
+                "Beginning population": st.column_config.NumberColumn(format="%,d"),
+                "Recorded ending population": st.column_config.NumberColumn(format="%,d"),
+                "Current population": st.column_config.NumberColumn(format="%,d"),
+                "Recorded recovery proxy (%)": st.column_config.NumberColumn(format="%.1f"),
+                "Current survival (%)": st.column_config.NumberColumn(format="%.1f"),
+                "Projected recovery (%)": st.column_config.NumberColumn(format="%.1f"),
+                "Recorded Day 35 weight (kg)": st.column_config.NumberColumn(format="%.3f"),
+                "Farm-summary final avg weight (kg)": st.column_config.NumberColumn(format="%.3f"),
+                "Latest current weight (kg)": st.column_config.NumberColumn(format="%.3f"),
+                "Projected Day 35 weight (kg)": st.column_config.NumberColumn(format="%.3f"),
+                "Recovery gap to 95% (pts)": st.column_config.NumberColumn(format="%+.1f"),
+                "Weight gap to 1,800 g (g)": st.column_config.NumberColumn(format="%+.0f"),
+            },
+        )
+        st.download_button(
+            "Download filtered harvest history (CSV)",
+            display_history.to_csv(index=False).encode("utf-8"),
+            file_name="Project_Canary_Harvest_Analysis.csv",
+            mime="text/csv",
+        )
+
+    with st.expander("Why recovery uses 25 outcomes while weight uses 31"):
+        st.markdown(
+            f"""
+            - **All recorded history:** 34 building-cycle records across seven cycles, including the current 2026-3 cycle.
+            - **Recovery training:** {recovery_manifest['training_building_cycles']} independent outcomes across {len(recovery_manifest['training_cycles'])} fully eligible cycles.
+            - **Day 35 weight training:** {day35_manifest['training_building_cycles']} observed Day 35 outcomes across {len(day35_manifest['training_cycles'])} historical cycles.
+
+            The extra six weight outcomes are the six buildings in **2026-2**. Their Day 35 weights were observed, but several later Lagundi recovery rows contain carried-forward populations and incomplete daily evidence. Canary therefore shows the recorded recovery proxy with a warning but excludes 2026-2 from recovery-model training.
+
+            Repeated Day 7, 14, 21, and 28 training snapshots are different historical decision points—not additional independent flocks.
+            """
+        )
+        eligibility_by_cycle = (
+            harvest_rows.loc[harvest_rows["start_date"].notna()]
+            .groupby("cycle_id", as_index=False)
+            .agg(
+                recorded_buildings=("building_id", "size"),
+                recovery_outcomes=("recovery_training_eligible", "sum"),
+                day35_weight_outcomes=("weight_training_eligible", "sum"),
+            )
+            .rename(
+                columns={
+                    "cycle_id": "Cycle",
+                    "recorded_buildings": "Recorded building histories",
+                    "recovery_outcomes": "Recovery outcomes used",
+                    "day35_weight_outcomes": "Day 35 weight outcomes used",
+                }
+            )
+        )
+        st.dataframe(eligibility_by_cycle, hide_index=True, width="stretch")
 
 if selected_view == VIEW_VALUE:
     st.markdown('<div class="title">Business Value</div>', unsafe_allow_html=True)
@@ -1895,16 +2455,15 @@ if selected_view == VIEW_DETAILS:
             )
             summary_cols[3].metric("95% hit/miss test", "Not validated")
             st.write(
-                "Canary uses **ordinary linear regression** for the continuous recovery estimate because it reduced cycle-balanced error by "
-                f"**{float(recovery_manifest['champion_gates']['baseline_improvement_pct']):.1f}%** versus the historical-mean baseline on completely unseen cycles. "
-                "It does **not** reliably classify whether a flock will finish above or below 95%."
+                "Canary operationally uses the **age-band remaining-loss baseline**: current survival minus the additional loss historically observed after this age. "
+                f"The best learned challenger is **{recovery_manifest['research_champion'].replace('_', ' ').title()}**, but it did not pass every stability and 95% target-classification gate."
             )
 
         st.markdown("#### C. Input and Output Variables")
         st.dataframe(
             pd.DataFrame(
                 [
-                    {"Role": "Output (Y)", "Variable": "Final recovery proxy", "Plain-language definition": "Last-recorded population ÷ beginning population for a completed historical building-cycle."},
+                    {"Role": "Training output (Y)", "Variable": "Additional population loss after the review date", "Plain-language definition": "Current percentage alive minus the completed-cycle recovery proxy. The live final forecast is current survival minus this predicted remaining loss."},
                     {"Role": "Inputs (X)", "Variable": "Age and current survival", "Plain-language definition": "Production day and percentage of beginning birds still recorded alive as of the review date."},
                     {"Role": "Inputs (X)", "Variable": "Mortality signals", "Plain-language definition": "Recent three-day mortality and whether mortality is accelerating or improving."},
                     {"Role": "Inputs (X)", "Variable": "Growth evidence", "Plain-language definition": "Latest weight gap versus the age target and days since the last weighing."},
@@ -1935,7 +2494,7 @@ if selected_view == VIEW_DETAILS:
             pd.DataFrame(
                 [
                     {"Stage": "1 · Data cleaning", "What happened": "Standardized cycle, building, date and units; combined Zone A/B environment rows; reduced 1,785 source rows to 1,666 unique building-days; preserved missing values instead of treating them as zero."},
-                    {"Stage": "2 · Label and snapshot creation", "What happened": "Created 25 completed building-cycle Y labels and 122 Day 7/14/21/28/latest decision snapshots. Every X value was frozen as of that snapshot date."},
+                    {"Stage": "2 · Label and snapshot creation", "What happened": "Created 25 completed building outcomes and 122 Day 7/14/21/28/latest decision snapshots. Y was reframed as the additional population loss after each snapshot; every X value was frozen on that date."},
                     {"Stage": "3 · Feature engineering", "What happened": "Created current survival, recent mortality, mortality change, age-target weight gap, days since weighing, environmental deviation, recent out-of-band days and reading freshness."},
                     {"Stage": "4 · Fold-only preparation", "What happened": "Within each training fold, numeric gaps were median-imputed, missingness flags were added, and linear-model inputs were standardized. The held-out cycle never set these values."},
                     {"Stage": "5 · Train/test split", "What happened": "No random 80/20 row split was used. The outer test fold removed one complete harvest cycle, trained on all remaining cycles, predicted the unseen cycle, and repeated for every cycle."},
@@ -1953,26 +2512,40 @@ if selected_view == VIEW_DETAILS:
             hide_index=True,
             width="stretch",
         )
+        with st.expander("See the rolling-origin stability check"):
+            st.caption(
+                "This stricter secondary view trains only on earlier cycles and predicts a later cycle. "
+                "It helps reveal whether a model's advantage survives forward movement through time."
+            )
+            st.dataframe(
+                _rolling_origin_summary(recovery_manifest, "recovery"),
+                hide_index=True,
+                width="stretch",
+            )
+        recovery_ci = recovery_manifest["primary_whole_cycle_bootstrap_mae_95ci"]
+        st.caption(
+            "Whole-cycle bootstrap check: the 95% interval for operational MAE is approximately "
+            f"{float(recovery_ci['lower']) * 100:.2f}–{float(recovery_ci['upper']) * 100:.2f} recovery points. "
+            "The width reflects uncertainty from having only five eligible historical cycles."
+        )
         recovery_gates = recovery_manifest["champion_gates"]
         st.info(
-            f"**Selected:** Ordinary linear regression. It passed the continuous-estimate gates with positive R² and a {float(recovery_gates['baseline_improvement_pct']):.1f}% cycle-MAE improvement. "
-            "It failed the separate 95% classification gate, so the dashboard shows a continuous estimate and range—not a probability of success."
+            f"**Operational selection:** age-band remaining-loss baseline. The learned research champion improved cycle-balanced MAE by {float(recovery_gates['baseline_improvement_pct']):.1f}% and kept positive R², "
+            "but it did not pass every rolling-origin, stability, and 95% classification safeguard. Canary therefore uses the more transparent fallback and labels the forecast experimental."
         )
-        if recovery_manifest.get("unavailable_candidates"):
-            st.caption("XGBoost is the fifth declared challenger. No comparable result is shown because the required OpenMP runtime is unavailable on this Mac; a future Linux/CI run must use the same whole-cycle protocol.")
         with st.expander("Panel question: R² is low—can we trust this forecast?"):
             st.markdown(
                 f"""
                 **The honest answer:** held-out R² is **{float(recovery_manifest['selected_metrics']['r2']):.3f}**, so the model explains only about
                 **{max(float(recovery_manifest['selected_metrics']['r2']), 0) * 100:.0f}%** of recovery variation in unseen cycles. Most variation remains unexplained.
 
-                This is why Canary is described as a **validated prototype**, not a production guarantee. The model is retained because it improves
-                cycle-balanced MAE by **{float(recovery_gates['baseline_improvement_pct']):.1f}%** over the historical-mean baseline and produces an interpretable
-                continuous estimate. However, it does not beat the majority rule for classifying 95% target attainment, so management should use the point estimate,
+                This is why Canary is described as a **validated prototype**, not a production guarantee. A learned challenger improved cycle-balanced MAE,
+                but did not clear every deployment gate. Management should use the operational baseline's point estimate,
                 range, and operational evidence—not treat it as a probability of success.
 
-                Likely reasons include only **25 independent building outcomes across five eligible training cycles**, the proxy recovery label,
+                Likely reasons include only **25 recovery outcomes across five fully eligible cycles**, the proxy recovery label,
                 missing or uneven measurements, and unrecorded factors such as health events and management interventions.
+                This is target-specific: the separate Day 35 weight model has **31 observed outcomes across six historical cycles**.
                 """
             )
         with st.expander("What Canary adopted from the teammate model—and what it rejected"):
@@ -2035,7 +2608,7 @@ if selected_view == VIEW_DETAILS:
         st.dataframe(
             pd.DataFrame(
                 [
-                    {"Role": "Output (Y)", "Variable": "Observed Day 35 average weight", "Plain-language definition": "The building’s recorded average bodyweight on production Day 35."},
+                    {"Role": "Training output (Y)", "Variable": "Remaining growth to Day 35", "Plain-language definition": "Observed Day 35 average weight minus the latest measured checkpoint weight. The live forecast adds predicted remaining gain back to the current measurement."},
                     {"Role": "Operational inputs", "Variable": "Latest measured weight and measurement day", "Plain-language definition": "The building-specific starting weight and the age used to select expected remaining growth."},
                     {"Role": "Operational reference", "Variable": "Historical remaining gain", "Plain-language definition": "Average observed Day 35 weight minus checkpoint weight, calculated using training cycles only."},
                     {"Role": "Learned-model candidates", "Variable": "Growth, target progress, survival, environment and freshness", "Plain-language definition": "These were tested for Ridge, linear and boosted challengers but do not drive the operational fallback."},
@@ -2069,14 +2642,28 @@ if selected_view == VIEW_DETAILS:
             hide_index=True,
             width="stretch",
         )
+        with st.expander("See the rolling-origin stability check"):
+            st.caption(
+                "This secondary view trains only on earlier cycles and predicts later cycles; "
+                "the transparent baseline remains strongest under this prospective check."
+            )
+            st.dataframe(
+                _rolling_origin_summary(day35_manifest, "weight"),
+                hide_index=True,
+                width="stretch",
+            )
+        weight_ci = day35_manifest["primary_whole_cycle_bootstrap_mae_95ci"]
+        st.caption(
+            "Whole-cycle bootstrap check: the 95% interval for operational MAE is approximately "
+            f"{float(weight_ci['lower_kg']) * 1000:.0f}–{float(weight_ci['upper_kg']) * 1000:.0f} g. "
+            "This broad interval is consistent with a limited-data experimental forecast."
+        )
         weight_gates = day35_manifest["champion_gates"]
         st.warning(
             f"**Selected:** Historical remaining gain. The best learned challenger was {day35_manifest['research_champion'].replace('_', ' ').title()}, "
             f"but it was {abs(float(weight_gates['baseline_improvement_pct'])):.1f}% worse than the baseline on cycle-balanced MAE and reached only "
             f"{float(day35_manifest['research_champion_metrics']['within_200g_rate']):.1%} within 200 g. It did not earn deployment."
         )
-        if day35_manifest.get("unavailable_candidates"):
-            st.caption("XGBoost remains a declared fifth challenger with no local metric. It must be run under the identical nested whole-cycle protocol in Linux/CI before it can compete.")
         with st.expander("Panel question: R² is low—can we trust this projection?"):
             st.markdown(
                 f"""
@@ -2130,7 +2717,7 @@ if selected_view == VIEW_DETAILS:
                 hide_index=True,
                 width="stretch",
             )
-            st.caption("These Ridge associations are research evidence only. They do not power the operational remaining-gain forecast and do not prove causality.")
+            st.caption("These research-challenger associations do not power the operational remaining-gain forecast and do not prove causality.")
 
     if (
         pd.notna(building.get("weight_score"))
@@ -3030,6 +3617,38 @@ if selected_view == VIEW_METHODS:
         ]
     )
     st.dataframe(lineage, hide_index=True, width="stretch")
+    st.info(
+        f"Outcome counts are target-specific: the recovery model uses {recovery_manifest['training_building_cycles']} independent building outcomes across "
+        f"{len(recovery_manifest['training_cycles'])} fully eligible cycles; the Day 35 weight model uses {day35_manifest['training_building_cycles']} observed outcomes across "
+        f"{len(day35_manifest['training_cycles'])} historical cycles. Repeated checkpoint snapshots are historical decision points—not additional independent flocks."
+    )
+    model_eligibility = pd.DataFrame(
+        [
+            {
+                "Cycle": cycle,
+                "Recovery outcomes": sum(
+                    1
+                    for row in recovery_manifest.get("day14_backtest", [])
+                    if str(row["cycle_id"]) == cycle
+                ),
+                "Day 35 weight outcomes": sum(
+                    1
+                    for row in day35_manifest.get("day14_backtest", [])
+                    if str(row["cycle_id"]) == cycle
+                ),
+                "Explanation": (
+                    "Current cycle—not used for training"
+                    if cycle == current_cycle
+                    else "Observed Day 35 weights; recovery endpoint incomplete"
+                    if cycle == "2026-2"
+                    else "Eligible historical evidence"
+                ),
+            }
+            for cycle in cycle_options
+        ]
+    )
+    with st.expander("See model eligibility by harvest cycle"):
+        st.dataframe(model_eligibility, hide_index=True, width="stretch")
 
     risk_tab, recovery_tab, weight_tab, action_tab = st.tabs(
         ["1 · Risk scoring", "2A · Recovery model", "2B · Day 35 weight", "3 · Recommendations"]
@@ -3037,22 +3656,30 @@ if selected_view == VIEW_METHODS:
 
     with recovery_tab:
         recovery_name = {
-            "ridge_core": "Compact Ridge regression",
-            "ridge_no_weight": "Ridge regression (without weight inputs)",
+            "age_band_remaining_loss": "Age-band remaining-loss baseline",
+            "remaining_loss_linear": "Linear remaining-loss regression",
+            "remaining_loss_ridge": "Ridge remaining-loss regression",
+            "remaining_loss_huber": "Robust Huber remaining-loss regression",
+            "remaining_loss_gradient_boosting": "Gradient Boosting remaining-loss",
         }.get(
             recovery_manifest["selected_model"],
             recovery_manifest["selected_model"].replace("_", " ").title(),
         )
         st.subheader(f"Recovery model: {recovery_name}")
+        st.caption(
+            "Five methods were tested: the age-band baseline, ordinary linear regression, "
+            "Ridge regression, robust Huber regression, and constrained Gradient Boosting. "
+            "The age-band remaining-loss baseline remains the operational fallback."
+        )
         st.dataframe(
             pd.DataFrame(
                 [
                     {"Workflow": "Business question", "Plain-language explanation": "Given what is known on the review date, what last-recorded recovery should we expect for this building?"},
-                    {"Workflow": "Goal / Y", "Plain-language explanation": "Estimate each building’s recovery at harvest. Historical proxy: population on the last recorded date ÷ beginning population."},
+                    {"Workflow": "Goal / Y", "Plain-language explanation": "Predict additional population loss after the review date, then subtract it from current survival. The completed-cycle endpoint remains last recorded population ÷ beginning population."},
                     {"Workflow": "Inputs / X", "Plain-language explanation": "Age, current survival, recent mortality, weight gap/freshness, and temperature/humidity band deviations known on the review date. Feed is withheld until its unit is confirmed."},
-                    {"Workflow": "Methods tried", "Plain-language explanation": "Historical mean, ordinary linear regression, Compact Ridge, and constrained Gradient Boosting. XGBoost is documented as unavailable on this Mac rather than presented as a comparable result."},
+                    {"Workflow": "Methods tried", "Plain-language explanation": "Age-band remaining-loss baseline, ordinary linear regression, Ridge regression, robust Huber regression, and constrained Gradient Boosting—exactly five compact candidates."},
                     {"Workflow": "Fair comparison", "Plain-language explanation": "Nested validation: hold out one complete cycle; tune only within the remaining cycles; then predict the unseen cycle."},
-                    {"Workflow": "Winner", "Plain-language explanation": f"{recovery_name} for the continuous estimate. It cleared the MAE/R² gate but not the separate 95% classification gate."},
+                    {"Workflow": "Winner", "Plain-language explanation": f"{recovery_name} remains operational. The learned research challenger improved MAE but did not clear every stability and 95% classification gate."},
                 ]
             ),
             hide_index=True,
@@ -3060,7 +3687,7 @@ if selected_view == VIEW_METHODS:
         )
         st.caption(
             "Historical recovery target (Y): population on the last recorded daily date ÷ beginning population. "
-            "Canary compared a historical-mean baseline with Ridge regression variants using leave-one-cycle-out validation. "
+            "Canary compared five compact remaining-loss methods using nested leave-one-cycle-out validation. "
             f"Training evidence: {recovery_manifest['training_snapshot_rows']:,} balanced decision snapshots from "
             f"{recovery_manifest['training_building_cycles']} building outcomes across {len(recovery_manifest['training_cycles'])} cycles. "
             f"Canary started with {source_daily_snapshots:,} eligible daily snapshots and retained Days 7, 14, 21, 28, and the latest eligible checkpoint."
@@ -3151,9 +3778,9 @@ if selected_view == VIEW_METHODS:
                 st.dataframe(cycle_table, hide_index=True, width="stretch")
         recovery_gates = recovery_manifest["champion_gates"]
         st.caption(
-            f"Selection detail: {recovery_name} improved cycle-balanced MAE by "
-            f"{float(recovery_gates['baseline_improvement_pct']):.1f}% versus the historical-mean baseline and kept positive R². "
-            "Its continuous forecast gate passed; its 95% target-side classification gate did not."
+            f"Selection detail: the learned research challenger improved cycle-balanced MAE by "
+            f"{float(recovery_gates['baseline_improvement_pct']):.1f}% versus the age-band baseline and kept positive R², "
+            "but the full operational gate did not pass. The transparent age-band remaining-loss method therefore remains live."
         )
         st.markdown("**Selected-model performance by forecast timing**")
         st.dataframe(
@@ -3190,7 +3817,8 @@ if selected_view == VIEW_METHODS:
         )
         st.warning(
             f"Target-side caution: {day14_metrics['actual_below_target']} of {day14_metrics['building_cycles']} outcomes were below 95%, and only "
-            f"{day14_metrics['actual_at_or_above_target']} were at or above it. The model predicted all {day14_metrics['predicted_below_target']} below target. "
+            f"{day14_metrics['actual_at_or_above_target']} were at or above it. The model predicted {day14_metrics['predicted_below_target']} below target and "
+            f"{day14_metrics['predicted_at_or_above_target']} at/above target. "
             f"Its {float(day14_metrics['target_side_accuracy']):.1%} accuracy therefore equals the always-below majority baseline and does not prove it can recognize target hitters."
         )
         day14_table = pd.DataFrame(recovery_manifest["day14_backtest"])
@@ -3236,9 +3864,9 @@ if selected_view == VIEW_METHODS:
             pd.DataFrame(
                 [
                     {"Workflow": "Business question", "Plain-language explanation": "Given the latest measured weight, what average building weight should we expect on Day 35?"},
-                    {"Workflow": "Goal / Y", "Plain-language explanation": "Estimate the building’s recorded average liveweight specifically on production Day 35."},
+                    {"Workflow": "Goal / Y", "Plain-language explanation": "Predict remaining gain from the checkpoint to Day 35, then add it to the latest measured weight. Evaluation compares the result with observed Day 35 weight."},
                     {"Workflow": "Inputs / X", "Plain-language explanation": "Latest/checkpoint weights, weighing day, target progress, recent gain, current survival, and environmental-band exposure known at that checkpoint."},
-                    {"Workflow": "Methods tried", "Plain-language explanation": "Historical remaining gain, ordinary linear regression, compact Ridge, and constrained Gradient Boosting. XGBoost is documented as unavailable on this Mac rather than presented as a comparable result."},
+                    {"Workflow": "Methods tried", "Plain-language explanation": "Historical remaining-gain baseline, checkpoint linear regression, Ridge regression, robust Huber regression, and constrained Gradient Boosting—exactly five compact candidates."},
                     {"Workflow": "Fair comparison", "Plain-language explanation": "Nested whole-cycle validation: tune only on training cycles, then compare errors in grams on the completely unseen cycle."},
                     {"Workflow": "Operational result", "Plain-language explanation": "Historical remaining gain remains the live method because no learned challenger beat it by 10%, kept positive R², reached 70% within 200 g, and improved target-side classification."},
                 ]
@@ -3353,9 +3981,8 @@ if selected_view == VIEW_METHODS:
         st.markdown(
             f"""
             Historical remaining gain reached **{day35_candidates.get('historical_remaining_gain', wmetrics)['mae_kg'] * 1000:.0f} g MAE** and remains the transparent benchmark.
-            Ordinary linear regression reached **{day35_candidates.get('linear_regression', wmetrics)['mae_kg'] * 1000:.0f} g MAE**.
-            Constrained Gradient Boosting reached **{day35_candidates.get('gradient_boosting', wmetrics)['mae_kg'] * 1000:.0f} g MAE**.
-            XGBoost is documented as an unavailable challenger on this Mac because its OpenMP runtime is absent; it is not included in the fair numerical comparison.
+            Checkpoint linear regression reached **{day35_candidates.get('checkpoint_linear_remaining_gain', wmetrics)['mae_kg'] * 1000:.0f} g MAE**.
+            Constrained Gradient Boosting reached **{day35_candidates.get('gradient_boosting_remaining_gain', wmetrics)['mae_kg'] * 1000:.0f} g MAE**.
 
             The best learned challenger was **{day35_manifest['research_champion'].replace('_', ' ').title()}**, but it did not improve cycle-balanced MAE by the required 10% and did not reach 70% within 200 g. Therefore the **historical remaining-gain method stays operational**. This is the more defensible small-data decision.
             """

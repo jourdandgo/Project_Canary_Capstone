@@ -118,17 +118,18 @@ def test_training_selects_best_validated_candidate_and_versions_artifact(dataset
 
     assert recovery.selected_model == recovery.manifest["operational_model"]
     assert recovery.manifest["research_champion"] in recovery.manifest["metrics"]
-    assert recovery.manifest["model_version"] == "recovery-1.0.0"
+    assert recovery.manifest["model_version"] == "recovery-2.0.0"
     assert recovery.manifest["training_snapshot_rows"] <= 25 * 5
     assert recovery.manifest["source_daily_snapshot_rows"] > recovery.manifest["training_snapshot_rows"]
-    assert len(recovery.manifest["metrics"]) == 4  # XGBoost requires unavailable macOS libomp.
-    assert "linear_regression" in recovery.manifest["metrics"]
-    assert "gradient_boosting" in recovery.manifest["metrics"]
-    assert "ridge_core" in recovery.manifest["metrics"]
+    assert len(recovery.manifest["metrics"]) == 5
+    assert "remaining_loss_linear" in recovery.manifest["metrics"]
+    assert "remaining_loss_gradient_boosting" in recovery.manifest["metrics"]
+    assert "remaining_loss_ridge" in recovery.manifest["metrics"]
+    assert "remaining_loss_huber" in recovery.manifest["metrics"]
     assert "beginning_inventory" not in recovery.manifest["feature_columns"]
     assert "is_lags_building" not in recovery.manifest["feature_columns"]
     assert "percentage_alive" in recovery.manifest["feature_columns"]
-    assert set(recovery.manifest["feature_columns"]).issubset(FEATURE_COLUMNS)
+    assert set(recovery.manifest["feature_columns"]).issubset(set(FEATURE_COLUMNS) | {"cycle_day", "percentage_alive"})
     assert recovery.manifest["selected_metrics"]["mae"] < 0.02
     assert recovery.manifest["day14_backtest_metrics"]["building_cycles"] == 25
     assert recovery.manifest["selection_metric"] == "nested_leave_one_complete_cycle_out_cycle_macro_mae"
@@ -136,7 +137,7 @@ def test_training_selects_best_validated_candidate_and_versions_artifact(dataset
     assert all("r2" in metrics for metrics in recovery.manifest["metrics"].values())
     assert "confusion_matrix" in recovery.manifest["selected_metrics"]
     assert len(recovery.manifest["day14_backtest"]) == 25
-    assert recovery.manifest["held_out_permutation_importance"]
+    assert recovery.manifest["research_champion_permutation_importance"]
     assert recovery.manifest["champion_gates"]["regression_gate_passed"] is True
     assert len(recovery.manifest["candidate_registry"]) == 5
     assert "secondary_within_cycle_metrics" in recovery.manifest

@@ -46,15 +46,16 @@ Canary automatically looks for `FARM HARVEST DATA.xlsx` one folder above the app
 7. Follow its fixed sequence: decision summary and next check; risk-score table; forecast deep dive; operational checks; then outlook history.
 8. Expand **See why this action was selected** for the problem pattern, severity, rule ID, version, inspection list, and approval status.
 9. Expand **See the forecast evidence and model proof** for the prediction-time input audit and building-specific model trace.
-10. Use **Business Value** to adjust price, sale-weight, improvement, and cycle assumptions and see the estimated gross revenue represented by the recovery gap.
-11. Use **EDA & Insights** for question-led historical evidence and **Canary Methodology** for the complete data, scoring, model, validation, and recommendation logic.
+10. Use **Harvest Analysis** to compare recovery and Day 35 weight across all cycles and buildings. Historical results remain recorded proxies; only the latest cycle receives current projections.
+11. Use **Business Value** to adjust price, sale-weight, improvement, and cycle assumptions and see the estimated gross revenue represented by the recovery gap.
+12. Use **EDA & Insights** for question-led historical evidence and **Canary Methodology** for the complete data, scoring, model, validation, and recommendation logic.
 
 ## How to interpret each result
 
 - **Risk rating:** Low, Medium, High, or Critical operational concern from the four rules-based dimensions. Missing dimensions are not silently scored as good.
 - **Why:** Deterministic evidence showing the actual value, comparison, score, freshness, and problem pattern.
 - **Predicted harvest recovery:** Estimated last-recorded population / beginning population, compared with the 95% target. This is a disclosed capstone proxy for true harvest recovery.
-- **Projected Day 35 weight:** Compact Ridge estimate based on the checkpoint weights and target progress known by the review date. It is compared with 1.8 kg. Historical remaining gain remains the transparent benchmark.
+- **Projected Day 35 weight:** Latest measured weight plus the historically expected remaining gain for that measurement checkpoint. It is compared with 1.8 kg. Learned models were tested but did not pass the deployment gates, so the transparent baseline remains operational.
 - **Recommended action:** A deterministic inspection or management response. Until Doc Raymond approves the playbook, it remains preliminary guidance.
 - **Estimated gross revenue at risk:** Beginning birds × predicted recovery gap to 95% × assumed sale weight × assumed selling price. It is not profit or guaranteed savings.
 
@@ -77,6 +78,14 @@ The defaults are clearly labeled placeholders. The output excludes feed, labor, 
 | Any earlier cycle | All six buildings in fixed positions, each recorded building's last daily date as **Harvest completed on**, calculated actual recovery, and actual final average weight when available. No historical risk, forecast, or recommendation output. |
 
 This is a deliberate capstone convention. The source workbook's `End Date` is the maximum daily-record date rather than a verified harvest-event flag. The interface clearly states that limitation while using the agreed convention for simple historical review.
+
+## Why the model counts differ
+
+- The workbook contains **34 recorded building-cycle histories across seven cycles**, including the current 2026-3 cycle.
+- The recovery model uses **25 independent outcomes across five fully eligible cycles**: 2025-2 through 2026-1.
+- The Day 35 weight model uses **31 observed outcomes across six historical cycles**: the same 25 plus six observed Day 35 weights from 2026-2.
+- The six 2026-2 recovery endpoints remain excluded because later Lagundi rows contain carried-forward populations and incomplete daily evidence. The Harvest Analysis page may show the recorded proxy with a warning, but it does not present those rows as recovery-training evidence.
+- Repeated Day 7, 14, 21, and 28 snapshots are historical decision points—not additional independent flocks.
 
 ## Current-cycle data-state behavior
 

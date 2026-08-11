@@ -73,7 +73,7 @@ Current response timing is:
 7. Since End Date is only the last daily record, may we use the last population as the capstone ending-population proxy, and where should a true harvest-complete status come from later?
 8. When a building is absent from a cycle, was it not used or could its data be missing?
 9. For Zone A / Zone B records, should Canary keep an equal average, or is one zone larger?
-10. What average forecast error would be acceptable for farm use? The final nested whole-cycle audit currently shows about 1.37 recovery points for the continuous recovery estimate and about 178 g for the transparent Day 35 fallback.
+10. What average forecast error would be acceptable for farm use? The final nested whole-cycle audit currently shows about 1.40 recovery points for the transparent remaining-loss forecast and about 178 g for the transparent Day 35 remaining-gain forecast.
 
 Canary's recommendations are only inspection and escalation guidance. It does not diagnose disease, automatically prescribe treatment, or guarantee that an action will improve the result.
 

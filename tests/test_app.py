@@ -31,6 +31,7 @@ def test_dashboard_renders_without_streamlit_errors(monkeypatch):
     assert {page.name for page in pages_dir.glob("*.py") if not page.name.startswith("_")} == {
         "home.py",
         "building.py",
+        "harvest_analysis.py",
         "business_value.py",
         "eda.py",
         "methodology.py",
@@ -187,7 +188,7 @@ def test_model_proof_exposes_targets_features_and_validation(monkeypatch):
     assert "last recorded daily date ÷ beginning population" in visible_text
     assert "Ridge regression" in visible_text
     assert "leave" in visible_text.lower()
-    assert "historical-mean baseline" in visible_text
+    assert "age-band remaining-loss baseline" in visible_text
     assert "last-recorded recovery" in visible_text
     assert "Executive summary" in visible_text
     assert "1.8 kg on Day 35" in visible_text
@@ -287,3 +288,40 @@ def test_business_value_page_exposes_editable_assumptions_and_estimates(monkeypa
         metric for metric in app.metric if metric.label == "Estimated gross revenue at risk"
     ).value
     assert revised_value != original_value
+
+
+def test_harvest_analysis_is_all_cycle_and_target_specific(monkeypatch):
+    monkeypatch.setenv("CANARY_DEFAULT_WORKBOOK", str(SOURCE))
+    monkeypatch.setenv("CANARY_TEST_VIEW", "Harvest Analysis")
+    app = AppTest.from_file(Path(__file__).parents[1] / "app.py", default_timeout=30)
+    app.run()
+
+    assert not app.exception
+    assert not [widget for widget in app.selectbox if widget.label == "Harvest cycle"]
+    assert any(widget.label == "Review date" for widget in app.date_input)
+    assert [tab.label for tab in app.tabs] == [
+        "Harvest recovery",
+        "Day 35 weight",
+        "Detailed history",
+    ]
+    metric_labels = [metric.label for metric in app.metric]
+    assert metric_labels[:5] == [
+        "History in view",
+        "Historical recovery proxy",
+        "Recorded Day 35 weight",
+        "Current projected recovery",
+        "Current projected Day 35 weight",
+    ]
+    visible = " ".join(
+        item.value
+        for item in [*app.markdown, *app.caption, *app.info]
+        if isinstance(item.value, str)
+    )
+    assert "Harvest Analysis" in visible
+    assert "25 independent outcomes" in visible
+    assert "31 observed Day 35 outcomes" in visible
+    assert "Model release" in visible
+    assert any(
+        button.label == "Download filtered harvest history (CSV)"
+        for button in app.download_button
+    )

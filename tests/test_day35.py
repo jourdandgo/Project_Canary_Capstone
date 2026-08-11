@@ -16,18 +16,19 @@ def test_day35_model_compares_five_models_on_complete_cycle_holdouts():
     manifest = train_day35_weight_baseline(load_workbook(SOURCE))
     metrics = manifest["candidate_metrics"]
 
-    assert len(metrics) == 4  # XGBoost is recorded unavailable when macOS lacks libomp.
+    assert len(metrics) == 5
     assert "historical_remaining_gain" in metrics
-    assert "linear_regression" in metrics
-    assert "ridge_regression" in metrics
-    assert "gradient_boosting" in metrics
+    assert "checkpoint_linear_remaining_gain" in metrics
+    assert "ridge_remaining_gain" in metrics
+    assert "huber_remaining_gain" in metrics
+    assert "gradient_boosting_remaining_gain" in metrics
     assert len(manifest["candidate_registry"]) == 5
     assert manifest["research_champion"] in metrics
     assert manifest["selected_model"] == "historical_remaining_gain"
     assert manifest["champion_gates"]["operational_fallback_applied"] is True
     assert manifest["champion_gates"]["regression_gate_passed"] is False
     assert all("r2" in value for value in metrics.values())
-    assert manifest["model_version"] == "day35-weight-1.0.0"
+    assert manifest["model_version"] == "day35-weight-2.0.0"
     assert manifest["selection_metric"] == "nested_leave_one_complete_cycle_out_cycle_macro_mae_kg"
     assert manifest["training_building_cycles"] == 31
     assert manifest["day14_backtest_metrics"]["building_cycles"] == 31

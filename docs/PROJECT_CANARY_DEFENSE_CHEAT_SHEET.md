@@ -23,14 +23,14 @@ Project Canary is an early-warning and decision-support system for a broiler far
 - 1,785 source rows became **1,666 unique building-day records** after repeated Zone A/B environment rows were consolidated.
 - Recovery: **25 independent building-cycle outcomes**, represented by **122 balanced decision snapshots**; 1,122 leakage-safe daily snapshots are retained for audit.
 - Day 35 weight: **31 independent building-cycle outcomes**, represented by **124 Day 7/14/21/28 checkpoint rows**.
-- Recovery Y is the agreed proxy: last-recorded population ÷ beginning population.
-- Weight Y is observed average bodyweight on production Day 35.
+- Recovery endpoint is the agreed proxy: last-recorded population ÷ beginning population. The redesigned **training Y** is the additional population loss after each review date.
+- Weight endpoint is observed average bodyweight on Day 35. The redesigned **training Y** is the remaining gain from the current checkpoint to Day 35.
 - Day 35 goal: **1,800 g**. Recovery goal: **95%**.
 
 ### What models are operational?
 
-- **Recovery:** ordinary linear regression is the continuous estimator. Whole-cycle MAE is **1.37 percentage points**; cycle-balanced MAE is **1.48 points**; RMSE is **1.84 points**; R² is **0.189**. It improves cycle-balanced MAE by **14.5%** versus the historical-mean baseline. It is not validated as a 95% hit/miss classifier.
-- **Day 35 weight:** **historical remaining gain** is the operational fallback. MAE is **178 g**; cycle-balanced MAE is **182 g**; RMSE is **242 g**; R² is **0.126**; **65.3%** are within 200 g. Ridge is the best learned linear challenger, but it is worse than the baseline and fails the replacement gates.
+- **Recovery:** the operational method is the **age-band remaining-loss baseline**. Whole-cycle MAE is **1.40 percentage points**; cycle-balanced MAE is **1.50 points**; RMSE is **1.80 points**; R² is **0.222**. Robust Huber is the best learned research challenger (**1.24-point MAE, R² 0.260**) but remains experimental because it fails the 95% classification gate and is less stable under rolling-origin validation.
+- **Day 35 weight:** **historical remaining gain** remains operational. MAE is **178 g**; cycle-balanced MAE is **182 g**; RMSE is **242 g**; R² is **0.126**; **65.3%** are within 200 g. Every learned challenger performs worse on unseen cycles.
 
 ### What is the honest claim?
 
@@ -54,9 +54,9 @@ Canary is a **validated prototype**, not a production guarantee. Recovery is use
 ## Five-step explanation: Engine 2A — Recovery forecast
 
 1. **Question:** Using only what is known today, what final recovery proxy should we expect?
-2. **Inputs (X):** cycle day; current percentage alive; recent mortality and mortality change; latest weight gap and freshness; temperature/humidity band deviations; recent out-of-band environment days; and environment freshness. Feed is withheld until its unit is confirmed.
+2. **Inputs (X):** age and remaining days; current survival and cumulative loss; mortality level/acceleration; latest weight gap/freshness; temperature/humidity exposure and freshness. Feed is withheld until its unit is confirmed.
 3. **Process:** create Day 7/14/21/28/latest snapshots; give every building-cycle equal total weight; impute, scale, tune, and compare models inside nested whole-cycle folds.
-4. **Output:** point estimate, target gap, empirical range, model version, forecast date, and predictive drivers.
+4. **Output:** current survival minus predicted remaining loss, plus target gap, empirical range, model version, forecast date, and predictive context.
 5. **Limitation:** Y is a last-recorded recovery proxy, only five historical cycles are available, and the model cannot yet distinguish 95% hits from misses better than the majority rule.
 
 ### Recovery workflow — explain it from start to finish
@@ -64,17 +64,19 @@ Canary is a **validated prototype**, not a production guarantee. Recovery is use
 | Stage | What Canary does |
 |---|---|
 | **Data** | Starts from the corrected farm workbook, consolidates Zone A/B rows, and produces one building-day record. |
-| **Y output** | Calculates the completed-cycle recovery proxy: last-recorded population ÷ beginning population. |
+| **Y output** | Calculates remaining loss after the snapshot: current percentage alive − completed-cycle recovery proxy. Final forecast = current survival − predicted remaining loss. |
 | **X inputs** | Uses only evidence known on the review date: age, current survival, mortality signals, latest weight gap/freshness, and environmental deviations/freshness. |
 | **Feature engineering** | Converts raw readings into per-bird rates, gaps from approved targets, rolling mortality signals, days outside environmental bands, and staleness flags. |
 | **Pre-processing** | Inside each training fold only: median-impute missing numeric values, add missingness indicators, and standardize inputs for linear models. |
 | **Validation** | Removes one complete harvest cycle at a time; the inner loop selects settings using only the remaining cycles. Repeated snapshots are weighted so each building-cycle has equal total influence. |
 | **Selection** | Compares five declared methods on cycle-balanced MAE, then checks R², cycle stability, target-side performance, and champion gates. |
-| **Live output** | Returns an estimated final recovery, likely range, gap to 95%, model version, and non-causal driver explanation. |
+| **Live output** | Returns current survival minus expected remaining loss, a likely range, gap to 95%, model version, and non-causal driver context. |
 
 ### Recovery Y target
 
-`final recovery proxy = last-recorded population ÷ beginning population`
+`additional loss Y = current percentage alive − final recovery proxy`
+
+`predicted final recovery = current percentage alive − predicted additional loss`
 
 The value is used only after prediction for evaluation. Current survival may be an X because it is already known on the review date and logically constrains what final recovery can be. Future ending population is never an X.
 
@@ -82,33 +84,33 @@ The value is used only after prediction for evaluation. Current survival may be 
 
 | Candidate | MAE (pts) | Cycle-balanced MAE (pts) | RMSE (pts) | R² | Decision |
 |---|---:|---:|---:|---:|---|
-| Historical mean | 1.66 | 1.73 | 2.17 | -0.132 | Baseline |
-| **Ordinary linear regression** | **1.37** | **1.48** | **1.84** | **0.189** | **Operational continuous estimator** |
-| Compact Ridge | 1.55 | 1.59 | 1.97 | 0.070 | Compared |
-| Gradient Boosting | 1.57 | 1.66 | 2.08 | -0.041 | Compared |
-| XGBoost | — | — | — | — | Declared challenger; unavailable locally because macOS lacks `libomp` |
+| **Age-band remaining-loss baseline** | **1.40** | **1.50** | **1.80** | **0.222** | **Operational fallback** |
+| Linear remaining-loss regression | 1.29 | 1.40 | 1.80 | 0.224 | Compared |
+| Ridge remaining-loss regression | 1.31 | 1.43 | 1.82 | 0.207 | Compared |
+| Robust Huber remaining-loss regression | 1.24 | 1.33 | 1.76 | 0.260 | Best research challenger |
+| Gradient Boosting remaining-loss | 1.25 | 1.37 | 1.78 | 0.243 | Compared |
 
-### Why ordinary linear regression instead of Ridge?
+### Why not automatically deploy Huber because its MAE is best?
 
-We did test both. Under the redesigned nested whole-cycle test, ordinary linear regression improved the historical-mean baseline by **14.5%** and kept positive R². Ridge was more regularized, but improved the baseline by only **8.1%**, below the approved 10% gate. The evidence therefore favors OLS for the continuous estimate in this release.
+Huber improves cycle-balanced MAE by **11.2%** and keeps positive R², but its rolling-origin cycle MAE is **1.73 points** versus **1.35** for the age-band baseline, and it does not beat the majority rule for identifying the 95% target side. The strict gate therefore keeps the transparent baseline operational while Huber remains the research champion.
 
 ### Recovery classification warning
 
-- Target-side accuracy: **82.8%**.
+- Target-side accuracy: **86.1%** for the operational baseline.
 - Majority baseline: **84.4%** overall.
-- Day 14: **80.0%** versus an **84.0%** majority baseline.
+- Day 14: **84.0%**, equal to the **84.0%** majority baseline.
 - At/above-95% recall: **0%**.
 
 Therefore, do not say “the model accurately classifies whether recovery will hit 95%.” Say: **it estimates the continuous recovery level, but target-side classification is not validated.**
 
 ### Recovery top held-out drivers
 
-The largest out-of-fold permutation importances are humidity-band deviation, current survival, flock age, recent mortality, and mortality trend. These are associations that helped prediction on unseen cycles; they do not prove causal treatment effects.
+Canary reports held-out permutation importance for the Huber research challenger. These are predictive associations—not proof that changing a factor will cause recovery to improve. The live baseline itself uses only current survival and the age-band historical remaining loss.
 
 ## Five-step explanation: Engine 2B — Day 35 weight
 
 1. **Question:** Given recorded growth so far, what average building weight should we expect on Day 35 against the 1,800 g goal?
-2. **Inputs (X):** latest/checkpoint weights; weighing day; weight-to-target ratio; recent and cumulative average daily gain; earlier checkpoint weights available by that date; current survival; environmental-band exposure and freshness.
+2. **Inputs (X):** latest/checkpoint weights; weighing day; weight-to-target ratio; recent and cumulative average daily gain; earlier checkpoint weights available by that date; current survival; mortality; and environmental exposure/freshness.
 3. **Process:** use only observed Day 7/14/21/28 weights; hide future checkpoints; give each building-cycle equal total influence; run nested whole-cycle validation and apply strict replacement gates.
 4. **Output:** projected Day 35 weight, gram and percent gap to 1,800 g, range, method, measurement day, and staleness.
 5. **Limitation:** only 31 independent Day 35 outcomes exist; 26 are below target and five are at/above target; no learned model clears every gate.
@@ -118,17 +120,19 @@ The largest out-of-fold permutation importances are humidity-band deviation, cur
 | Stage | What Canary does |
 |---|---|
 | **Data** | Uses corrected, observed building weights and keeps observed values separate from target-curve interpolation. |
-| **Y output** | Uses the observed building average bodyweight on production Day 35. |
+| **Y output** | Calculates remaining gain: observed Day 35 weight − current checkpoint weight. Final forecast = current weight + predicted remaining gain. |
 | **X inputs** | At each Day 7/14/21/28 checkpoint, exposes only weights and operating evidence already recorded by that checkpoint. Later weights remain blank. |
 | **Feature engineering** | Creates measurement age, target ratio/deficit, average daily gain, available prior checkpoint weights, survival, environmental exposure, missingness, and staleness. |
 | **Pre-processing** | Performs imputation, missingness handling, scaling, feature filtering, and tuning inside training folds—not before the holdout. |
 | **Validation** | Removes a complete cycle, trains on the other cycles, predicts the unseen cycle, and repeats. Every building-cycle has equal total influence. |
-| **Selection** | Compares the transparent remaining-gain baseline with OLS, Ridge, Gradient Boosting, and declared XGBoost. A learned model must improve cycle-balanced MAE by 10% and reach 70% within 200 g. |
+| **Selection** | Compares historical remaining gain, checkpoint linear, Ridge, robust Huber, and constrained Gradient Boosting. A learned model must improve cycle-balanced MAE by 10%, keep positive R², remain stable, reach 70% within 200 g, and improve target-side usefulness. |
 | **Live output** | Because no learned model passes, adds the training-only historical remaining gain for the measurement age to the latest observed building weight. |
 
 ### Day 35 weight Y target
 
-`Y = observed average building bodyweight on production Day 35`
+`remaining gain Y = observed Day 35 weight − current checkpoint weight`
+
+`projected Day 35 weight = current checkpoint weight + predicted remaining gain`
 
 The approved target curve is a known reference used to calculate age-specific progress. It never replaces a missing observed Y.
 
@@ -137,10 +141,10 @@ The approved target curve is a known reference used to calculate age-specific pr
 | Candidate | MAE | Cycle-balanced MAE | RMSE | R² | Within 200 g | Decision |
 |---|---:|---:|---:|---:|---:|---|
 | **Historical remaining gain** | **178 g** | **182 g** | **242 g** | **0.126** | **65.3%** | **Operational fallback** |
-| Ordinary linear regression | 217 g | 209 g | 273 g | -0.114 | 55.6% | Compared |
-| Ridge regression | 197 g | 193 g | 252 g | 0.048 | 60.5% | Best learned linear challenger |
-| Gradient Boosting | 189 g | 189 g | 256 g | 0.018 | 58.1% | Compared |
-| XGBoost | — | — | — | — | — | Declared challenger; unavailable locally because macOS lacks `libomp` |
+| Checkpoint linear remaining-gain | 216 g | 208 g | 273 g | -0.118 | 56.5% | Compared |
+| Ridge remaining-gain | 207 g | 200 g | 264 g | -0.045 | 56.5% | Compared |
+| Robust Huber remaining-gain | 226 g | 223 g | 276 g | -0.144 | 51.6% | Compared |
+| Gradient Boosting remaining-gain | 203 g | 207 g | 262 g | -0.026 | 52.4% | Best nonlinear challenger |
 
 ### How historical remaining gain works
 
@@ -154,13 +158,13 @@ Average those gains using training cycles only, then:
 
 The held-out cycle is excluded when validating, so its Day 35 result cannot influence its own prediction.
 
-### Why not use Ridge as the live model?
+### Why not use a learned model as the live method?
 
-Ridge is explainable and has positive R², but it is **5.7% worse** than historical remaining gain on cycle-balanced MAE and reaches only **60.5% within 200 g**. The approved gate requires at least 10% improvement and at least 70% within 200 g. Using the baseline is therefore the honest, defensible choice.
+All learned challengers have negative whole-cycle R² and higher cycle-balanced MAE than the historical remaining-gain baseline. The approved gate requires at least 10% improvement, positive R², stability, and at least 70% within 200 g. Using the baseline is therefore the honest, defensible choice.
 
 ### What drives the live weight projection?
 
-The live formula uses three direct items: the latest measured weight, its measurement day, and the average historical remaining gain for that checkpoint age. Ridge coefficients may be shown as research evidence about the best learned challenger, but they do **not** drive the live forecast.
+The live formula uses three direct items: latest measured weight, its measurement day, and the average historical remaining gain for that checkpoint. Learned-model importances may be shown as research evidence, but they do **not** drive the live forecast.
 
 ### Day 14 weight proof
 
@@ -260,7 +264,7 @@ No. Importance shows association and predictive reliance. The action table must 
 
 ### “Are these models reliable?”
 
-They are useful as validated prototype estimates, not guarantees. Recovery passes its continuous-estimate gate but not classification. Weight learned models fail the replacement gates, so Canary uses the transparent baseline.
+They are useful as validated prototype estimates, not guarantees. The recovery Huber challenger passes the continuous-error gate but not the full deployment gate; Canary therefore keeps the transparent age-band fallback. Weight learned models also fail the replacement gates, so Canary uses historical remaining gain.
 
 ### “What would most improve the models?”
 

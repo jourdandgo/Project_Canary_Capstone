@@ -68,6 +68,12 @@ from .outcomes import (
     build_historical_outcomes,
     latest_cycle_id,
 )
+from .harvest_analysis import (
+    build_harvest_analysis_rows,
+    recovery_cycle_summary,
+    summarize_harvest_analysis,
+    weight_cycle_summary,
+)
 from .business_value import (
     DEFAULT_CYCLES_PER_YEAR,
     DEFAULT_PRICE_PHP_PER_KG,
@@ -134,6 +140,10 @@ __all__ = [
     "evaluate_operational_alerts",
     "load_operational_alert_rules",
     "latest_cycle_id",
+    "build_harvest_analysis_rows",
+    "recovery_cycle_summary",
+    "summarize_harvest_analysis",
+    "weight_cycle_summary",
     "DEFAULT_CYCLES_PER_YEAR",
     "DEFAULT_PRICE_PHP_PER_KG",
     "DEFAULT_RECOVERY_IMPROVEMENT_PP",

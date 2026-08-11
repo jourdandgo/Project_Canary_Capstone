@@ -130,6 +130,9 @@ def _recovery_training(frame: pd.DataFrame) -> pd.DataFrame:
         "Latest eligible pre-outcome",
     )
     result = result.rename(columns={"target": "final_recovery_proxy_y"})
+    result["additional_population_loss_y"] = (
+        result["percentage_alive"] - result["final_recovery_proxy_y"]
+    ).clip(lower=0)
     identifiers = [
         "cycle_id",
         "building_id",
@@ -145,7 +148,11 @@ def _recovery_training(frame: pd.DataFrame) -> pd.DataFrame:
         for column in frame.columns
         if column not in {*identifiers, "target"}
     ]
-    return result[identifiers + feature_columns + ["final_recovery_proxy_y"]]
+    return result[
+        identifiers
+        + feature_columns
+        + ["final_recovery_proxy_y", "additional_population_loss_y"]
+    ]
 
 
 def _dictionary(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
@@ -164,7 +171,9 @@ def _dictionary(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
         "percentage_alive": ("X", "proportion", "Derived", "Current population divided by beginning population"),
         "final_recovery_proxy": ("Outcome", "proportion", "Derived", "Last recorded population divided by beginning population"),
         "final_recovery_proxy_y": ("Y", "proportion", "Derived", "Recovery-model target; unavailable to the model at prediction time"),
+        "additional_population_loss_y": ("Y", "proportion", "Derived", "Current percentage alive minus the completed-cycle recovery proxy; redesigned recovery target"),
         "actual_day35_weight_kg_y": ("Y", "kg", "Farm workbook", "Observed average bodyweight recorded on production Day 35"),
+        "remaining_gain_to_day35_kg_y": ("Y", "kg", "Derived", "Observed Day 35 weight minus current checkpoint weight; redesigned weight target"),
         "day_35_weight_g": ("Outcome", "g", "Farm workbook", "Observed average bodyweight on production Day 35"),
         "temperature_recent_avg_c": ("X", "°C", "Derived", "Mean of available recent temperature readings known by the review date"),
         "humidity_recent_avg_pct": ("X", "%", "Derived", "Mean of available recent humidity readings known by the review date"),
@@ -228,6 +237,10 @@ def build_payload(workbook: Path) -> dict[str, object]:
     recovery_daily = build_modeling_snapshots(dataset, "recovery")
     recovery_training = _recovery_training(build_recovery_training_snapshots(dataset))
     weight_training = build_day35_feature_rows(dataset)
+    weight_training["remaining_gain_to_day35_kg_y"] = (
+        weight_training["actual_day35_weight_kg_y"]
+        - weight_training["current_weight_kg"]
+    )
     outcomes = _building_outcomes(dataset, recovery_daily, weight_training)
     tables = {
         "Building Outcomes": outcomes,

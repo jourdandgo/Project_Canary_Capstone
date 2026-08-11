@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+import joblib
 import numpy as np
 import pandas as pd
 from sklearn.base import clone
@@ -44,6 +45,7 @@ RIDGE_FEATURES = (
     "weight_day_21_kg",
     "weight_day_28_kg",
     "percentage_alive",
+    "mortality_recent_3d_per_1000",
     "temperature_deviation_from_band_c",
     "humidity_deviation_from_band_pp",
     "environment_out_of_band_days_7d",
@@ -55,7 +57,10 @@ RIDGE_FEATURES = (
 def load_day35_manifest(
     path: str | Path = DEFAULT_DAY35_MANIFEST,
 ) -> dict[str, Any]:
-    return json.loads(Path(path).read_text(encoding="utf-8"))
+    source = Path(path)
+    manifest = json.loads(source.read_text(encoding="utf-8"))
+    manifest["_model_path"] = str(source.with_name("day35_weight_model.joblib"))
+    return manifest
 
 
 def build_day35_training_rows(dataset: CanaryDataset) -> pd.DataFrame:
@@ -376,6 +381,23 @@ def _bootstrap_cycle_mae(
 
 def train_day35_weight_baseline(dataset: CanaryDataset) -> dict[str, Any]:
     """Compare simple projections using leave-one-complete-cycle-out validation."""
+
+    from .strengthened_models import train_weight_remaining_gain
+
+    rows = build_day35_training_rows(dataset)
+    if rows.empty or rows["cycle_id"].nunique() < 3:
+        raise ValueError("At least three cycles with Day 35 weights are required.")
+    target_by_age = dataset.targets.set_index("age_day")["target_weight_kg"]
+    features = _ridge_feature_frame(rows, target_by_age)
+    strengthened = train_weight_remaining_gain(rows, features)
+    manifest = strengthened.manifest | {"training_source": dataset.source_name}
+    if strengthened.model is not None:
+        manifest["_fitted_model"] = strengthened.model
+    return manifest
+
+    # Legacy direct-target comparison retained below as implementation history.
+    # It is intentionally unreachable; the strengthened remaining-gain design
+    # above is the sole training path used by Canary 2.0.
 
     rows = build_day35_training_rows(dataset)
     if rows.empty or rows["cycle_id"].nunique() < 3:
@@ -862,7 +884,14 @@ def save_day35_manifest(
 ) -> None:
     destination = Path(path)
     destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    serializable = dict(manifest)
+    fitted = serializable.pop("_fitted_model", None)
+    destination.write_text(json.dumps(serializable, indent=2) + "\n", encoding="utf-8")
+    model_path = destination.with_name("day35_weight_model.joblib")
+    if fitted is not None:
+        joblib.dump(fitted, model_path)
+    elif model_path.exists():
+        model_path.unlink()
 
 
 def _interpolate(mapping: dict[str, float], age: int) -> float:
@@ -936,7 +965,7 @@ def project_day35_weight(
         status = "Early Day 35 projection — target-curve fallback"
         confidence = "Early estimate · historical validation begins on Day 7"
         scope = "Early building projection"
-    elif manifest["selected_model"] == "ridge_regression":
+    elif manifest.get("model_kind") == "fitted":
         previous_rows = weights.loc[weights["age_day"] < age]
         previous = previous_rows.iloc[-1] if not previous_rows.empty else None
         recent_adg = (
@@ -984,24 +1013,25 @@ def project_day35_weight(
         day7_weight = values.get("weight_day_7_kg", np.nan)
         if pd.notna(day7_weight) and age > 7:
             values["cumulative_adg_kg_day"] = (current - float(day7_weight)) / (age - 7)
-        parameters = manifest["ridge_parameters"]
-        standardized: dict[str, float] = {}
-        for feature_name in parameters["features"]:
-            value = values.get(feature_name, np.nan)
-            if pd.isna(value):
-                value = parameters["medians"][feature_name]
-            standardized[feature_name] = (
-                float(value) - parameters["means"][feature_name]
-            ) / parameters["scales"][feature_name]
-        prediction = parameters["intercept"] + sum(
-            standardized[name] * parameters["coefficients"][name]
-            for name in parameters["features"]
+        from .strengthened_models import WEIGHT_BASE_FEATURES, add_checkpoint_indicators
+
+        feature_frame = pd.DataFrame(
+            [{name: values.get(name, np.nan) for name in WEIGHT_BASE_FEATURES}]
         )
+        feature_frame = add_checkpoint_indicators(
+            feature_frame, pd.Series([age])
+        )
+        fitted = joblib.load(manifest["_model_path"])
+        remaining_gain = float(fitted.predict(feature_frame)[0])
+        prediction = current + remaining_gain
         width = _interpolate(
             manifest["uncertainty_half_width_by_measurement_day_kg"], age
         )
         status = "Day 35 projection available"
-        confidence = f"Compact Ridge projection · latest measured weight from Day {age}"
+        confidence = (
+            f"{str(manifest['selected_model']).replace('_', ' ').title()} projection · "
+            f"latest measured weight from Day {age}"
+        )
         scope = "Building projection"
     else:
         gain = _interpolate(manifest["remaining_gain_by_measurement_day_kg"], age)

@@ -70,7 +70,10 @@ def _write_model_card(summaries: dict, day35: dict, output: Path) -> None:
             "|---|---:|---:|",
         ]
     )
-    for item in recovery.get("held_out_permutation_importance", []):
+    recovery_importance = recovery.get("held_out_permutation_importance", []) or recovery.get(
+        "research_champion_permutation_importance", []
+    )
+    for item in recovery_importance:
         lines.append(
             f"| {item['feature']} | {item['relative_importance_pct']:.1f}% | {item['mean_mae_increase'] * 100:.3f} recovery points |"
         )
@@ -113,7 +116,7 @@ def _write_model_card(summaries: dict, day35: dict, output: Path) -> None:
             f"The best learned challenger is {day35['research_champion']}. The operational method is {day35['selected_model']} because no learned challenger cleared every approved gate.",
             "",
             "1. Standardize weights near Days 7, 14, 21, 28, and 35, including sample size and zone.",
-            "2. Continue comparing historical remaining gain, ordinary linear regression, Ridge, constrained Gradient Boosting, and XGBoost where its runtime is available.",
+            "2. Continue comparing historical remaining gain, checkpoint-calibrated linear regression, Ridge, robust Huber regression, and constrained Gradient Boosting.",
             "3. Keep one building record per checkpoint and hold out complete unseen cycles.",
             "4. Report MAE in grams, bias, within-100 g / within-200 g rates, and target-hit usefulness once target hits exist.",
             "",
@@ -153,6 +156,7 @@ def main() -> None:
     # preserve the exact selected-model parameters and feature schema.
     recovery_model = summaries["recovery"]
     recovery_artifact = args.output / "harvest_recovery_champion.pkl"
+    recovery_model_path = args.output / "recovery_model.joblib"
     joblib.dump(
         {
             "outcome": "harvest_recovery",
@@ -160,23 +164,27 @@ def main() -> None:
             "model_version": recovery_model["model_version"],
             "feature_columns": recovery_model["feature_columns"],
             "validation": recovery_model["selected_metrics"],
-            "model": joblib.load(args.output / "recovery_model.joblib"),
+            "model": joblib.load(recovery_model_path) if recovery_model_path.exists() else None,
+            "prediction_target": recovery_model.get("prediction_target"),
+            "formula_parameters": recovery_model.get("additional_loss_by_age_band"),
         },
         recovery_artifact,
     )
+    day35_model_path = args.output / "day35_weight_model.joblib"
     joblib.dump(
         {
             "outcome": "day35_average_weight",
             "selected_model": day35_manifest["selected_model"],
             "research_champion": day35_manifest["research_champion"],
             "model_version": day35_manifest["model_version"],
-            "feature_columns": day35_manifest["ridge_parameters"]["features"],
-            "ridge_parameters": day35_manifest["ridge_parameters"],
+            "feature_columns": day35_manifest.get("feature_columns", []),
+            "model": joblib.load(day35_model_path) if day35_model_path.exists() else None,
+            "prediction_target": day35_manifest.get("prediction_target"),
             "remaining_gain_by_measurement_day_kg": day35_manifest[
                 "remaining_gain_by_measurement_day_kg"
             ],
             "validation": day35_manifest["selected_metrics"],
-            "note": "Operational package. Historical remaining gain is used when learned challengers fail the approved gates; Ridge parameters are retained for audit of the best linear challenger.",
+            "note": "Operational package. Historical remaining gain is retained whenever no learned remaining-gain challenger clears every approved gate.",
         },
         args.output / "day35_weight_champion.pkl",
     )

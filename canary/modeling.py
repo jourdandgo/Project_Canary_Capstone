@@ -773,6 +773,27 @@ def train_outcome_model(
     outcome: str,
     final_weight_labels: pd.DataFrame | None = None,
 ) -> TrainingResult:
+    if outcome == "recovery":
+        # The strengthened recovery pipeline predicts only the population loss
+        # that remains after the review date.  Final recovery is then derived
+        # from the accounting identity current survival - additional loss.
+        from .strengthened_models import train_recovery_remaining_loss
+
+        source_snapshots = build_modeling_snapshots(dataset, "recovery")
+        snapshots = _decision_checkpoint_snapshots(source_snapshots)
+        strengthened = train_recovery_remaining_loss(snapshots)
+        manifest = strengthened.manifest | {
+            "training_source": dataset.source_name,
+            "source_complete_date": source_complete_date(dataset).date().isoformat(),
+            "source_daily_snapshot_rows": int(len(source_snapshots)),
+        }
+        return TrainingResult(
+            "recovery",
+            str(manifest["selected_model"]),
+            manifest,
+            strengthened.model,
+        )
+
     source_snapshots = build_modeling_snapshots(dataset, outcome, final_weight_labels)
     snapshots = (
         _decision_checkpoint_snapshots(source_snapshots)

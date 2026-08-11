@@ -57,7 +57,9 @@ It is an operational concern score—not a probability of missing the two goals.
 
 ### Y target
 
-`last-recorded population ÷ beginning population`
+`additional loss after review date = current percentage alive − last-recorded recovery proxy`
+
+Live output: `predicted final recovery = current percentage alive − predicted additional loss`.
 
 This is the agreed capstone proxy, not a verified harvest-event outcome.
 
@@ -85,21 +87,23 @@ Feed is withheld until its unit is confirmed.
 
 | Method | MAE | Cycle MAE | RMSE | R² | Role |
 |---|---:|---:|---:|---:|---|
-| Historical mean | 1.66 pts | 1.73 pts | 2.17 pts | -0.132 | Baseline |
-| Ordinary linear regression | 1.37 pts | 1.48 pts | 1.84 pts | 0.189 | Operational continuous estimator |
-| Ridge | 1.55 pts | 1.59 pts | 1.97 pts | 0.070 | Compared |
-| Gradient Boosting | 1.57 pts | 1.66 pts | 2.08 pts | -0.041 | Compared |
-| XGBoost | — | — | — | — | Declared; unavailable locally without `libomp` |
+| Age-band remaining-loss baseline | 1.40 pts | 1.50 pts | 1.80 pts | 0.222 | Operational fallback |
+| Linear remaining-loss | 1.29 pts | 1.40 pts | 1.80 pts | 0.224 | Compared |
+| Ridge remaining-loss | 1.31 pts | 1.43 pts | 1.82 pts | 0.207 | Compared |
+| Robust Huber remaining-loss | 1.24 pts | 1.33 pts | 1.76 pts | 0.260 | Research champion |
+| Gradient Boosting remaining-loss | 1.25 pts | 1.37 pts | 1.78 pts | 0.243 | Compared |
 
 ### Verdict
 
-OLS improves cycle-balanced MAE by 14.5% versus the baseline and has positive R², so the continuous-estimate gate passes. It does not beat the majority baseline for 95% hit/miss classification, so that classification is not validated.
+Huber improves cycle-balanced MAE by 11.2% and has positive R², but is worse than the baseline under rolling-origin validation and does not beat the majority target-side rule. The age-band baseline therefore remains operational; Huber remains a research challenger.
 
 ## Engine 2B — Day 35 weight
 
 ### Y target
 
-Observed building average bodyweight on production Day 35.
+`remaining gain = observed Day 35 weight − current checkpoint weight`
+
+Live output: `projected Day 35 weight = current weight + predicted remaining gain`.
 
 ### X inputs tested
 
@@ -116,10 +120,10 @@ Future checkpoints remain blank. The target curve is a reference, never a substi
 | Method | MAE | Cycle MAE | RMSE | R² | Within 200 g | Role |
 |---|---:|---:|---:|---:|---:|---|
 | Historical remaining gain | 178 g | 182 g | 242 g | 0.126 | 65.3% | Operational fallback |
-| OLS | 217 g | 209 g | 273 g | -0.114 | 55.6% | Compared |
-| Ridge | 197 g | 193 g | 252 g | 0.048 | 60.5% | Best learned linear challenger |
-| Gradient Boosting | 189 g | 189 g | 256 g | 0.018 | 58.1% | Compared |
-| XGBoost | — | — | — | — | — | Declared; unavailable locally without `libomp` |
+| Checkpoint linear | 216 g | 208 g | 273 g | -0.118 | 56.5% | Compared |
+| Ridge remaining-gain | 207 g | 200 g | 264 g | -0.045 | 56.5% | Compared |
+| Robust Huber remaining-gain | 226 g | 223 g | 276 g | -0.144 | 51.6% | Compared |
+| Gradient Boosting remaining-gain | 203 g | 207 g | 262 g | -0.026 | 52.4% | Best nonlinear challenger |
 
 ### How the fallback works
 

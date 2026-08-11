@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
+import contextlib
+import io
+import json
 from pathlib import Path
-
-import nbformat as nbf
-from nbclient import NotebookClient
-
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "notebooks"
@@ -14,11 +13,17 @@ OUTPUT.mkdir(exist_ok=True)
 
 
 def md(text: str):
-    return nbf.v4.new_markdown_cell(text.strip())
+    return {"cell_type": "markdown", "metadata": {}, "source": text.strip().splitlines(keepends=True)}
 
 
 def code(text: str):
-    return nbf.v4.new_code_cell(text.strip())
+    return {
+        "cell_type": "code",
+        "execution_count": None,
+        "metadata": {},
+        "outputs": [],
+        "source": text.strip().splitlines(keepends=True),
+    }
 
 
 SETUP = r"""
@@ -67,14 +72,15 @@ def recovery_notebook():
 
 **Purpose:** reproduce the complete forecasting workflow in a form the capstone team can run and defend.
 
-**Business question:** using only records known on a review date, what last-recorded harvest-recovery proxy should we expect for this building, compared with the 95% goal?
+**Business question:** using only records known on a review date, how much additional population loss should we expect, and what final recovery does that imply against the 95% goal?
 
 This notebook does not calculate the independent rules-based risk score and does not prove that any input causes recovery to change.
 """),
         md("""
 ## 1. Define Y, X, and the unit of analysis
 
-- **Y target:** population on the building's last recorded daily date ÷ beginning population.
+- **Y target:** additional population loss after the review date = current percentage alive − completed-cycle recovery proxy.
+- **Final output:** current percentage alive − predicted additional loss.
 - **Important:** this is the agreed capstone recovery proxy, not a verified harvest-event label.
 - **One outcome:** one building in one completed cycle.
 - **One training snapshot:** that building's facts known at a selected age. To avoid overweighting long cycles, training retains Days 7, 14, 21, 28, plus the last eligible pre-outcome snapshot.
@@ -107,14 +113,15 @@ print("Export reconciliation passed: the CSV contains the exact 122 balanced rec
 2. Construct every snapshot with records dated on or before its review date; later records are excluded.
 3. Give each building-cycle equal total weight despite repeated checkpoints.
 4. Use **nested leave-one-complete-cycle-out cross-validation**: the outer loop tests a completely unseen cycle; the inner loop tunes only within the remaining cycles. Imputation and scaling stay inside those folds.
-5. Compare exactly five declared candidates primarily on **cycle-macro MAE**. A learned recovery model must improve the historical mean by at least 10% and keep positive whole-cycle R² before replacing the baseline for the continuous estimate.
+5. Compare exactly five candidates: age-band remaining-loss baseline, linear regression, Ridge regression, robust Huber regression, and constrained Gradient Boosting.
+6. A learned recovery model must beat the baseline by at least 10% in cycle-macro MAE, keep positive whole-cycle R², remain stable, and improve 95% target-side usefulness before deployment.
 
 No random row split is used because rows from the same flock history are related and would leak information across train and test sets.
 """),
         code(r"""
 result = train_outcome_model(dataset, "recovery")
 manifest = result.manifest
-print("Operational continuous estimator:", manifest["selected_model"])
+print("Operational recovery method:", manifest["selected_model"])
 print("Best learned challenger:", manifest["research_champion"])
 print("Champion gates:", manifest["champion_gates"])
 print("Model version:", manifest["model_version"])
@@ -157,11 +164,11 @@ print(f"Target-side accuracy: {selected['target_side_accuracy']:.1%}")
 print(f"Majority baseline accuracy: {selected['majority_side_accuracy']:.1%}")
 """),
         md("""
-**Interpretation:** the operational learned estimator clears the continuous MAE/R² gate, but its target-side accuracy does not beat the majority baseline. Present it as a prototype continuous estimate with uncertainty—not as a proven classifier of 95% target attainment.
+**Interpretation:** the research challenger improves continuous error, but does not clear every stability and target-side gate. The age-band remaining-loss baseline therefore remains operational. Present the result as an experimental estimate with uncertainty—not a guarantee of 95% target attainment.
 """),
         md("## 4. What the selected model relies on"),
         code(r"""
-importance = pd.DataFrame(manifest["held_out_permutation_importance"])
+importance = pd.DataFrame(manifest["research_champion_permutation_importance"])
 importance.head(10).rename(columns={
     "feature": "Input",
     "mean_mae_increase": "Held-out MAE increase",
@@ -206,7 +213,7 @@ day14.head(8)[["cycle_id", "building_id", "predicted", "actual", "error_points"]
 Canary's recovery output is a **nested whole-cycle-validated estimate of the agreed last-recorded recovery proxy**. Its held-out error is roughly 1–2 percentage points, but it is not yet strong at recognizing the small number of outcomes at or above 95%. Use it to size likely gaps and guide attention, not to claim certainty.
 """),
     ]
-    return nbf.v4.new_notebook(cells=cells, metadata={"kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"}, "language_info": {"name": "python", "version": "3"}})
+    return {"cells": cells, "metadata": {"kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"}, "language_info": {"name": "python", "version": "3"}}, "nbformat": 4, "nbformat_minor": 5}
 
 
 def weight_notebook():
@@ -221,7 +228,8 @@ def weight_notebook():
         md("""
 ## 1. Define Y, X, and the unit of analysis
 
-- **Y target:** observed building average bodyweight on production Day 35.
+- **Y target:** remaining growth = observed Day 35 bodyweight − current checkpoint bodyweight.
+- **Final output:** current measured weight + predicted remaining gain.
 - **One independent outcome:** one building in one cycle with a Day 35 measurement.
 - **Training rows:** up to four checkpoint views of that outcome—Day 7, 14, 21, and 28. These are repeated views, not 124 independent flocks.
 - **Candidate X inputs:** measurement day; latest/checkpoint weights; weight ÷ the farm target for that day; recent and cumulative average daily gain; current survival; and environmental-band exposure known by that review date.
@@ -260,8 +268,9 @@ print("Export reconciliation passed: the CSV contains the exact 124 engineered w
 2. Keep only observed checkpoint weights and observed Day 35 labels; never fill a missing Day 35 Y from the target curve.
 3. At each checkpoint, hide future checkpoint weights.
 4. Give each building-cycle equal total weight across its repeated checkpoints.
-5. Use **nested leave-one-complete-cycle-out cross-validation** so tuning, imputation and scaling never see the outer test cycle.
-6. Optimize **cycle-macro MAE in kilograms**. A learned model replaces historical remaining gain only if it improves MAE by 10%, keeps positive R², places at least 70% within 200 g, and improves target-side classification.
+5. Compare exactly five candidates: historical remaining-gain baseline, checkpoint linear regression, Ridge regression, robust Huber regression, and constrained Gradient Boosting.
+6. Use **nested leave-one-complete-cycle-out cross-validation** so tuning, imputation and scaling never see the outer test cycle.
+7. Optimize **cycle-macro MAE in kilograms**. A learned model replaces historical remaining gain only if it improves MAE by 10%, keeps positive R², places at least 70% within 200 g, remains stable, and improves target-side classification.
 """),
         code(r"""
 manifest = train_day35_weight_baseline(dataset)
@@ -270,7 +279,7 @@ print("Best learned challenger:", manifest["research_champion"])
 print("Champion gates:", manifest["champion_gates"])
 print("Model version:", manifest["model_version"])
 print("Selected X inputs:")
-for feature in manifest["ridge_parameters"]["features"]:
+for feature in manifest["feature_columns"]:
     print(" -", feature)
 """),
         md("## 3. Candidate comparison"),
@@ -298,7 +307,7 @@ cycle_performance.assign(
     mae_g=cycle_performance.mae_kg * 1000,
     rmse_g=cycle_performance.rmse_kg * 1000,
     bias_g=cycle_performance.bias_kg * 1000,
-)[["rows", "mae_g", "rmse_g", "bias_g", "within_200g_rate", "target_side_accuracy"]].round(2)
+)[["rows", "mae_g", "rmse_g", "bias_g"]].round(2)
 """),
         code(r"""
 selected = manifest["selected_metrics"]
@@ -314,7 +323,7 @@ print(f"Historical target hits: {manifest['actual_target_hits']} of {manifest['t
 """),
         md("## 4. What the selected model relies on"),
         code(r"""
-importance = pd.DataFrame(manifest["held_out_permutation_importance"])
+importance = pd.DataFrame(manifest["research_champion_permutation_importance"])
 importance.head(10).rename(columns={
     "feature": "Input",
     "mean_mae_increase_kg": "Held-out MAE increase (kg)",
@@ -375,15 +384,36 @@ remaining.round(0)
 Canary's weight output uses **historical remaining gain as the operational fallback**, validated on 31 historical Day 35 building outcomes and their earlier checkpoints. Learned linear and boosted challengers were tested under nested whole-cycle validation but did not clear all replacement gates. This is useful directional decision support, not a guarantee that a building will hit 1,800 g.
 """),
     ]
-    return nbf.v4.new_notebook(cells=cells, metadata={"kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"}, "language_info": {"name": "python", "version": "3"}})
+    return {"cells": cells, "metadata": {"kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"}, "language_info": {"name": "python", "version": "3"}}, "nbformat": 4, "nbformat_minor": 5}
 
 
 def execute_and_write(notebook, filename: str) -> None:
-    client = NotebookClient(notebook, timeout=600, kernel_name="python3", resources={"metadata": {"path": str(ROOT)}})
-    client.execute()
+    namespace = {"__name__": "__main__"}
+    execution_count = 0
+    previous_cwd = Path.cwd()
+    import os
+    os.chdir(ROOT)
+    try:
+        for cell in notebook["cells"]:
+            if cell["cell_type"] != "code":
+                continue
+            execution_count += 1
+            source = "".join(cell["source"])
+            stream = io.StringIO()
+            try:
+                with contextlib.redirect_stdout(stream):
+                    exec(compile(source, f"{filename}:cell-{execution_count}", "exec"), namespace)
+            except Exception as exc:
+                cell["outputs"] = [{"output_type": "error", "ename": type(exc).__name__, "evalue": str(exc), "traceback": []}]
+                raise
+            cell["execution_count"] = execution_count
+            output = stream.getvalue()
+            if output:
+                cell["outputs"] = [{"output_type": "stream", "name": "stdout", "text": output.splitlines(keepends=True)}]
+    finally:
+        os.chdir(previous_cwd)
     path = OUTPUT / filename
-    nbf.validate(notebook)
-    nbf.write(notebook, path)
+    path.write_text(json.dumps(notebook, indent=1), encoding="utf-8")
     print(path)
 
 

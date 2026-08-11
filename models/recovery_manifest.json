@@ -1,59 +1,23 @@
 {
   "outcome": "recovery",
-  "model_version": "recovery-1.0.0",
-  "selected_model": "linear_regression",
-  "research_champion": "linear_regression",
-  "operational_model": "linear_regression",
-  "model_kind": "fitted",
-  "feature_schema_version": "features-0.3.0",
+  "model_version": "recovery-2.0.0",
+  "selected_model": "age_band_remaining_loss",
+  "research_champion": "remaining_loss_huber",
+  "operational_model": "age_band_remaining_loss",
+  "model_kind": "formula",
+  "prediction_target": "additional_population_loss_after_review_date",
+  "prediction_equation": "predicted final recovery = current percentage alive - predicted additional loss",
+  "feature_schema_version": "features-0.4.0",
   "feature_columns": [
     "cycle_day",
-    "percentage_alive",
-    "mortality_recent_3d_per_1000",
-    "mortality_trend_delta_per_1000",
-    "weight_gap_pct",
-    "weight_staleness_days",
-    "temperature_deviation_from_band_c",
-    "humidity_deviation_from_band_pp",
-    "environment_out_of_band_days_7d",
-    "environment_staleness_days"
+    "percentage_alive"
   ],
   "all_candidate_features": {
-    "historical_mean": [
+    "age_band_remaining_loss": [
       "cycle_day",
-      "forecast_horizon_days",
-      "beginning_inventory",
-      "percentage_alive",
-      "expected_survival_path",
-      "survival_gap_pp",
-      "cumulative_mortality_rate",
-      "population_loss_pct",
-      "mortality_daily_per_1000",
-      "mortality_recent_3d_per_1000",
-      "mortality_trend_delta_per_1000",
-      "feed_daily_per_1000_birds",
-      "feed_cumulative_per_1000_birds",
-      "feed_daily_kg_per_bird",
-      "latest_weight_kg",
-      "weight_target_kg",
-      "weight_gap_pct",
-      "weight_measurement_day",
-      "weight_staleness_days",
-      "temperature_recent_avg_c",
-      "temperature_recent_min_c",
-      "temperature_recent_max_c",
-      "temperature_recent_range_c",
-      "temperature_deviation_from_band_c",
-      "humidity_recent_avg_pct",
-      "humidity_recent_min_pct",
-      "humidity_recent_max_pct",
-      "humidity_recent_range_pp",
-      "humidity_deviation_from_band_pp",
-      "environment_out_of_band_days_7d",
-      "environment_staleness_days",
-      "is_lags_building"
+      "percentage_alive"
     ],
-    "linear_regression": [
+    "remaining_loss_linear": [
       "cycle_day",
       "percentage_alive",
       "mortality_recent_3d_per_1000",
@@ -65,7 +29,7 @@
       "environment_out_of_band_days_7d",
       "environment_staleness_days"
     ],
-    "ridge_core": [
+    "remaining_loss_ridge": [
       "cycle_day",
       "percentage_alive",
       "mortality_recent_3d_per_1000",
@@ -77,7 +41,19 @@
       "environment_out_of_band_days_7d",
       "environment_staleness_days"
     ],
-    "gradient_boosting": [
+    "remaining_loss_huber": [
+      "cycle_day",
+      "percentage_alive",
+      "mortality_recent_3d_per_1000",
+      "mortality_trend_delta_per_1000",
+      "weight_gap_pct",
+      "weight_staleness_days",
+      "temperature_deviation_from_band_c",
+      "humidity_deviation_from_band_pp",
+      "environment_out_of_band_days_7d",
+      "environment_staleness_days"
+    ],
+    "remaining_loss_gradient_boosting": [
       "cycle_day",
       "percentage_alive",
       "mortality_recent_3d_per_1000",
@@ -90,142 +66,129 @@
       "environment_staleness_days"
     ]
   },
-  "training_source": "FARM HARVEST DATA.xlsx",
-  "source_complete_date": "2026-07-25",
-  "training_cycles": [
-    "2025-2",
-    "2025-3",
-    "2025-4",
-    "2025-5",
-    "2026-1"
-  ],
-  "training_building_cycles": 25,
-  "training_snapshot_rows": 122,
-  "source_daily_snapshot_rows": 1122,
-  "snapshot_sampling": "Days 7, 14, 21, and 28 plus the latest eligible pre-outcome snapshot per building-cycle",
-  "target": 0.95,
-  "label_definition": "Population on the last recorded daily date divided by beginning inventory; used as a capstone proxy for harvest recovery because confirmed harvest status is unavailable",
-  "status": "Validated prototype \u2014 continuous forecast passed; 95% target-side classification remains unvalidated",
   "metrics": {
-    "historical_mean": {
-      "mae": 0.01661903677722792,
-      "cycle_macro_mae": 0.017290867895528313,
-      "rmse": 0.02170220536321445,
-      "r2": -0.13208157096668072,
-      "bias": 0.0009931983182053367,
-      "fold_mae_std": 0.005003833988340718,
-      "target_side_accuracy": 0.8442622950819673,
+    "age_band_remaining_loss": {
+      "rows": 122,
+      "r2": 0.2223686742154909,
+      "target_side_accuracy": 0.860655737704918,
       "majority_side_accuracy": 0.8442622950819673,
-      "below_target_recall": 1.0,
-      "at_or_above_target_recall": 0.0,
+      "below_target_recall": 0.9902912621359223,
+      "at_or_above_target_recall": 0.15789473684210525,
       "confusion_matrix": {
-        "actual_below_predicted_below": 103,
-        "actual_below_predicted_at_or_above": 0,
-        "actual_at_or_above_predicted_below": 19,
-        "actual_at_or_above_predicted_at_or_above": 0
-      },
-      "uncertainty_half_width_80": 0.02729797306941939,
-      "horizon": {
-        "Days 1-7": {
-          "rows": 25,
-          "mae": 0.01681017934871159,
-          "rmse": 0.02179087815890126
-        },
-        "Days 8-14": {
-          "rows": 25,
-          "mae": 0.01681017934871159,
-          "rmse": 0.02179087815890126
-        },
-        "Days 15-21": {
-          "rows": 25,
-          "mae": 0.01681017934871159,
-          "rmse": 0.02179087815890126
-        },
-        "Day 22+": {
-          "rows": 47,
-          "mae": 0.016314022035498664,
-          "rmse": 0.0215599509188564
-        }
+        "actual_below_predicted_below": 102,
+        "actual_below_predicted_at_or_above": 1,
+        "actual_at_or_above_predicted_below": 16,
+        "actual_at_or_above_predicted_at_or_above": 3
       },
       "cycle": {
         "2025-2": {
           "rows": 12,
-          "mae": 0.02458331058904739,
-          "rmse": 0.025133237067673644,
-          "bias": -0.02458331058904739
+          "mae": 0.025230238854210107,
+          "rmse": 0.025950122480787877,
+          "bias": -0.025230238854210107
         },
         "2025-3": {
           "rows": 25,
-          "mae": 0.015527104347279153,
-          "rmse": 0.017927475343508532,
-          "bias": 0.004141130411104666
+          "mae": 0.011343594388487976,
+          "rmse": 0.013335199092780007,
+          "bias": 0.0014093741013752803
         },
         "2025-4": {
           "rows": 25,
-          "mae": 0.00919451703363836,
-          "rmse": 0.01289694714982621,
-          "bias": 0.00406942872822893
+          "mae": 0.007733947947830151,
+          "rmse": 0.008957807440602315,
+          "bias": 0.00012782433217329193
         },
         "2025-5": {
           "rows": 30,
-          "mae": 0.018410654491442507,
-          "rmse": 0.021547258094361397,
-          "bias": -0.009686258943307935
+          "mae": 0.014811290824043795,
+          "rmse": 0.01722906754182872,
+          "bias": -0.00042790919068757725
         },
         "2026-1": {
           "rows": 30,
-          "mae": 0.01873875301623416,
-          "rmse": 0.02814156587299478,
-          "bias": 0.016716457056850598
+          "mae": 0.015909268964823316,
+          "rmse": 0.02311695156400704,
+          "bias": 0.010921838120211535
         }
       },
+      "mae": 0.013945231297741705,
+      "cycle_macro_mae": 0.015005668195879068,
+      "rmse": 0.01798671619240241,
+      "bias": 0.0004138111678189489,
+      "fold_mae_std": 0.00585977511507373,
+      "uncertainty_half_width_80": 0.02112791698720853,
       "outer_fold_best_parameters": [
-        {},
-        {},
-        {},
-        {},
-        {}
-      ]
-    },
-    "linear_regression": {
-      "mae": 0.013691713476157837,
-      "cycle_macro_mae": 0.014778301441672853,
-      "rmse": 0.01836780610321882,
-      "r2": 0.18906778146334047,
-      "bias": 0.0007439906364005419,
-      "fold_mae_std": 0.006642398918150694,
-      "target_side_accuracy": 0.8278688524590164,
-      "majority_side_accuracy": 0.8442622950819673,
-      "below_target_recall": 0.9611650485436893,
-      "at_or_above_target_recall": 0.10526315789473684,
-      "confusion_matrix": {
-        "actual_below_predicted_below": 99,
-        "actual_below_predicted_at_or_above": 4,
-        "actual_at_or_above_predicted_below": 17,
-        "actual_at_or_above_predicted_at_or_above": 2
-      },
-      "uncertainty_half_width_80": 0.02103841415076524,
+        {
+          "7": 0.06177424980444306,
+          "14": 0.051835558720361934,
+          "21": 0.04305683052535933,
+          "28": 0.015332747739224719
+        },
+        {
+          "7": 0.05762572977860133,
+          "14": 0.04784042164964446,
+          "21": 0.03903386537065281,
+          "28": 0.014612925132772396
+        },
+        {
+          "7": 0.057873972370607554,
+          "14": 0.048177063032591796,
+          "21": 0.03948300874424822,
+          "28": 0.01474458599482183
+        },
+        {
+          "7": 0.05968277042523027,
+          "14": 0.049184624285586474,
+          "21": 0.03996173411013312,
+          "28": 0.013333006573277234
+        },
+        {
+          "7": 0.05418970496131485,
+          "14": 0.04482018095368825,
+          "21": 0.035964044993231574,
+          "28": 0.013458273136913551
+        }
+      ],
       "horizon": {
         "Days 1-7": {
           "rows": 25,
-          "mae": 0.0158567835614606,
-          "rmse": 0.02118351538682158
+          "mae": 0.015719506609656965,
+          "rmse": 0.020508156266891592,
+          "r2": -0.005666470241942223
         },
         "Days 8-14": {
           "rows": 25,
-          "mae": 0.016512924865087545,
-          "rmse": 0.021843329623409628
+          "mae": 0.013982634846711934,
+          "rmse": 0.018917974157190563,
+          "r2": 0.14424392597800528
         },
         "Days 15-21": {
           "rows": 25,
-          "mae": 0.014502469596871266,
-          "rmse": 0.018825491705744508
+          "mae": 0.013374627143190359,
+          "rmse": 0.01802357935465258,
+          "r2": 0.22324721216942123
         },
         "Day 22+": {
           "rows": 47,
-          "mae": 0.010608182840548314,
-          "rmse": 0.01395518735929467
+          "mae": 0.013285085177351198,
+          "rmse": 0.015903022751796204,
+          "r2": 0.38523247221029433
         }
+      }
+    },
+    "remaining_loss_linear": {
+      "rows": 122,
+      "r2": 0.22356018266499977,
+      "target_side_accuracy": 0.8442622950819673,
+      "majority_side_accuracy": 0.8442622950819673,
+      "below_target_recall": 0.9805825242718447,
+      "at_or_above_target_recall": 0.10526315789473684,
+      "confusion_matrix": {
+        "actual_below_predicted_below": 101,
+        "actual_below_predicted_at_or_above": 2,
+        "actual_at_or_above_predicted_below": 17,
+        "actual_at_or_above_predicted_at_or_above": 2
       },
       "cycle": {
         "2025-2": {
@@ -236,766 +199,1287 @@
         },
         "2025-3": {
           "rows": 25,
-          "mae": 0.006820749896337626,
-          "rmse": 0.008949187040212333,
-          "bias": 0.005090682691716078
+          "mae": 0.005833908045659002,
+          "rmse": 0.008115476869016371,
+          "bias": 0.004103840841037454
         },
         "2025-4": {
           "rows": 25,
-          "mae": 0.009373205369722056,
-          "rmse": 0.011499018330299975,
-          "bias": -0.0007625059282033897
+          "mae": 0.0076352362345654835,
+          "rmse": 0.009640058291454149,
+          "bias": -0.0025004750633599525
         },
         "2025-5": {
           "rows": 30,
-          "mae": 0.014745031680328747,
-          "rmse": 0.017051020127821885,
-          "bias": -0.006613347175556602
+          "mae": 0.014650820668679872,
+          "rmse": 0.017036971855578842,
+          "bias": -0.006707558187205468
         },
         "2026-1": {
           "rows": 30,
-          "mae": 0.017097720493677308,
-          "rmse": 0.025002333820928133,
-          "bias": 0.01637401503464431
+          "mae": 0.01609263927483603,
+          "rmse": 0.024735435480969088,
+          "bias": 0.015368933815803029
         }
       },
+      "mae": 0.012863032807628457,
+      "cycle_macro_mae": 0.014013480798407783,
+      "rmse": 0.017972931035268702,
+      "bias": -8.469003212883622e-05,
+      "fold_mae_std": 0.00710680450217579,
+      "uncertainty_half_width_80": 0.02091740680082153,
       "outer_fold_best_parameters": [
         {},
         {},
         {},
         {},
         {}
-      ]
-    },
-    "ridge_core": {
-      "mae": 0.015468839317469178,
-      "cycle_macro_mae": 0.015895993401563672,
-      "rmse": 0.01966891229110188,
-      "r2": 0.07011194186827319,
-      "bias": 0.00033242484468017064,
-      "fold_mae_std": 0.003964409349926032,
-      "target_side_accuracy": 0.8360655737704918,
-      "majority_side_accuracy": 0.8442622950819673,
-      "below_target_recall": 0.9902912621359223,
-      "at_or_above_target_recall": 0.0,
-      "confusion_matrix": {
-        "actual_below_predicted_below": 102,
-        "actual_below_predicted_at_or_above": 1,
-        "actual_at_or_above_predicted_below": 19,
-        "actual_at_or_above_predicted_at_or_above": 0
-      },
-      "uncertainty_half_width_80": 0.021932827145892377,
+      ],
       "horizon": {
         "Days 1-7": {
           "rows": 25,
-          "mae": 0.01599115568867772,
-          "rmse": 0.02034399048656019
+          "mae": 0.015856783561460603,
+          "rmse": 0.021183515386821585,
+          "r2": -0.07299278022074418
         },
         "Days 8-14": {
           "rows": 25,
-          "mae": 0.016938611660182522,
-          "rmse": 0.02205558605260325
+          "mae": 0.016512924865087535,
+          "rmse": 0.021843329623409628,
+          "r2": -0.14087591957949086
         },
         "Days 15-21": {
           "rows": 25,
-          "mae": 0.016660793302150784,
-          "rmse": 0.020694591235299452
+          "mae": 0.014502469596871247,
+          "rmse": 0.0188254917057445,
+          "r2": 0.15259037692495891
         },
         "Day 22+": {
           "rows": 47,
-          "mae": 0.013775199584169453,
-          "rmse": 0.01724839938383915
+          "mae": 0.008457139403089085,
+          "rmse": 0.012549828108704919,
+          "r2": 0.6171513551111938
         }
-      },
-      "cycle": {
-        "2025-2": {
-          "rows": 12,
-          "mae": 0.021302994660820047,
-          "rmse": 0.021577458242862117,
-          "bias": -0.021302994660820047
-        },
-        "2025-3": {
-          "rows": 25,
-          "mae": 0.010424424290935099,
-          "rmse": 0.013004876197927437,
-          "bias": 0.006078367613160798
-        },
-        "2025-4": {
-          "rows": 25,
-          "mae": 0.012324917630774914,
-          "rmse": 0.013694365436630445,
-          "bias": 0.0004439735882370677
-        },
-        "2025-5": {
-          "rows": 30,
-          "mae": 0.017867831258116088,
-          "rmse": 0.02094213204296528,
-          "bias": -0.012385402986735053
-        },
-        "2026-1": {
-          "rows": 30,
-          "mae": 0.017559799167172208,
-          "rmse": 0.02551919341759121,
-          "bias": 0.016823177551597547
-        }
-      },
-      "outer_fold_best_parameters": [
-        {
-          "regressor__model__alpha": 10.0
-        },
-        {
-          "regressor__model__alpha": 100.0
-        },
-        {
-          "regressor__model__alpha": 100.0
-        },
-        {
-          "regressor__model__alpha": 100.0
-        },
-        {
-          "regressor__model__alpha": 10.0
-        }
-      ]
+      }
     },
-    "gradient_boosting": {
-      "mae": 0.015702726548570467,
-      "cycle_macro_mae": 0.016555438365828908,
-      "rmse": 0.020814143091397726,
-      "r2": -0.04132682179619396,
-      "bias": 0.0004250787508341894,
-      "fold_mae_std": 0.00508758801663977,
-      "target_side_accuracy": 0.8442622950819673,
+    "remaining_loss_ridge": {
+      "rows": 122,
+      "r2": 0.20700810093388267,
+      "target_side_accuracy": 0.8524590163934426,
       "majority_side_accuracy": 0.8442622950819673,
       "below_target_recall": 1.0,
-      "at_or_above_target_recall": 0.0,
+      "at_or_above_target_recall": 0.05263157894736842,
       "confusion_matrix": {
         "actual_below_predicted_below": 103,
         "actual_below_predicted_at_or_above": 0,
-        "actual_at_or_above_predicted_below": 19,
-        "actual_at_or_above_predicted_at_or_above": 0
-      },
-      "uncertainty_half_width_80": 0.02333216302125496,
-      "horizon": {
-        "Days 1-7": {
-          "rows": 25,
-          "mae": 0.016376689907342423,
-          "rmse": 0.021853927380275216
-        },
-        "Days 8-14": {
-          "rows": 25,
-          "mae": 0.014682124911914972,
-          "rmse": 0.021577447786513677
-        },
-        "Days 15-21": {
-          "rows": 25,
-          "mae": 0.014964349478198847,
-          "rmse": 0.01961765194636928
-        },
-        "Day 22+": {
-          "rows": 47,
-          "mae": 0.016279862372110446,
-          "rmse": 0.020448725107472608
-        }
+        "actual_at_or_above_predicted_below": 18,
+        "actual_at_or_above_predicted_at_or_above": 1
       },
       "cycle": {
         "2025-2": {
           "rows": 12,
-          "mae": 0.025167430137184865,
-          "rmse": 0.02763020730582623,
-          "bias": -0.025167430137184865
+          "mae": 0.02582827415218832,
+          "rmse": 0.026379354322890503,
+          "bias": -0.02582827415218832
         },
         "2025-3": {
           "rows": 25,
-          "mae": 0.011912299157581891,
-          "rmse": 0.014208763758281952,
-          "bias": 0.004701816401198782
+          "mae": 0.0073608851639490646,
+          "rmse": 0.010646391694402893,
+          "bias": 0.004787033845590672
         },
         "2025-4": {
           "rows": 25,
-          "mae": 0.011001575538300324,
-          "rmse": 0.014410592315237227,
-          "bias": 0.0034446591042967744
+          "mae": 0.00936601282081063,
+          "rmse": 0.011642184465860059,
+          "bias": -0.002205945356280097
         },
         "2025-5": {
           "rows": 30,
-          "mae": 0.016456009060409487,
-          "rmse": 0.020011497704361194,
-          "bias": -0.012829945573751477
+          "mae": 0.013234297114806485,
+          "rmse": 0.015668573628541394,
+          "bias": -0.007200627181509715
         },
         "2026-1": {
           "rows": 30,
-          "mae": 0.018239877935667954,
-          "rmse": 0.026733305369949483,
-          "bias": 0.017836841627438163
+          "mae": 0.01570945885579417,
+          "rmse": 0.024706005906230497,
+          "bias": 0.011947670353767596
         }
       },
+      "mae": 0.013085446053797311,
+      "cycle_macro_mae": 0.014299785621509733,
+      "rmse": 0.01816349354279498,
+      "bias": -0.000844268708407861,
+      "fold_mae_std": 0.006457847099401104,
+      "uncertainty_half_width_80": 0.021167785951660578,
+      "outer_fold_best_parameters": [
+        {
+          "model__alpha": 0.1
+        },
+        {
+          "model__alpha": 25.0
+        },
+        {
+          "model__alpha": 25.0
+        },
+        {
+          "model__alpha": 25.0
+        },
+        {
+          "model__alpha": 25.0
+        }
+      ],
+      "horizon": {
+        "Days 1-7": {
+          "rows": 25,
+          "mae": 0.017547653172654224,
+          "rmse": 0.022067456403235423,
+          "r2": -0.16440829115704525
+        },
+        "Days 8-14": {
+          "rows": 25,
+          "mae": 0.015813027470160158,
+          "rmse": 0.021255997566885187,
+          "r2": -0.08034811379033768
+        },
+        "Days 15-21": {
+          "rows": 25,
+          "mae": 0.013301799519789256,
+          "rmse": 0.017889070881209324,
+          "r2": 0.23479763370768747
+        },
+        "Day 22+": {
+          "rows": 47,
+          "mae": 0.009146008819110233,
+          "rmse": 0.013667091766185288,
+          "r2": 0.5459498952329
+        }
+      }
+    },
+    "remaining_loss_huber": {
+      "rows": 122,
+      "r2": 0.25981904752563356,
+      "target_side_accuracy": 0.8278688524590164,
+      "majority_side_accuracy": 0.8442622950819673,
+      "below_target_recall": 0.970873786407767,
+      "at_or_above_target_recall": 0.05263157894736842,
+      "confusion_matrix": {
+        "actual_below_predicted_below": 100,
+        "actual_below_predicted_at_or_above": 3,
+        "actual_at_or_above_predicted_below": 18,
+        "actual_at_or_above_predicted_at_or_above": 1
+      },
+      "cycle": {
+        "2025-2": {
+          "rows": 12,
+          "mae": 0.023883350094258154,
+          "rmse": 0.02452949202775961,
+          "bias": -0.023883350094258154
+        },
+        "2025-3": {
+          "rows": 25,
+          "mae": 0.006039573067954675,
+          "rmse": 0.00889019395934521,
+          "bias": 0.004775306304478288
+        },
+        "2025-4": {
+          "rows": 25,
+          "mae": 0.00636679180776261,
+          "rmse": 0.007946548281923331,
+          "bias": -0.00087563642071387
+        },
+        "2025-5": {
+          "rows": 30,
+          "mae": 0.012765417030687657,
+          "rmse": 0.01487294918037457,
+          "bias": -0.005559362345007946
+        },
+        "2026-1": {
+          "rows": 30,
+          "mae": 0.017580698724100112,
+          "rmse": 0.025921527353307168,
+          "bias": 0.016523272444643123
+        }
+      },
+      "mae": 0.012353629472685765,
+      "cycle_macro_mae": 0.01332716614495264,
+      "rmse": 0.01754825598148251,
+      "bias": 0.0011459741717382615,
+      "fold_mae_std": 0.006802895630693507,
+      "uncertainty_half_width_80": 0.019321341080697215,
+      "outer_fold_best_parameters": [
+        {
+          "model__alpha": 0.1,
+          "model__epsilon": 1.5
+        },
+        {
+          "model__alpha": 0.1,
+          "model__epsilon": 1.5
+        },
+        {
+          "model__alpha": 0.1,
+          "model__epsilon": 1.5
+        },
+        {
+          "model__alpha": 0.01,
+          "model__epsilon": 1.35
+        },
+        {
+          "model__alpha": 0.1,
+          "model__epsilon": 1.5
+        }
+      ],
+      "horizon": {
+        "Days 1-7": {
+          "rows": 25,
+          "mae": 0.01577602245014316,
+          "rmse": 0.020529336975240887,
+          "r2": -0.007744836289245605
+        },
+        "Days 8-14": {
+          "rows": 25,
+          "mae": 0.015218559425665128,
+          "rmse": 0.02094026161865201,
+          "r2": -0.04849156550827316
+        },
+        "Days 15-21": {
+          "rows": 25,
+          "mae": 0.013815172551239777,
+          "rmse": 0.0185375938761087,
+          "r2": 0.17831102221929507
+        },
+        "Day 22+": {
+          "rows": 47,
+          "mae": 0.008231892233860881,
+          "rmse": 0.012614641640347701,
+          "r2": 0.6131867035073428
+        }
+      }
+    },
+    "remaining_loss_gradient_boosting": {
+      "rows": 122,
+      "r2": 0.2429072154349442,
+      "target_side_accuracy": 0.8360655737704918,
+      "majority_side_accuracy": 0.8442622950819673,
+      "below_target_recall": 0.9611650485436893,
+      "at_or_above_target_recall": 0.15789473684210525,
+      "confusion_matrix": {
+        "actual_below_predicted_below": 99,
+        "actual_below_predicted_at_or_above": 4,
+        "actual_at_or_above_predicted_below": 16,
+        "actual_at_or_above_predicted_at_or_above": 3
+      },
+      "cycle": {
+        "2025-2": {
+          "rows": 12,
+          "mae": 0.024586065992549182,
+          "rmse": 0.025068481896237768,
+          "bias": -0.024586065992549182
+        },
+        "2025-3": {
+          "rows": 25,
+          "mae": 0.008316389249141704,
+          "rmse": 0.011607034169990572,
+          "bias": 0.0036801464183630773
+        },
+        "2025-4": {
+          "rows": 25,
+          "mae": 0.007010620178643516,
+          "rmse": 0.008509589207794313,
+          "bias": -0.0038199002612439113
+        },
+        "2025-5": {
+          "rows": 30,
+          "mae": 0.011559164356813112,
+          "rmse": 0.013792052580010056,
+          "bias": -0.002245717859415412
+        },
+        "2026-1": {
+          "rows": 30,
+          "mae": 0.016841308873229564,
+          "rmse": 0.025820562433104696,
+          "bias": 0.014548499506335744
+        }
+      },
+      "mae": 0.012542805118905744,
+      "cycle_macro_mae": 0.013662709730075417,
+      "rmse": 0.017747597146215394,
+      "bias": 0.0005783345198770403,
+      "fold_mae_std": 0.0064293319368699435,
+      "uncertainty_half_width_80": 0.019986316708920714,
       "outer_fold_best_parameters": [
         {
           "model__n_estimators": 75,
           "model__learning_rate": 0.04,
-          "model__max_depth": 2,
-          "model__min_samples_leaf": 4
-        },
-        {
-          "model__n_estimators": 50,
-          "model__learning_rate": 0.03,
-          "model__max_depth": 1,
-          "model__min_samples_leaf": 4
-        },
-        {
-          "model__n_estimators": 75,
-          "model__learning_rate": 0.04,
-          "model__max_depth": 2,
-          "model__min_samples_leaf": 4
-        },
-        {
-          "model__n_estimators": 100,
-          "model__learning_rate": 0.03,
           "model__max_depth": 2,
           "model__min_samples_leaf": 5
         },
         {
           "model__n_estimators": 75,
-          "model__learning_rate": 0.06,
+          "model__learning_rate": 0.04,
           "model__max_depth": 1,
-          "model__min_samples_leaf": 3
+          "model__min_samples_leaf": 4
+        },
+        {
+          "model__n_estimators": 75,
+          "model__learning_rate": 0.04,
+          "model__max_depth": 2,
+          "model__min_samples_leaf": 5
+        },
+        {
+          "model__n_estimators": 75,
+          "model__learning_rate": 0.04,
+          "model__max_depth": 2,
+          "model__min_samples_leaf": 5
+        },
+        {
+          "model__n_estimators": 75,
+          "model__learning_rate": 0.04,
+          "model__max_depth": 2,
+          "model__min_samples_leaf": 5
         }
-      ]
+      ],
+      "horizon": {
+        "Days 1-7": {
+          "rows": 25,
+          "mae": 0.016722725682916807,
+          "rmse": 0.02120040266450192,
+          "r2": -0.07470421944186079
+        },
+        "Days 8-14": {
+          "rows": 25,
+          "mae": 0.01445413023022315,
+          "rmse": 0.021069755202230724,
+          "r2": -0.06149930527071801
+        },
+        "Days 15-21": {
+          "rows": 25,
+          "mae": 0.014077477455693942,
+          "rmse": 0.01972876569905487,
+          "r2": 0.06931960634345002
+        },
+        "Day 22+": {
+          "rows": 47,
+          "mae": 0.008486465750758586,
+          "rmse": 0.011634342604998063,
+          "r2": 0.6709701824887784
+        }
+      }
     }
   },
   "selected_metrics": {
-    "mae": 0.013691713476157837,
-    "cycle_macro_mae": 0.014778301441672853,
-    "rmse": 0.01836780610321882,
-    "r2": 0.18906778146334047,
-    "bias": 0.0007439906364005419,
-    "fold_mae_std": 0.006642398918150694,
-    "target_side_accuracy": 0.8278688524590164,
+    "rows": 122,
+    "r2": 0.2223686742154909,
+    "target_side_accuracy": 0.860655737704918,
     "majority_side_accuracy": 0.8442622950819673,
-    "below_target_recall": 0.9611650485436893,
-    "at_or_above_target_recall": 0.10526315789473684,
+    "below_target_recall": 0.9902912621359223,
+    "at_or_above_target_recall": 0.15789473684210525,
     "confusion_matrix": {
-      "actual_below_predicted_below": 99,
-      "actual_below_predicted_at_or_above": 4,
-      "actual_at_or_above_predicted_below": 17,
-      "actual_at_or_above_predicted_at_or_above": 2
-    },
-    "uncertainty_half_width_80": 0.02103841415076524,
-    "horizon": {
-      "Days 1-7": {
-        "rows": 25,
-        "mae": 0.0158567835614606,
-        "rmse": 0.02118351538682158
-      },
-      "Days 8-14": {
-        "rows": 25,
-        "mae": 0.016512924865087545,
-        "rmse": 0.021843329623409628
-      },
-      "Days 15-21": {
-        "rows": 25,
-        "mae": 0.014502469596871266,
-        "rmse": 0.018825491705744508
-      },
-      "Day 22+": {
-        "rows": 47,
-        "mae": 0.010608182840548314,
-        "rmse": 0.01395518735929467
-      }
+      "actual_below_predicted_below": 102,
+      "actual_below_predicted_at_or_above": 1,
+      "actual_at_or_above_predicted_below": 16,
+      "actual_at_or_above_predicted_at_or_above": 3
     },
     "cycle": {
       "2025-2": {
         "rows": 12,
-        "mae": 0.02585479976829853,
-        "rmse": 0.02642032823688449,
-        "bias": -0.02585479976829853
+        "mae": 0.025230238854210107,
+        "rmse": 0.025950122480787877,
+        "bias": -0.025230238854210107
       },
       "2025-3": {
         "rows": 25,
-        "mae": 0.006820749896337626,
-        "rmse": 0.008949187040212333,
-        "bias": 0.005090682691716078
+        "mae": 0.011343594388487976,
+        "rmse": 0.013335199092780007,
+        "bias": 0.0014093741013752803
       },
       "2025-4": {
         "rows": 25,
-        "mae": 0.009373205369722056,
-        "rmse": 0.011499018330299975,
-        "bias": -0.0007625059282033897
+        "mae": 0.007733947947830151,
+        "rmse": 0.008957807440602315,
+        "bias": 0.00012782433217329193
       },
       "2025-5": {
         "rows": 30,
-        "mae": 0.014745031680328747,
-        "rmse": 0.017051020127821885,
-        "bias": -0.006613347175556602
+        "mae": 0.014811290824043795,
+        "rmse": 0.01722906754182872,
+        "bias": -0.00042790919068757725
       },
       "2026-1": {
         "rows": 30,
-        "mae": 0.017097720493677308,
-        "rmse": 0.025002333820928133,
-        "bias": 0.01637401503464431
+        "mae": 0.015909268964823316,
+        "rmse": 0.02311695156400704,
+        "bias": 0.010921838120211535
       }
     },
+    "mae": 0.013945231297741705,
+    "cycle_macro_mae": 0.015005668195879068,
+    "rmse": 0.01798671619240241,
+    "bias": 0.0004138111678189489,
+    "fold_mae_std": 0.00585977511507373,
+    "uncertainty_half_width_80": 0.02112791698720853,
     "outer_fold_best_parameters": [
-      {},
-      {},
-      {},
-      {},
-      {}
-    ]
+      {
+        "7": 0.06177424980444306,
+        "14": 0.051835558720361934,
+        "21": 0.04305683052535933,
+        "28": 0.015332747739224719
+      },
+      {
+        "7": 0.05762572977860133,
+        "14": 0.04784042164964446,
+        "21": 0.03903386537065281,
+        "28": 0.014612925132772396
+      },
+      {
+        "7": 0.057873972370607554,
+        "14": 0.048177063032591796,
+        "21": 0.03948300874424822,
+        "28": 0.01474458599482183
+      },
+      {
+        "7": 0.05968277042523027,
+        "14": 0.049184624285586474,
+        "21": 0.03996173411013312,
+        "28": 0.013333006573277234
+      },
+      {
+        "7": 0.05418970496131485,
+        "14": 0.04482018095368825,
+        "21": 0.035964044993231574,
+        "28": 0.013458273136913551
+      }
+    ],
+    "horizon": {
+      "Days 1-7": {
+        "rows": 25,
+        "mae": 0.015719506609656965,
+        "rmse": 0.020508156266891592,
+        "r2": -0.005666470241942223
+      },
+      "Days 8-14": {
+        "rows": 25,
+        "mae": 0.013982634846711934,
+        "rmse": 0.018917974157190563,
+        "r2": 0.14424392597800528
+      },
+      "Days 15-21": {
+        "rows": 25,
+        "mae": 0.013374627143190359,
+        "rmse": 0.01802357935465258,
+        "r2": 0.22324721216942123
+      },
+      "Day 22+": {
+        "rows": 47,
+        "mae": 0.013285085177351198,
+        "rmse": 0.015903022751796204,
+        "r2": 0.38523247221029433
+      }
+    }
   },
   "research_champion_metrics": {
-    "mae": 0.013691713476157837,
-    "cycle_macro_mae": 0.014778301441672853,
-    "rmse": 0.01836780610321882,
-    "r2": 0.18906778146334047,
-    "bias": 0.0007439906364005419,
-    "fold_mae_std": 0.006642398918150694,
+    "rows": 122,
+    "r2": 0.25981904752563356,
     "target_side_accuracy": 0.8278688524590164,
     "majority_side_accuracy": 0.8442622950819673,
-    "below_target_recall": 0.9611650485436893,
-    "at_or_above_target_recall": 0.10526315789473684,
+    "below_target_recall": 0.970873786407767,
+    "at_or_above_target_recall": 0.05263157894736842,
     "confusion_matrix": {
-      "actual_below_predicted_below": 99,
-      "actual_below_predicted_at_or_above": 4,
-      "actual_at_or_above_predicted_below": 17,
-      "actual_at_or_above_predicted_at_or_above": 2
-    },
-    "uncertainty_half_width_80": 0.02103841415076524,
-    "horizon": {
-      "Days 1-7": {
-        "rows": 25,
-        "mae": 0.0158567835614606,
-        "rmse": 0.02118351538682158
-      },
-      "Days 8-14": {
-        "rows": 25,
-        "mae": 0.016512924865087545,
-        "rmse": 0.021843329623409628
-      },
-      "Days 15-21": {
-        "rows": 25,
-        "mae": 0.014502469596871266,
-        "rmse": 0.018825491705744508
-      },
-      "Day 22+": {
-        "rows": 47,
-        "mae": 0.010608182840548314,
-        "rmse": 0.01395518735929467
-      }
+      "actual_below_predicted_below": 100,
+      "actual_below_predicted_at_or_above": 3,
+      "actual_at_or_above_predicted_below": 18,
+      "actual_at_or_above_predicted_at_or_above": 1
     },
     "cycle": {
       "2025-2": {
         "rows": 12,
-        "mae": 0.02585479976829853,
-        "rmse": 0.02642032823688449,
-        "bias": -0.02585479976829853
+        "mae": 0.023883350094258154,
+        "rmse": 0.02452949202775961,
+        "bias": -0.023883350094258154
       },
       "2025-3": {
         "rows": 25,
-        "mae": 0.006820749896337626,
-        "rmse": 0.008949187040212333,
-        "bias": 0.005090682691716078
+        "mae": 0.006039573067954675,
+        "rmse": 0.00889019395934521,
+        "bias": 0.004775306304478288
       },
       "2025-4": {
         "rows": 25,
-        "mae": 0.009373205369722056,
-        "rmse": 0.011499018330299975,
-        "bias": -0.0007625059282033897
+        "mae": 0.00636679180776261,
+        "rmse": 0.007946548281923331,
+        "bias": -0.00087563642071387
       },
       "2025-5": {
         "rows": 30,
-        "mae": 0.014745031680328747,
-        "rmse": 0.017051020127821885,
-        "bias": -0.006613347175556602
+        "mae": 0.012765417030687657,
+        "rmse": 0.01487294918037457,
+        "bias": -0.005559362345007946
       },
       "2026-1": {
         "rows": 30,
-        "mae": 0.017097720493677308,
-        "rmse": 0.025002333820928133,
-        "bias": 0.01637401503464431
+        "mae": 0.017580698724100112,
+        "rmse": 0.025921527353307168,
+        "bias": 0.016523272444643123
       }
     },
+    "mae": 0.012353629472685765,
+    "cycle_macro_mae": 0.01332716614495264,
+    "rmse": 0.01754825598148251,
+    "bias": 0.0011459741717382615,
+    "fold_mae_std": 0.006802895630693507,
+    "uncertainty_half_width_80": 0.019321341080697215,
     "outer_fold_best_parameters": [
-      {},
-      {},
-      {},
-      {},
-      {}
-    ]
+      {
+        "model__alpha": 0.1,
+        "model__epsilon": 1.5
+      },
+      {
+        "model__alpha": 0.1,
+        "model__epsilon": 1.5
+      },
+      {
+        "model__alpha": 0.1,
+        "model__epsilon": 1.5
+      },
+      {
+        "model__alpha": 0.01,
+        "model__epsilon": 1.35
+      },
+      {
+        "model__alpha": 0.1,
+        "model__epsilon": 1.5
+      }
+    ],
+    "horizon": {
+      "Days 1-7": {
+        "rows": 25,
+        "mae": 0.01577602245014316,
+        "rmse": 0.020529336975240887,
+        "r2": -0.007744836289245605
+      },
+      "Days 8-14": {
+        "rows": 25,
+        "mae": 0.015218559425665128,
+        "rmse": 0.02094026161865201,
+        "r2": -0.04849156550827316
+      },
+      "Days 15-21": {
+        "rows": 25,
+        "mae": 0.013815172551239777,
+        "rmse": 0.0185375938761087,
+        "r2": 0.17831102221929507
+      },
+      "Day 22+": {
+        "rows": 47,
+        "mae": 0.008231892233860881,
+        "rmse": 0.012614641640347701,
+        "r2": 0.6131867035073428
+      }
+    }
   },
+  "candidate_registry": [
+    {
+      "model": "age_band_remaining_loss",
+      "available": true,
+      "reason": "Evaluated under nested whole-cycle validation"
+    },
+    {
+      "model": "remaining_loss_linear",
+      "available": true,
+      "reason": "Evaluated under nested whole-cycle validation"
+    },
+    {
+      "model": "remaining_loss_ridge",
+      "available": true,
+      "reason": "Evaluated under nested whole-cycle validation"
+    },
+    {
+      "model": "remaining_loss_huber",
+      "available": true,
+      "reason": "Evaluated under nested whole-cycle validation"
+    },
+    {
+      "model": "remaining_loss_gradient_boosting",
+      "available": true,
+      "reason": "Evaluated under nested whole-cycle validation"
+    }
+  ],
+  "training_cycles": [
+    "2025-2",
+    "2025-3",
+    "2025-4",
+    "2025-5",
+    "2026-1"
+  ],
+  "training_building_cycles": 25,
+  "training_snapshot_rows": 122,
+  "snapshot_sampling": "Days 7, 14, 21, and 28 plus the latest eligible pre-outcome snapshot",
+  "target": 0.95,
+  "label_definition": "Population on the last recorded daily date divided by beginning inventory; capstone recovery proxy",
+  "status": "Experimental - transparent age-band remaining-loss baseline retained",
   "selection_metric": "nested_leave_one_complete_cycle_out_cycle_macro_mae",
   "selection_tolerance_pct": 10.0,
   "nested_validation": {
     "outer_split": "Leave one complete harvest cycle out",
     "inner_split": "Leave one complete remaining harvest cycle out",
-    "optimization_metric": "Cycle-balanced mean absolute error",
-    "preprocessing_scope": "Imputation, scaling and tuning are fitted inside each training fold",
+    "optimization_metric": "Cycle-balanced MAE in final recovery",
+    "preprocessing_scope": "Imputation, scaling, feature handling and tuning fitted inside each training fold",
     "independent_unit": "Building-cycle; repeated snapshots receive equal total training weight"
   },
+  "rolling_origin_validation": {
+    "age_band_remaining_loss": {
+      "folds": [
+        {
+          "test_cycle": "2025-4",
+          "training_cycles": [
+            "2025-2",
+            "2025-3"
+          ],
+          "rows": 25,
+          "mae": 0.009635348768104417,
+          "rmse": 0.011341104098273097,
+          "bias": 0.006432131449004852
+        },
+        {
+          "test_cycle": "2025-5",
+          "training_cycles": [
+            "2025-2",
+            "2025-3",
+            "2025-4"
+          ],
+          "rows": 30,
+          "mae": 0.014811290824043791,
+          "rmse": 0.01729769515966955,
+          "bias": 0.0034446261592245026
+        },
+        {
+          "test_cycle": "2026-1",
+          "training_cycles": [
+            "2025-2",
+            "2025-3",
+            "2025-4",
+            "2025-5"
+          ],
+          "rows": 30,
+          "mae": 0.015909268964823316,
+          "rmse": 0.02311695156400704,
+          "bias": 0.010921838120211535
+        }
+      ],
+      "cycle_macro_mae": 0.013451969518990506,
+      "rmse": 0.01790925598321875,
+      "bias": 0.00693286524281363
+    },
+    "remaining_loss_linear": {
+      "folds": [
+        {
+          "test_cycle": "2025-4",
+          "training_cycles": [
+            "2025-2",
+            "2025-3"
+          ],
+          "rows": 25,
+          "mae": 0.019079636879408567,
+          "rmse": 0.024250626717270372,
+          "bias": -0.005976224077007268
+        },
+        {
+          "test_cycle": "2025-5",
+          "training_cycles": [
+            "2025-2",
+            "2025-3",
+            "2025-4"
+          ],
+          "rows": 30,
+          "mae": 0.013018216691269983,
+          "rmse": 0.015461355591506337,
+          "bias": -0.0039040930125322872
+        },
+        {
+          "test_cycle": "2026-1",
+          "training_cycles": [
+            "2025-2",
+            "2025-3",
+            "2025-4",
+            "2025-5"
+          ],
+          "rows": 30,
+          "mae": 0.01609263927483603,
+          "rmse": 0.024735435480969088,
+          "bias": 0.015368933815803029
+        }
+      ],
+      "cycle_macro_mae": 0.016063497615171524,
+      "rmse": 0.021901203782293006,
+      "bias": 0.001829538908754491
+    },
+    "remaining_loss_ridge": {
+      "folds": [
+        {
+          "test_cycle": "2025-4",
+          "training_cycles": [
+            "2025-2",
+            "2025-3"
+          ],
+          "rows": 25,
+          "mae": 0.018258814349920594,
+          "rmse": 0.023545523705961267,
+          "bias": -0.006419757214628414
+        },
+        {
+          "test_cycle": "2025-5",
+          "training_cycles": [
+            "2025-2",
+            "2025-3",
+            "2025-4"
+          ],
+          "rows": 30,
+          "mae": 0.013112207732068993,
+          "rmse": 0.015577173616128148,
+          "bias": -0.0036800774683267
+        },
+        {
+          "test_cycle": "2026-1",
+          "training_cycles": [
+            "2025-2",
+            "2025-3",
+            "2025-4",
+            "2025-5"
+          ],
+          "rows": 30,
+          "mae": 0.01570945885579417,
+          "rmse": 0.024706005906230497,
+          "bias": 0.011947670353767596
+        }
+      ],
+      "cycle_macro_mae": 0.01569349364592792,
+      "rmse": 0.021659691843711897,
+      "bias": 0.0006159452236041604
+    },
+    "remaining_loss_huber": {
+      "folds": [
+        {
+          "test_cycle": "2025-4",
+          "training_cycles": [
+            "2025-2",
+            "2025-3"
+          ],
+          "rows": 25,
+          "mae": 0.022022305631511814,
+          "rmse": 0.02505997601049707,
+          "bias": -0.015772541670181304
+        },
+        {
+          "test_cycle": "2025-5",
+          "training_cycles": [
+            "2025-2",
+            "2025-3",
+            "2025-4"
+          ],
+          "rows": 30,
+          "mae": 0.012381080144919536,
+          "rmse": 0.014907855383867975,
+          "bias": -0.002931547423320994
+        },
+        {
+          "test_cycle": "2026-1",
+          "training_cycles": [
+            "2025-2",
+            "2025-3",
+            "2025-4",
+            "2025-5"
+          ],
+          "rows": 30,
+          "mae": 0.017580698724100112,
+          "rmse": 0.025921527353307168,
+          "bias": 0.016523272444643123
+        }
+      ],
+      "cycle_macro_mae": 0.017328028166843822,
+      "rmse": 0.02252533484857485,
+      "bias": -0.0007269388829530578
+    },
+    "remaining_loss_gradient_boosting": {
+      "folds": [
+        {
+          "test_cycle": "2025-4",
+          "training_cycles": [
+            "2025-2",
+            "2025-3"
+          ],
+          "rows": 25,
+          "mae": 0.010537384835584503,
+          "rmse": 0.013328643750516057,
+          "bias": 0.0017756187447642358
+        },
+        {
+          "test_cycle": "2025-5",
+          "training_cycles": [
+            "2025-2",
+            "2025-3",
+            "2025-4"
+          ],
+          "rows": 30,
+          "mae": 0.012818960995898096,
+          "rmse": 0.015981643587819786,
+          "bias": -0.0008364915563160842
+        },
+        {
+          "test_cycle": "2026-1",
+          "training_cycles": [
+            "2025-2",
+            "2025-3",
+            "2025-4",
+            "2025-5"
+          ],
+          "rows": 30,
+          "mae": 0.016841308873229564,
+          "rmse": 0.025820562433104696,
+          "bias": 0.014548499506335744
+        }
+      ],
+      "cycle_macro_mae": 0.013399218234904054,
+      "rmse": 0.019146515090725427,
+      "bias": 0.0051625422315946315
+    }
+  },
+  "rolling_origin_note": "Secondary prospective check: train only on earlier cycles and predict the next recorded cycle.",
+  "secondary_within_cycle_metrics": {
+    "age_band_remaining_loss": {
+      "mae": 0.013704784279529042,
+      "rmse": 0.017578469433072622,
+      "r2": 0.25726806202086094
+    },
+    "remaining_loss_linear": {
+      "mae": 0.010838805795608546,
+      "rmse": 0.015692762986849552,
+      "r2": 0.40807209525844446
+    },
+    "remaining_loss_ridge": {
+      "mae": 0.011748455057853126,
+      "rmse": 0.016346256172988346,
+      "r2": 0.3577463449170347
+    },
+    "remaining_loss_huber": {
+      "mae": 0.010872504710683434,
+      "rmse": 0.01576637000899361,
+      "r2": 0.40250618780770575
+    },
+    "remaining_loss_gradient_boosting": {
+      "mae": 0.0106843918613338,
+      "rmse": 0.01560770116373773,
+      "r2": 0.41447173383056346
+    }
+  },
+  "secondary_validation_note": "Diagnostic only: leaves out one building-cycle while other buildings from the same harvest cycle remain in training.",
   "champion_gates": {
-    "baseline": "historical_mean",
-    "baseline_improvement_pct": 14.531176046433437,
+    "baseline": "age_band_remaining_loss",
+    "baseline_improvement_pct": 11.185786790803403,
     "requires_at_least_10pct_mae_improvement": true,
     "requires_positive_r2": true,
+    "requires_stable_worst_cycle": true,
     "regression_gate_passed": true,
     "requires_better_than_majority_target_side_accuracy": false,
     "requires_recall_for_both_target_sides": true,
     "target_classification_gate_passed": false,
-    "operational_fallback_applied": false
+    "operational_fallback_applied": true
   },
-  "primary_whole_cycle_bootstrap_mae_95ci": {
-    "lower": 0.009386635110482447,
-    "upper": 0.02080706503365899,
-    "confidence": 0.95
+  "final_fit_parameters": {
+    "7": 0.05832604571026282,
+    "14": 0.048468232850389065,
+    "21": 0.03960177556819855,
+    "28": 0.014354061713316763
   },
-  "secondary_within_cycle_metrics": {
-    "historical_mean": {
-      "mae": 0.017079346642015977,
-      "rmse": 0.02125403686709223,
-      "r2": -0.08580751256223818
-    },
-    "linear_regression": {
-      "mae": 0.011399671112928954,
-      "rmse": 0.015958290637562236,
-      "r2": 0.38787132601033014
-    },
-    "ridge_core": {
-      "mae": 0.012591555097327678,
-      "rmse": 0.01688276299748365,
-      "r2": 0.3148951678462082
-    },
-    "gradient_boosting": {
-      "mae": 0.013630365605345952,
-      "rmse": 0.01847451116484984,
-      "r2": 0.1796184313154342
-    }
+  "research_champion_fit_parameters": {
+    "model__alpha": 0.001,
+    "model__epsilon": 1.2
   },
-  "secondary_validation_note": "Diagnostic only: leaves out one building-cycle while other buildings from the same harvest cycle can remain in training. This is easier and more optimistic than prospective whole-cycle validation.",
-  "candidate_registry": [
-    {
-      "model": "historical_mean",
-      "available": true,
-      "reason": "Evaluated under nested whole-cycle validation"
-    },
-    {
-      "model": "linear_regression",
-      "available": true,
-      "reason": "Evaluated under nested whole-cycle validation"
-    },
-    {
-      "model": "ridge_core",
-      "available": true,
-      "reason": "Evaluated under nested whole-cycle validation"
-    },
-    {
-      "model": "gradient_boosting",
-      "available": true,
-      "reason": "Evaluated under nested whole-cycle validation"
-    },
-    {
-      "model": "xgboost",
-      "available": false,
-      "reason": "Unavailable locally because the required OpenMP runtime is missing; run in Linux/CI before release if XGBoost evidence is required"
-    }
-  ],
-  "final_fit_parameters": {},
-  "selection_note": "For recovery, candidates are compared on compact leakage-safe inputs. The simplest candidate within 10% of the best learned cycle-balanced MAE is preferred only if it also improves the historical-mean baseline by at least 10% and keeps positive whole-cycle R\u00b2.",
-  "unavailable_candidates": {
-    "xgboost": "Not run in this local build because the required macOS OpenMP runtime (libomp) is unavailable."
+  "additional_loss_by_age_band": {
+    "7": 0.05832604571026282,
+    "14": 0.048468232850389065,
+    "21": 0.03960177556819855,
+    "28": 0.014354061713316763
   },
-  "global_feature_importance": [],
-  "held_out_permutation_importance": [
+  "held_out_permutation_importance": [],
+  "research_champion_permutation_importance": [
     {
       "feature": "humidity_deviation_from_band_pp",
-      "mean_mae_increase": 0.00959122562922797,
-      "relative_importance_pct": 28.287827979572345
-    },
-    {
-      "feature": "percentage_alive",
-      "mean_mae_increase": 0.008722720298380818,
-      "relative_importance_pct": 25.726306611179368
+      "mean_mae_increase": 0.008434300265902767,
+      "relative_importance_pct": 31.565753478525664
     },
     {
       "feature": "cycle_day",
-      "mean_mae_increase": 0.003967299357978371,
-      "relative_importance_pct": 11.700932302120542
+      "mean_mae_increase": 0.0033691561443867186,
+      "relative_importance_pct": 12.60922055553449
     },
     {
       "feature": "mortality_recent_3d_per_1000",
-      "mean_mae_increase": 0.0035012625469634908,
-      "relative_importance_pct": 10.32642922485339
-    },
-    {
-      "feature": "mortality_trend_delta_per_1000",
-      "mean_mae_increase": 0.0021449806550340325,
-      "relative_importance_pct": 6.326286768211207
+      "mean_mae_increase": 0.002613258615395871,
+      "relative_importance_pct": 9.780239572771492
     },
     {
       "feature": "temperature_deviation_from_band_c",
-      "mean_mae_increase": 0.0017483364437430805,
-      "relative_importance_pct": 5.156446369096882
-    },
-    {
-      "feature": "environment_staleness_days",
-      "mean_mae_increase": 0.0015539714145253994,
-      "relative_importance_pct": 4.583196950899545
+      "mean_mae_increase": 0.0022050008440339,
+      "relative_importance_pct": 8.252316240636612
     },
     {
       "feature": "environment_out_of_band_days_7d",
-      "mean_mae_increase": 0.0015115038215348345,
-      "relative_importance_pct": 4.457945391644934
+      "mean_mae_increase": 0.002072396101639565,
+      "relative_importance_pct": 7.756036943416815
+    },
+    {
+      "feature": "environment_staleness_days",
+      "mean_mae_increase": 0.0019855137006341904,
+      "relative_importance_pct": 7.430875594484862
+    },
+    {
+      "feature": "percentage_alive",
+      "mean_mae_increase": 0.0018951745572384625,
+      "relative_importance_pct": 7.092777229476571
     },
     {
       "feature": "weight_gap_pct",
-      "mean_mae_increase": 0.0009170839111947967,
-      "relative_importance_pct": 2.70479633423033
+      "mean_mae_increase": 0.001881715477467432,
+      "relative_importance_pct": 7.042406009493132
+    },
+    {
+      "feature": "mortality_trend_delta_per_1000",
+      "mean_mae_increase": 0.0014461259515529735,
+      "relative_importance_pct": 5.4121923391985804
     },
     {
       "feature": "weight_staleness_days",
-      "mean_mae_increase": 0.0002474556916326444,
-      "relative_importance_pct": 0.7298320681914555
+      "mean_mae_increase": 0.0008171395490640263,
+      "relative_importance_pct": 3.058182036461783
     }
   ],
-  "feature_importance_interpretation": "Held-out permutation importance and building-specific linear contribution breakdowns show predictive reliance and association. They are not causal effects and cannot justify treatment-size claims.",
+  "research_champion_drivers": [
+    {
+      "feature": "humidity_deviation_from_band_pp",
+      "mean_mae_increase": 0.008434300265902767,
+      "relative_importance_pct": 31.565753478525664
+    },
+    {
+      "feature": "cycle_day",
+      "mean_mae_increase": 0.0033691561443867186,
+      "relative_importance_pct": 12.60922055553449
+    },
+    {
+      "feature": "mortality_recent_3d_per_1000",
+      "mean_mae_increase": 0.002613258615395871,
+      "relative_importance_pct": 9.780239572771492
+    },
+    {
+      "feature": "temperature_deviation_from_band_c",
+      "mean_mae_increase": 0.0022050008440339,
+      "relative_importance_pct": 8.252316240636612
+    },
+    {
+      "feature": "environment_out_of_band_days_7d",
+      "mean_mae_increase": 0.002072396101639565,
+      "relative_importance_pct": 7.756036943416815
+    }
+  ],
+  "global_feature_importance": [],
+  "feature_importance_interpretation": "Held-out permutation importance shows predictive association and model reliance, not causality.",
+  "primary_whole_cycle_bootstrap_mae_95ci": {
+    "lower": 0.01009094143936035,
+    "upper": 0.020369120355032418,
+    "confidence": 0.95
+  },
   "day14_backtest_metrics": {
-    "building_cycles": 25,
-    "mae": 0.016512924865087545,
-    "rmse": 0.021843329623409628,
-    "mean_error": 0.0009721508574465831,
-    "target_side_accuracy": 0.8,
+    "rows": 25,
+    "r2": 0.14424392597800528,
+    "target_side_accuracy": 0.84,
     "majority_side_accuracy": 0.84,
-    "below_target_recall": 0.9523809523809523,
+    "below_target_recall": 1.0,
     "at_or_above_target_recall": 0.0,
+    "confusion_matrix": {
+      "actual_below_predicted_below": 21,
+      "actual_below_predicted_at_or_above": 0,
+      "actual_at_or_above_predicted_below": 4,
+      "actual_at_or_above_predicted_at_or_above": 0
+    },
+    "cycle": {
+      "2025-2": {
+        "rows": 3,
+        "mae": 0.028061048916440456,
+        "rmse": 0.028206162360156006,
+        "bias": -0.028061048916440456
+      },
+      "2025-3": {
+        "rows": 5,
+        "mae": 0.010829156148471953,
+        "rmse": 0.013207703958582038,
+        "bias": 0.0031390560037231285
+      },
+      "2025-4": {
+        "rows": 5,
+        "mae": 0.00567193760736171,
+        "rmse": 0.006668106508641559,
+        "bias": 0.0014558490889863274
+      },
+      "2025-5": {
+        "rows": 6,
+        "mae": 0.015279326370297996,
+        "rmse": 0.016382398126767336,
+        "bias": -0.002984964313322495
+      },
+      "2026-1": {
+        "rows": 6,
+        "mae": 0.01520021623625345,
+        "rmse": 0.02534971274786852,
+        "bias": 0.01520021623625345
+      }
+    },
+    "mae": 0.013982634846711934,
+    "cycle_macro_mae": 0.015008337055765115,
+    "rmse": 0.018917974157190563,
+    "bias": 0.0004833156100724656,
+    "fold_mae_std": 0.007417781979302731,
+    "uncertainty_half_width_80": 0.022437059374427203,
+    "building_cycles": 25,
+    "mean_error": 0.0004833156100724656,
     "actual_at_or_above_target": 4,
     "actual_below_target": 21,
-    "predicted_at_or_above_target": 1,
-    "predicted_below_target": 24
+    "predicted_at_or_above_target": 0,
+    "predicted_below_target": 25
   },
   "day14_backtest": [
     {
       "cycle_id": "2025-2",
       "building_id": "Tags 1",
       "as_of_date": "2025-04-11",
-      "predicted": 0.9264132620399017,
+      "predicted": 0.9178703236325793,
       "actual": 0.942794117647059,
-      "error": -0.016380855607157296,
-      "absolute_error": 0.016380855607157296
+      "error": -0.02492379401447975,
+      "absolute_error": 0.02492379401447975
     },
     {
       "cycle_id": "2025-2",
       "building_id": "Tags 2",
       "as_of_date": "2025-04-11",
-      "predicted": 0.9285379236078226,
+      "predicted": 0.9222820883384616,
       "actual": 0.949705882352941,
-      "error": -0.021167958745118343,
-      "absolute_error": 0.021167958745118343
+      "error": -0.027423794014479363,
+      "absolute_error": 0.027423794014479363
     },
     {
       "cycle_id": "2025-2",
       "building_id": "Tags 3",
       "as_of_date": "2025-04-11",
-      "predicted": 0.9303013842733185,
+      "predicted": 0.9237526765737557,
       "actual": 0.955588235294118,
-      "error": -0.025286851020799417,
-      "absolute_error": 0.025286851020799417
+      "error": -0.031835558720362256,
+      "absolute_error": 0.031835558720362256
     },
     {
       "cycle_id": "2025-3",
       "building_id": "Lags 1",
       "as_of_date": "2025-07-23",
-      "predicted": 0.9180553115982258,
+      "predicted": 0.9253420444943328,
       "actual": 0.900035637918746,
-      "error": 0.018019673679479875,
-      "absolute_error": 0.018019673679479875
+      "error": 0.025306406575586804,
+      "absolute_error": 0.025306406575586804
     },
     {
       "cycle_id": "2025-3",
       "building_id": "Lags 2",
       "as_of_date": "2025-07-29",
-      "predicted": 0.9055902910259032,
+      "predicted": 0.9175232147139919,
       "actual": 0.907909090909091,
-      "error": -0.0023187998831878387,
-      "absolute_error": 0.0023187998831878387
+      "error": 0.009614123804900898,
+      "absolute_error": 0.009614123804900898
     },
     {
       "cycle_id": "2025-3",
       "building_id": "Tags 1",
       "as_of_date": "2025-06-27",
-      "predicted": 0.9466242597575014,
+      "predicted": 0.9330181286670339,
       "actual": 0.938071780436312,
-      "error": 0.00855247932118941,
-      "absolute_error": 0.00855247932118941
+      "error": -0.005053651769278078,
+      "absolute_error": 0.005053651769278078
     },
     {
       "cycle_id": "2025-3",
       "building_id": "Tags 2",
       "as_of_date": "2025-06-27",
-      "predicted": 0.9387712449637581,
+      "predicted": 0.9265723300282079,
       "actual": 0.931068232662192,
-      "error": 0.0077030123015661145,
-      "absolute_error": 0.0077030123015661145
+      "error": -0.004495902633984028,
+      "absolute_error": 0.004495902633984028
     },
     {
       "cycle_id": "2025-3",
       "building_id": "Tags 3",
       "as_of_date": "2025-06-27",
-      "predicted": 0.9517134679468136,
+      "predicted": 0.9353221993690171,
       "actual": 0.944997895327627,
-      "error": 0.006715572619186538,
-      "absolute_error": 0.006715572619186538
+      "error": -0.009675695958609953,
+      "absolute_error": 0.009675695958609953
     },
     {
       "cycle_id": "2025-4",
       "building_id": "Lags 1",
       "as_of_date": "2025-10-10",
-      "predicted": 0.9089796926286084,
+      "predicted": 0.9272364371909217,
       "actual": 0.929637907912383,
-      "error": -0.02065821528377454,
-      "absolute_error": 0.02065821528377454
+      "error": -0.0024014707214612407,
+      "absolute_error": 0.0024014707214612407
     },
     {
       "cycle_id": "2025-4",
       "building_id": "Lags 2",
       "as_of_date": "2025-10-10",
-      "predicted": 0.9084305553730846,
+      "predicted": 0.9281410781649059,
       "actual": 0.933690795352994,
-      "error": -0.02526023997990945,
-      "absolute_error": 0.02526023997990945
+      "error": -0.005549717188088166,
+      "absolute_error": 0.005549717188088166
     },
     {
       "cycle_id": "2025-4",
       "building_id": "Tags 1",
       "as_of_date": "2025-09-09",
-      "predicted": 0.9054396485801554,
+      "predicted": 0.9137862987349931,
       "actual": 0.901692071039016,
-      "error": 0.003747577541139302,
-      "absolute_error": 0.003747577541139302
+      "error": 0.012094227695977011,
+      "absolute_error": 0.012094227695977011
     },
     {
       "cycle_id": "2025-4",
       "building_id": "Tags 2",
       "as_of_date": "2025-09-09",
-      "predicted": 0.9362683655594429,
+      "predicted": 0.9279599386518551,
       "actual": 0.922234699606962,
-      "error": 0.0140336659524809,
-      "absolute_error": 0.0140336659524809
+      "error": 0.005725239044893082,
+      "absolute_error": 0.005725239044893082
     },
     {
       "cycle_id": "2025-4",
       "building_id": "Tags 3",
       "as_of_date": "2025-09-09",
-      "predicted": 0.9263324788693292,
+      "predicted": 0.932524936687727,
       "actual": 0.935113970074116,
-      "error": -0.008781491204786773,
-      "absolute_error": 0.008781491204786773
+      "error": -0.0025890333863890502,
+      "absolute_error": 0.0025890333863890502
     },
     {
       "cycle_id": "2025-5",
       "building_id": "Lags 1",
       "as_of_date": "2025-12-24",
-      "predicted": 0.9329867914227192,
+      "predicted": 0.9329821166863261,
       "actual": 0.922603655818101,
-      "error": 0.010383135604618232,
-      "absolute_error": 0.010383135604618232
+      "error": 0.010378460868225137,
+      "absolute_error": 0.010378460868225137
     },
     {
       "cycle_id": "2025-5",
       "building_id": "Lags 2",
       "as_of_date": "2025-12-31",
-      "predicted": 0.9229954718272967,
+      "predicted": 0.927360830259868,
       "actual": 0.905545454545454,
-      "error": 0.0174500172818427,
-      "absolute_error": 0.0174500172818427
+      "error": 0.021815375714414054,
+      "absolute_error": 0.021815375714414054
     },
     {
       "cycle_id": "2025-5",
       "building_id": "Lags 3",
       "as_of_date": "2026-01-09",
-      "predicted": 0.9178249535317634,
+      "predicted": 0.9265811414801793,
       "actual": 0.921891891891892,
-      "error": -0.0040669383601286135,
-      "absolute_error": 0.0040669383601286135
+      "error": 0.004689249588287314,
+      "absolute_error": 0.004689249588287314
     },
     {
       "cycle_id": "2025-5",
       "building_id": "Tags 1",
       "as_of_date": "2025-11-25",
-      "predicted": 0.9189052597210217,
+      "predicted": 0.9332196549936929,
       "actual": 0.952702702702703,
-      "error": -0.0337974429816813,
-      "absolute_error": 0.0337974429816813
+      "error": -0.019483047709010104,
+      "absolute_error": 0.019483047709010104
     },
     {
       "cycle_id": "2025-5",
       "building_id": "Tags 2",
       "as_of_date": "2025-11-25",
-      "predicted": 0.9439774266505946,
+      "predicted": 0.9362878721883204,
       "actual": 0.954866008462624,
-      "error": -0.010888581812029452,
-      "absolute_error": 0.010888581812029452
+      "error": -0.018578136274303603,
+      "absolute_error": 0.018578136274303603
     },
     {
       "cycle_id": "2025-5",
       "building_id": "Tags 3",
       "as_of_date": "2025-11-25",
-      "predicted": 0.9272839178218361,
+      "predicted": 0.9362045299712273,
       "actual": 0.952936218038775,
-      "error": -0.025652300216938984,
-      "absolute_error": 0.025652300216938984
+      "error": -0.016731688067547767,
+      "absolute_error": 0.016731688067547767
     },
     {
       "cycle_id": "2026-1",
       "building_id": "Lags 1",
       "as_of_date": "2026-03-19",
-      "predicted": 0.930253792560513,
+      "predicted": 0.9226746983766172,
       "actual": 0.908273221123876,
-      "error": 0.02198057143663701,
-      "absolute_error": 0.02198057143663701
+      "error": 0.014401477252741213,
+      "absolute_error": 0.014401477252741213
     },
     {
       "cycle_id": "2026-1",
       "building_id": "Lags 2",
       "as_of_date": "2026-03-27",
-      "predicted": 0.9449216858651498,
+      "predicted": 0.9300860523022504,
       "actual": 0.870959099839257,
-      "error": 0.07396258602589278,
-      "absolute_error": 0.07396258602589278
+      "error": 0.059126952462993376,
+      "absolute_error": 0.059126952462993376
     },
     {
       "cycle_id": "2026-1",
       "building_id": "Lags 3",
       "as_of_date": "2026-04-03",
-      "predicted": 0.9114823306840587,
+      "predicted": 0.9211892757329029,
       "actual": 0.909626193237577,
-      "error": 0.0018561374464817204,
-      "absolute_error": 0.0018561374464817204
+      "error": 0.011563082495325894,
+      "absolute_error": 0.011563082495325894
     },
     {
       "cycle_id": "2026-1",
       "building_id": "Tags 1",
       "as_of_date": "2026-02-13",
-      "predicted": 0.9468500195277917,
+      "predicted": 0.935221983487633,
       "actual": 0.934082923401265,
-      "error": 0.012767096126526711,
-      "absolute_error": 0.012767096126526711
+      "error": 0.0011390600863679934,
+      "absolute_error": 0.0011390600863679934
     },
     {
       "cycle_id": "2026-1",
       "building_id": "Tags 2",
       "as_of_date": "2026-02-13",
-      "predicted": 0.9454887982180922,
+      "predicted": 0.9360813778161474,
       "actual": 0.932032017975004,
-      "error": 0.013456780243088162,
-      "absolute_error": 0.013456780243088162
+      "error": 0.004049359841143407,
+      "absolute_error": 0.004049359841143407
     },
     {
       "cycle_id": "2026-1",
       "building_id": "Tags 3",
       "as_of_date": "2026-02-13",
-      "predicted": 0.9431112318733931,
+      "predicted": 0.9360974562007948,
       "actual": 0.935176090921846,
-      "error": 0.007935140951547126,
-      "absolute_error": 0.007935140951547126
+      "error": 0.0009213652789488158,
+      "absolute_error": 0.0009213652789488158
     }
-  ]
+  ],
+  "limitations": [
+    "Only 25 independent building-cycle recovery outcomes are available.",
+    "The recovery label is a last-recorded proxy, not a verified harvest event.",
+    "Environmental evidence is incomplete in part of the history.",
+    "Target-side classification is not trusted unless it beats the majority baseline."
+  ],
+  "training_source": "FARM HARVEST DATA.xlsx",
+  "source_complete_date": "2026-07-25",
+  "source_daily_snapshot_rows": 1122
 }
