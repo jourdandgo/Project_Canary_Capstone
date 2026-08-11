@@ -9,12 +9,13 @@
   "recovery_champion_features": [
     "cycle_day",
     "percentage_alive",
-    "mortality_daily_per_1000",
     "mortality_recent_3d_per_1000",
     "mortality_trend_delta_per_1000",
-    "feed_daily_per_1000_birds",
-    "feed_cumulative_per_1000_birds",
-    "temperature_recent_avg_c",
-    "humidity_recent_avg_pct"
+    "weight_gap_pct",
+    "weight_staleness_days",
+    "temperature_deviation_from_band_c",
+    "humidity_deviation_from_band_pp",
+    "environment_out_of_band_days_7d",
+    "environment_staleness_days"
   ]
 }

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 import json
 from pathlib import Path
 from typing import Any
@@ -12,34 +13,55 @@ import numpy as np
 import pandas as pd
 from sklearn.compose import TransformedTargetRegressor
 from sklearn.dummy import DummyRegressor
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.impute import SimpleImputer
-from sklearn.linear_model import Ridge
-from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.inspection import permutation_importance
+from sklearn.linear_model import LinearRegression, Ridge
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import LeaveOneGroupOut
+from sklearn.base import clone
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+try:  # XGBoost is an optional challenger; some macOS installs lack libomp.
+    from xgboost import XGBRegressor
+except Exception:  # pragma: no cover - depends on the local operating-system runtime.
+    XGBRegressor = None  # type: ignore[assignment,misc]
 
 from .data import CanaryDataset
 
 
 FEATURE_COLUMNS = [
     "cycle_day",
+    "forecast_horizon_days",
     "beginning_inventory",
     "percentage_alive",
+    "expected_survival_path",
+    "survival_gap_pp",
     "cumulative_mortality_rate",
+    "population_loss_pct",
     "mortality_daily_per_1000",
     "mortality_recent_3d_per_1000",
     "mortality_trend_delta_per_1000",
     "feed_daily_per_1000_birds",
     "feed_cumulative_per_1000_birds",
+    "feed_daily_kg_per_bird",
     "latest_weight_kg",
     "weight_target_kg",
     "weight_gap_pct",
     "weight_measurement_day",
     "weight_staleness_days",
     "temperature_recent_avg_c",
+    "temperature_recent_min_c",
+    "temperature_recent_max_c",
+    "temperature_recent_range_c",
+    "temperature_deviation_from_band_c",
     "humidity_recent_avg_pct",
+    "humidity_recent_min_pct",
+    "humidity_recent_max_pct",
+    "humidity_recent_range_pp",
+    "humidity_deviation_from_band_pp",
+    "environment_out_of_band_days_7d",
+    "environment_staleness_days",
     "is_lags_building",
 ]
 
@@ -56,10 +78,21 @@ RECOVERY_NO_WEIGHT_FEATURE_COLUMNS = [
     if column not in WEIGHT_PROGRESS_FEATURES
     and column != "cumulative_mortality_rate"
 ]
+# Compact on purpose: each item adds a distinct, review-date-safe signal.  We
+# exclude algebraic duplicates (forecast horizon, population loss, survival
+# gap), raw temperature/humidity summaries that duplicate band deviation, and
+# feed until the farm confirms its unit.
 RECOVERY_CORE_FEATURE_COLUMNS = [
-    column
-    for column in RECOVERY_NO_WEIGHT_FEATURE_COLUMNS
-    if column not in {"beginning_inventory", "is_lags_building"}
+    "cycle_day",
+    "percentage_alive",
+    "mortality_recent_3d_per_1000",
+    "mortality_trend_delta_per_1000",
+    "weight_gap_pct",
+    "weight_staleness_days",
+    "temperature_deviation_from_band_c",
+    "humidity_deviation_from_band_pp",
+    "environment_out_of_band_days_7d",
+    "environment_staleness_days",
 ]
 RECOVERY_DECISION_DAYS = (7, 14, 21, 28)
 
@@ -99,6 +132,32 @@ def complete_cycle_ids(dataset: CanaryDataset) -> list[str]:
 
 def _numeric(series: pd.Series) -> pd.Series:
     return pd.to_numeric(series, errors="coerce").astype(float)
+
+
+@lru_cache(maxsize=1)
+def _risk_environment_rules() -> dict[str, Any]:
+    path = Path(__file__).resolve().parent.parent / "config" / "risk_rules.json"
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _age_band(ranges: list[dict[str, Any]], age: int) -> dict[str, Any] | None:
+    return next(
+        (
+            band
+            for band in ranges
+            if int(band["minimum_age"]) <= age <= int(band["maximum_age"])
+        ),
+        None,
+    )
+
+
+def _outside_band(value: object, band: dict[str, Any] | None) -> float:
+    if band is None or pd.isna(value):
+        return np.nan
+    observed = float(value)
+    lower = float(band["minimum"])
+    upper = float(band["maximum"])
+    return max(lower - observed, 0.0, observed - upper)
 
 
 def load_final_weight_labels(source: object) -> pd.DataFrame:
@@ -187,6 +246,12 @@ def extract_feature_row(
     feed = operational.loc[operational["feed_recorded"]]
     feed_daily = float(_numeric(feed["feed_daily_bags"]).iloc[-1]) if not feed.empty else np.nan
     feed_cumulative = float(_numeric(feed["feed_daily_bags"]).sum()) if not feed.empty else np.nan
+    feed_per_bird = operational.loc[operational["feed_daily_kg_per_bird"].notna()]
+    feed_daily_kg_per_bird = (
+        float(_numeric(feed_per_bird["feed_daily_kg_per_bird"]).iloc[-1])
+        if not feed_per_bird.empty
+        else np.nan
+    )
 
     weights = history.loc[history["weight_measured"]]
     if weights.empty:
@@ -204,18 +269,77 @@ def extract_feature_row(
         )
         weight_staleness = max(0, age - weight_day)
 
-    recent_environment = operational.tail(3)
+    environment_rows = operational.loc[
+        operational[
+            [
+                "temperature_avg_c",
+                "temperature_min_c",
+                "temperature_max_c",
+                "humidity_avg_pct",
+                "humidity_min_pct",
+                "humidity_max_pct",
+            ]
+        ]
+        .notna()
+        .any(axis=1)
+    ]
+    recent_environment = environment_rows.tail(3)
     temperature = _numeric(recent_environment["temperature_avg_c"]).mean()
+    temperature_min = _numeric(recent_environment["temperature_min_c"]).min()
+    temperature_max = _numeric(recent_environment["temperature_max_c"]).max()
     humidity = _numeric(recent_environment["humidity_avg_pct"]).mean()
+    humidity_min = _numeric(recent_environment["humidity_min_pct"]).min()
+    humidity_max = _numeric(recent_environment["humidity_max_pct"]).max()
+    environment_staleness = (
+        max(0, age - int(environment_rows.iloc[-1]["age_day"]))
+        if not environment_rows.empty
+        else np.nan
+    )
+    rules = _risk_environment_rules()
+    temperature_band = _age_band(rules["temperature_ranges_c"], age)
+    humidity_band = _age_band(rules["humidity_ranges_pct"], age)
+    temperature_deviation = _outside_band(temperature, temperature_band)
+    humidity_deviation = _outside_band(humidity, humidity_band)
+    recent_seven = environment_rows.tail(7)
+    out_of_band_days = 0
+    recorded_environment_days = 0
+    for _, environment_row in recent_seven.iterrows():
+        environment_age = int(environment_row["age_day"])
+        temperature_day_band = _age_band(rules["temperature_ranges_c"], environment_age)
+        humidity_day_band = _age_band(rules["humidity_ranges_pct"], environment_age)
+        temperature_day_deviation = _outside_band(
+            environment_row.get("temperature_avg_c"), temperature_day_band
+        )
+        humidity_day_deviation = _outside_band(
+            environment_row.get("humidity_avg_pct"), humidity_day_band
+        )
+        recorded = pd.notna(temperature_day_deviation) or pd.notna(humidity_day_deviation)
+        if recorded:
+            recorded_environment_days += 1
+            out_of_band_days += int(
+                (pd.notna(temperature_day_deviation) and temperature_day_deviation > 0)
+                or (pd.notna(humidity_day_deviation) and humidity_day_deviation > 0)
+            )
+
+    expected_survival = max(0.95, 1.0 - min(age, 35) / 35 * 0.05)
+    survival_gap_pp = (
+        max(0.0, expected_survival - percentage_alive) * 100
+        if pd.notna(percentage_alive)
+        else np.nan
+    )
 
     return {
         "cycle_id": cycle_id,
         "building_id": building_id,
         "as_of_date": as_of,
         "cycle_day": age,
+        "forecast_horizon_days": max(0, 35 - age),
         "beginning_inventory": beginning,
         "percentage_alive": percentage_alive,
+        "expected_survival_path": expected_survival,
+        "survival_gap_pp": survival_gap_pp,
         "cumulative_mortality_rate": 1.0 - percentage_alive if pd.notna(percentage_alive) else np.nan,
+        "population_loss_pct": (1.0 - percentage_alive) * 100 if pd.notna(percentage_alive) else np.nan,
         "mortality_daily_per_1000": (
             float(latest["mortality_daily"]) / beginning * 1000
             if pd.notna(latest["mortality_daily"])
@@ -225,13 +349,34 @@ def extract_feature_row(
         "mortality_trend_delta_per_1000": mortality_delta,
         "feed_daily_per_1000_birds": feed_daily / beginning * 1000 if pd.notna(feed_daily) else np.nan,
         "feed_cumulative_per_1000_birds": feed_cumulative / beginning * 1000 if pd.notna(feed_cumulative) else np.nan,
+        "feed_daily_kg_per_bird": feed_daily_kg_per_bird,
         "latest_weight_kg": latest_weight,
         "weight_target_kg": weight_target,
         "weight_gap_pct": weight_gap,
         "weight_measurement_day": weight_day,
         "weight_staleness_days": weight_staleness,
         "temperature_recent_avg_c": temperature,
+        "temperature_recent_min_c": temperature_min,
+        "temperature_recent_max_c": temperature_max,
+        "temperature_recent_range_c": (
+            temperature_max - temperature_min
+            if pd.notna(temperature_min) and pd.notna(temperature_max)
+            else np.nan
+        ),
+        "temperature_deviation_from_band_c": temperature_deviation,
         "humidity_recent_avg_pct": humidity,
+        "humidity_recent_min_pct": humidity_min,
+        "humidity_recent_max_pct": humidity_max,
+        "humidity_recent_range_pp": (
+            humidity_max - humidity_min
+            if pd.notna(humidity_min) and pd.notna(humidity_max)
+            else np.nan
+        ),
+        "humidity_deviation_from_band_pp": humidity_deviation,
+        "environment_out_of_band_days_7d": (
+            float(out_of_band_days) if recorded_environment_days else np.nan
+        ),
+        "environment_staleness_days": environment_staleness,
         "is_lags_building": 1.0 if building_id.startswith("Lags") else 0.0,
         # A deliberately simple, leakage-safe baseline: assume the latest observed
         # survival rate holds through harvest. It never uses the future recorded end date.
@@ -363,7 +508,7 @@ def _pipeline(kind: str) -> object:
                 ("model", DummyRegressor()),
             ]
         )
-    if kind == "ridge":
+    if kind in {"linear_regression", "ridge"}:
         regressor = Pipeline(
             [
                 (
@@ -373,11 +518,14 @@ def _pipeline(kind: str) -> object:
                     ),
                 ),
                 ("scale", StandardScaler()),
-                ("model", Ridge(alpha=10.0)),
+                (
+                    "model",
+                    LinearRegression() if kind == "linear_regression" else Ridge(alpha=10.0),
+                ),
             ]
         )
         return TransformedTargetRegressor(regressor=regressor, transformer=StandardScaler())
-    if kind == "random_forest":
+    if kind == "gradient_boosting":
         return Pipeline(
             [
                 (
@@ -388,10 +536,40 @@ def _pipeline(kind: str) -> object:
                 ),
                 (
                     "model",
-                    RandomForestRegressor(
-                        n_estimators=250,
-                        max_depth=6,
-                        min_samples_leaf=5,
+                    GradientBoostingRegressor(
+                        n_estimators=75,
+                        learning_rate=0.04,
+                        max_depth=2,
+                        min_samples_leaf=4,
+                        random_state=42,
+                    ),
+                ),
+            ]
+        )
+    if kind == "xgboost":
+        if XGBRegressor is None:
+            raise RuntimeError("XGBoost is unavailable: install the operating-system OpenMP runtime.")
+        return Pipeline(
+            [
+                (
+                    "imputer",
+                    SimpleImputer(
+                        strategy="median", add_indicator=True, keep_empty_features=True
+                    ),
+                ),
+                (
+                    "model",
+                    XGBRegressor(
+                        n_estimators=75,
+                        max_depth=2,
+                        learning_rate=0.04,
+                        min_child_weight=4,
+                        subsample=0.8,
+                        colsample_bytree=0.8,
+                        reg_alpha=0.1,
+                        reg_lambda=5.0,
+                        objective="reg:squarederror",
+                        verbosity=0,
                         random_state=42,
                         n_jobs=1,
                     ),
@@ -403,6 +581,121 @@ def _pipeline(kind: str) -> object:
 
 def _clip(prediction: np.ndarray, outcome: str) -> np.ndarray:
     return np.clip(prediction, 0.0, 1.0) if outcome == "recovery" else np.clip(prediction, 0.1, 3.5)
+
+
+def _building_cycle_weights(frame: pd.DataFrame) -> np.ndarray:
+    """Give every independent building-cycle equal total training influence."""
+
+    keys = frame["cycle_id"].astype(str) + "::" + frame["building_id"].astype(str)
+    counts = keys.map(keys.value_counts()).to_numpy(float)
+    weights = 1.0 / counts
+    return weights / weights.mean()
+
+
+def _fit_params_for(model: object, weights: np.ndarray) -> dict[str, np.ndarray]:
+    """Route sample weights through the fitted sklearn wrapper."""
+
+    if isinstance(model, TransformedTargetRegressor):
+        return {"model__sample_weight": weights}
+    return {"model__sample_weight": weights}
+
+
+def _parameter_options(candidate: str) -> list[dict[str, object]]:
+    """Small, pre-declared grids appropriate for the limited independent sample."""
+
+    if candidate in {"ridge", "ridge_core"}:
+        return [
+            {"regressor__model__alpha": alpha}
+            for alpha in (10.0, 25.0, 50.0, 100.0)
+        ]
+    if candidate == "gradient_boosting":
+        return [
+            {
+                "model__n_estimators": n_estimators,
+                "model__learning_rate": learning_rate,
+                "model__max_depth": max_depth,
+                "model__min_samples_leaf": min_leaf,
+            }
+            for n_estimators, learning_rate, max_depth, min_leaf in (
+                (50, 0.03, 1, 4),
+                (75, 0.04, 2, 4),
+                (100, 0.03, 2, 5),
+                (75, 0.06, 1, 3),
+            )
+        ]
+    if candidate == "xgboost":
+        return [
+            {
+                "model__n_estimators": n_estimators,
+                "model__learning_rate": learning_rate,
+                "model__max_depth": max_depth,
+                "model__min_child_weight": min_child_weight,
+                "model__reg_lambda": reg_lambda,
+            }
+            for n_estimators, learning_rate, max_depth, min_child_weight, reg_lambda in (
+                (50, 0.03, 1, 4, 10.0),
+                (75, 0.04, 2, 4, 5.0),
+                (100, 0.03, 2, 6, 10.0),
+            )
+        ]
+    return [{}]
+
+
+def _tune_candidate(
+    candidate: str,
+    x: pd.DataFrame,
+    y: np.ndarray,
+    cycle_groups: np.ndarray,
+    weights: np.ndarray,
+) -> tuple[object, dict[str, object]]:
+    """Tune only within the supplied training cycles, then refit on all of them."""
+
+    kind = "ridge" if candidate == "ridge_core" else candidate
+    base = _pipeline(kind)
+    options = _parameter_options(candidate)
+    if len(options) == 1 or len(np.unique(cycle_groups)) < 3:
+        best_params = options[0]
+    else:
+        inner = LeaveOneGroupOut()
+        scored: list[tuple[float, dict[str, object]]] = []
+        for params in options:
+            fold_errors: list[float] = []
+            for train_index, valid_index in inner.split(x, y, cycle_groups):
+                model = clone(base).set_params(**params)
+                model.fit(
+                    x.iloc[train_index],
+                    y[train_index],
+                    **_fit_params_for(model, weights[train_index]),
+                )
+                prediction = model.predict(x.iloc[valid_index])
+                fold_errors.append(float(mean_absolute_error(y[valid_index], prediction)))
+            scored.append((float(np.mean(fold_errors)), params))
+        best_params = min(scored, key=lambda item: item[0])[1]
+    fitted = clone(base).set_params(**best_params)
+    fitted.fit(x, y, **_fit_params_for(fitted, weights))
+    return fitted, best_params
+
+
+def _cycle_bootstrap_interval(
+    actual: np.ndarray,
+    predicted: np.ndarray,
+    groups: np.ndarray,
+    repeats: int = 2000,
+) -> dict[str, float]:
+    """Bootstrap whole cycles, preserving the true unit of generalization."""
+
+    rng = np.random.default_rng(42)
+    cycles = np.unique(groups)
+    estimates: list[float] = []
+    for _ in range(repeats):
+        selected = rng.choice(cycles, size=len(cycles), replace=True)
+        cycle_errors = [
+            mean_absolute_error(actual[groups == cycle], predicted[groups == cycle])
+            for cycle in selected
+        ]
+        estimates.append(float(np.mean(cycle_errors)))
+    low, high = np.quantile(estimates, [0.025, 0.975])
+    return {"lower": float(low), "upper": float(high), "confidence": 0.95}
 
 
 def _ridge_importance(model: object, feature_columns: list[str]) -> list[dict[str, object]]:
@@ -493,13 +786,24 @@ def train_outcome_model(
     x = snapshots[FEATURE_COLUMNS]
     y = snapshots["target"].to_numpy(float)
     groups = snapshots["cycle_id"].astype(str).to_numpy()
-    candidates = ["trend_naive", "historical_mean", "ridge", "random_forest"]
-    if outcome == "recovery":
-        candidates.extend(["ridge_no_weight", "ridge_core"])
+    candidates = (
+        [
+            "historical_mean",
+            "linear_regression",
+            "ridge_core",
+            "gradient_boosting",
+            "xgboost",
+        ]
+        if outcome == "recovery"
+        else ["historical_mean", "linear_regression", "ridge", "gradient_boosting", "xgboost"]
+    )
+    all_candidates = list(candidates)
+    if XGBRegressor is None:
+        candidates = [candidate for candidate in candidates if candidate != "xgboost"]
     candidate_features = {
         candidate: (
             RECOVERY_CORE_FEATURE_COLUMNS
-            if candidate == "ridge_core"
+            if outcome == "recovery" and candidate != "historical_mean"
             else RECOVERY_NO_WEIGHT_FEATURE_COLUMNS
             if candidate == "ridge_no_weight"
             else FEATURE_COLUMNS
@@ -508,6 +812,10 @@ def train_outcome_model(
     }
     predictions = {candidate: np.full(len(snapshots), np.nan) for candidate in candidates}
     fold_mae: dict[str, list[float]] = {candidate: [] for candidate in candidates}
+    fold_parameters: dict[str, list[dict[str, object]]] = {
+        candidate: [] for candidate in candidates
+    }
+    sample_weights = _building_cycle_weights(snapshots)
     logo = LeaveOneGroupOut()
 
     for train_index, test_index in logo.split(x, y, groups):
@@ -517,14 +825,17 @@ def train_outcome_model(
                 fallback = float(np.nanmean(y[train_index]))
                 raw = snapshots.iloc[test_index][column].to_numpy(float)
                 prediction = np.where(np.isnan(raw), fallback, raw)
+                fold_parameters[candidate].append({})
             else:
-                model = _pipeline(
-                    "ridge"
-                    if candidate in {"ridge_no_weight", "ridge_core"}
-                    else candidate
-                )
                 columns = candidate_features[candidate]
-                model.fit(x.iloc[train_index][columns], y[train_index])
+                model, best_params = _tune_candidate(
+                    candidate,
+                    x.iloc[train_index][columns],
+                    y[train_index],
+                    groups[train_index],
+                    sample_weights[train_index],
+                )
+                fold_parameters[candidate].append(best_params)
                 prediction = model.predict(x.iloc[test_index][columns])
             prediction = _clip(np.asarray(prediction, dtype=float), outcome)
             predictions[candidate][test_index] = prediction
@@ -559,6 +870,7 @@ def train_outcome_model(
             "mae": float(mean_absolute_error(y, prediction)),
             "cycle_macro_mae": float(np.mean(cycle_mae)),
             "rmse": float(mean_squared_error(y, prediction) ** 0.5),
+            "r2": float(r2_score(y, prediction)),
             "bias": float(np.mean(prediction - y)),
             "fold_mae_std": float(np.std(fold_mae[candidate])),
             "target_side_accuracy": float(np.mean((prediction >= target) == (y >= target))),
@@ -590,27 +902,74 @@ def train_outcome_model(
             "uncertainty_half_width_80": float(np.quantile(np.abs(residual), 0.80)),
             "horizon": horizon_metrics,
             "cycle": cycle_metrics,
+            "outer_fold_best_parameters": fold_parameters[candidate],
         }
 
+    baseline_name = "historical_mean"
+    learned_candidates = [
+        candidate for candidate in candidates if candidate != baseline_name
+    ]
     best_macro_mae = min(
-        float(metrics[candidate]["cycle_macro_mae"]) for candidate in candidates
+        float(metrics[candidate]["cycle_macro_mae"])
+        for candidate in learned_candidates
     )
     selection_tolerance_pct = 10.0 if outcome == "recovery" else 5.0
     eligible = {
         candidate
-        for candidate in candidates
+        for candidate in learned_candidates
         if float(metrics[candidate]["cycle_macro_mae"])
         <= best_macro_mae * (1 + selection_tolerance_pct / 100)
     }
     simplicity_order = [
-        "trend_naive",
-        "historical_mean",
         "ridge_core",
-        "ridge_no_weight",
+        "linear_regression",
         "ridge",
-        "random_forest",
+        "gradient_boosting",
+        "xgboost",
     ]
-    selected = next(candidate for candidate in simplicity_order if candidate in eligible)
+    baseline_metrics = metrics[baseline_name]
+    gate_eligible = {
+        candidate
+        for candidate in eligible
+        if (
+            (
+                float(baseline_metrics["cycle_macro_mae"])
+                - float(metrics[candidate]["cycle_macro_mae"])
+            )
+            / float(baseline_metrics["cycle_macro_mae"])
+            * 100
+            >= 10.0
+            and float(metrics[candidate]["r2"]) > 0
+        )
+    }
+    research_champion = next(
+        candidate
+        for candidate in simplicity_order
+        if candidate in (gate_eligible or eligible)
+    )
+    champion_metrics = metrics[research_champion]
+    improvement_pct = (
+        (
+            float(baseline_metrics["cycle_macro_mae"])
+            - float(champion_metrics["cycle_macro_mae"])
+        )
+        / float(baseline_metrics["cycle_macro_mae"])
+        * 100
+    )
+    regression_gate = bool(improvement_pct >= 10.0 and float(champion_metrics["r2"]) > 0)
+    classification_gate = bool(
+        float(champion_metrics["target_side_accuracy"])
+        > float(champion_metrics["majority_side_accuracy"])
+        and float(champion_metrics["below_target_recall"]) > 0
+        and float(champion_metrics["at_or_above_target_recall"]) > 0
+    )
+    # Recovery remains useful as a continuous estimate when its regression gate
+    # passes, even if it must not be presented as a validated 95%-side classifier.
+    selected = (
+        research_champion
+        if regression_gate and (outcome == "recovery" or classification_gate)
+        else baseline_name
+    )
     day14_mask = snapshots["cycle_day"].eq(14).to_numpy()
     day14_prediction = predictions[selected][day14_mask]
     day14_actual = y[day14_mask]
@@ -655,10 +1014,87 @@ def train_outcome_model(
     if selected == "trend_naive":
         final_model = None
     else:
-        final_model = _pipeline(
-            "ridge" if selected in {"ridge_no_weight", "ridge_core"} else selected
+        final_model, final_parameters = _tune_candidate(
+            selected,
+            x[candidate_features[selected]],
+            y,
+            groups,
+            sample_weights,
         )
-        final_model.fit(x[candidate_features[selected]], y)
+    if selected == "trend_naive":
+        final_parameters = {}
+
+    secondary_metrics: dict[str, dict[str, float]] = {}
+    within_cycle_groups = (
+        snapshots["cycle_id"].astype(str)
+        + "::"
+        + snapshots["building_id"].astype(str)
+    ).to_numpy()
+    for candidate in candidates:
+        secondary_prediction = np.full(len(snapshots), np.nan)
+        for train_index, test_index in LeaveOneGroupOut().split(x, y, within_cycle_groups):
+            columns = candidate_features[candidate]
+            if candidate == "trend_naive":
+                raw = snapshots.iloc[test_index][
+                    "naive_recovery_projection"
+                    if outcome == "recovery"
+                    else "naive_weight_projection"
+                ].to_numpy(float)
+                fallback = float(np.nanmean(y[train_index]))
+                secondary_prediction[test_index] = np.where(np.isnan(raw), fallback, raw)
+            else:
+                model = _pipeline("ridge" if candidate == "ridge_core" else candidate)
+                if candidate == selected and final_parameters:
+                    model.set_params(**final_parameters)
+                model.fit(
+                    x.iloc[train_index][columns],
+                    y[train_index],
+                    **_fit_params_for(model, sample_weights[train_index]),
+                )
+                secondary_prediction[test_index] = model.predict(x.iloc[test_index][columns])
+        secondary_prediction = _clip(secondary_prediction, outcome)
+        secondary_metrics[candidate] = {
+            "mae": float(mean_absolute_error(y, secondary_prediction)),
+            "rmse": float(mean_squared_error(y, secondary_prediction) ** 0.5),
+            "r2": float(r2_score(y, secondary_prediction)),
+        }
+
+    permutation_records: list[dict[str, object]] = []
+    if selected != "trend_naive":
+        columns = candidate_features[selected]
+        accumulated: dict[str, list[float]] = {column: [] for column in columns}
+        for train_index, test_index in logo.split(x, y, groups):
+            model, _ = _tune_candidate(
+                selected,
+                x.iloc[train_index][columns],
+                y[train_index],
+                groups[train_index],
+                sample_weights[train_index],
+            )
+            result = permutation_importance(
+                model,
+                x.iloc[test_index][columns],
+                y[test_index],
+                scoring="neg_mean_absolute_error",
+                n_repeats=20,
+                random_state=42,
+            )
+            for column, importance in zip(columns, result.importances_mean):
+                accumulated[column].append(float(max(0.0, importance)))
+        averaged = {name: float(np.mean(values)) for name, values in accumulated.items()}
+        total = sum(averaged.values())
+        permutation_records = sorted(
+            [
+                {
+                    "feature": name,
+                    "mean_mae_increase": value,
+                    "relative_importance_pct": value / total * 100 if total else 0.0,
+                }
+                for name, value in averaged.items()
+            ],
+            key=lambda item: item["mean_mae_increase"],
+            reverse=True,
+        )
 
     global_feature_importance = (
         _ridge_importance(final_model, candidate_features[selected])
@@ -669,11 +1105,13 @@ def train_outcome_model(
     manifest = {
         "outcome": outcome,
         "model_version": (
-            "recovery-0.7.0"
+        "recovery-1.0.0"
             if outcome == "recovery"
             else ("weight-final-0.4.0" if final_weight_labels is not None else "weight-proxy-0.3.0")
         ),
         "selected_model": selected,
+        "research_champion": research_champion,
+        "operational_model": selected,
         "model_kind": "formula" if selected == "trend_naive" else "fitted",
         "feature_schema_version": "features-0.3.0",
         "feature_columns": candidate_features[selected],
@@ -704,24 +1142,85 @@ def train_outcome_model(
             )
         ),
         "status": (
-            "Prototype - cycle-held-out validation"
+            (
+                "Validated prototype — continuous forecast passed; 95% target-side classification remains unvalidated"
+                if outcome == "recovery" and regression_gate and not classification_gate
+                else "Validated prototype — champion gates passed"
+                if regression_gate and classification_gate
+                else "Experimental — champion gates failed; transparent baseline used operationally"
+            )
             if outcome == "recovery" or final_weight_labels is not None
             else "Experimental - proxy label and small sample"
         ),
         "metrics": metrics,
         "selected_metrics": metrics[selected],
-        "selection_metric": "cycle_macro_mae_within_tolerance_then_simplest",
+        "research_champion_metrics": metrics[research_champion],
+        "selection_metric": "nested_leave_one_complete_cycle_out_cycle_macro_mae",
         "selection_tolerance_pct": selection_tolerance_pct,
+        "nested_validation": {
+            "outer_split": "Leave one complete harvest cycle out",
+            "inner_split": "Leave one complete remaining harvest cycle out",
+            "optimization_metric": "Cycle-balanced mean absolute error",
+            "preprocessing_scope": "Imputation, scaling and tuning are fitted inside each training fold",
+            "independent_unit": "Building-cycle; repeated snapshots receive equal total training weight",
+        },
+        "champion_gates": {
+            "baseline": baseline_name,
+            "baseline_improvement_pct": improvement_pct,
+            "requires_at_least_10pct_mae_improvement": improvement_pct >= 10.0,
+            "requires_positive_r2": float(champion_metrics["r2"]) > 0,
+            "regression_gate_passed": regression_gate,
+            "requires_better_than_majority_target_side_accuracy": (
+                float(champion_metrics["target_side_accuracy"])
+                > float(champion_metrics["majority_side_accuracy"])
+            ),
+            "requires_recall_for_both_target_sides": (
+                float(champion_metrics["below_target_recall"]) > 0
+                and float(champion_metrics["at_or_above_target_recall"]) > 0
+            ),
+            "target_classification_gate_passed": classification_gate,
+            "operational_fallback_applied": selected == baseline_name,
+        },
+        "primary_whole_cycle_bootstrap_mae_95ci": _cycle_bootstrap_interval(
+            y, predictions[selected], groups
+        ),
+        "secondary_within_cycle_metrics": secondary_metrics,
+        "secondary_validation_note": (
+            "Diagnostic only: leaves out one building-cycle while other buildings from the same harvest cycle can remain in training. This is easier and more optimistic than prospective whole-cycle validation."
+        ),
+        "candidate_registry": [
+            {
+                "model": candidate,
+                "available": candidate in candidates,
+                "reason": (
+                    "Evaluated under nested whole-cycle validation"
+                    if candidate in candidates
+                    else "Unavailable locally because the required OpenMP runtime is missing; run in Linux/CI before release if XGBoost evidence is required"
+                ),
+            }
+            for candidate in all_candidates
+        ],
+        "final_fit_parameters": final_parameters,
         "selection_note": (
-            "For recovery, the compact Ridge avoids building identity and raw inventory size, has the lowest overall held-out MAE, and is selected when its cycle-balanced MAE is within 10% of the best candidate."
+            "For recovery, candidates are compared on compact leakage-safe inputs. The simplest candidate within 10% of the best learned cycle-balanced MAE is preferred only if it also improves the historical-mean baseline by at least 10% and keeps positive whole-cycle R²."
             if outcome == "recovery"
             else "Select the simplest candidate within 5% of the best cycle-balanced MAE."
         ),
+        "unavailable_candidates": (
+            {"xgboost": "Not run in this local build because the required macOS OpenMP runtime (libomp) is unavailable."}
+            if XGBRegressor is None
+            else {}
+        ),
         "global_feature_importance": global_feature_importance,
+        "held_out_permutation_importance": permutation_records,
         "feature_importance_interpretation": (
-            "Standardized Ridge coefficients show which inputs the fitted model relies on and whether higher values push its raw estimate up or down. They are associations, not causal effects."
-            if global_feature_importance
-            else "Formal coefficient importance is not available for the selected formula or baseline model."
+            "Standardized Ridge coefficients and held-out permutation importance show model reliance and predictive association. They are not causal effects and cannot justify treatment-size claims."
+            if selected == "ridge_regression" and global_feature_importance
+            else "Held-out permutation importance and building-specific linear contribution breakdowns show predictive reliance and association. They are not causal effects and cannot justify treatment-size claims."
+            if selected == "linear_regression" and permutation_records
+            else "Held-out permutation importance shows predictive reliance and association. It is not causal evidence and cannot justify treatment-size claims."
+            if permutation_records
+            else "Formal held-out feature importance is not available for the selected formula or baseline model."
         ),
         "day14_backtest_metrics": day14_metrics,
         "day14_backtest": [

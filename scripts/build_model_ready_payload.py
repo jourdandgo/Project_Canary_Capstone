@@ -143,7 +143,7 @@ def _recovery_training(frame: pd.DataFrame) -> pd.DataFrame:
     feature_columns = [
         column
         for column in frame.columns
-        if column not in {"cycle_id", "building_id", "as_of_date", "label_date", "target", "cycle_day"}
+        if column not in {*identifiers, "target"}
     ]
     return result[identifiers + feature_columns + ["final_recovery_proxy_y"]]
 
@@ -168,6 +168,12 @@ def _dictionary(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
         "day_35_weight_g": ("Outcome", "g", "Farm workbook", "Observed average bodyweight on production Day 35"),
         "temperature_recent_avg_c": ("X", "°C", "Derived", "Mean of available recent temperature readings known by the review date"),
         "humidity_recent_avg_pct": ("X", "%", "Derived", "Mean of available recent humidity readings known by the review date"),
+        "weight_gap_pct": ("X", "%", "Derived", "Latest observed weight shortfall versus the approved age target"),
+        "weight_staleness_days": ("X", "days", "Derived", "Days since the latest observed weight"),
+        "temperature_deviation_from_band_c": ("X", "°C", "Derived", "Distance outside the approved tropical age band; zero when inside"),
+        "humidity_deviation_from_band_pp": ("X", "percentage points", "Derived", "Distance outside the approved humidity age band; zero when inside"),
+        "environment_out_of_band_days_7d": ("X", "recorded days", "Derived", "Number of the latest seven recorded environment days outside either approved band"),
+        "environment_staleness_days": ("X", "days", "Derived", "Days since the latest recorded temperature or humidity reading"),
         "current_to_target_ratio": ("X", "ratio", "Derived", "Current measured weight divided by the age-specific farm target"),
         "recent_adg_kg_day": ("X", "kg/day", "Derived", "Gain since the previous recorded checkpoint divided by elapsed days"),
         "cumulative_adg_kg_day": ("X", "kg/day", "Derived", "Average gain since the Day 7 checkpoint"),

@@ -13,6 +13,16 @@ outputs/model_ready/*
 !outputs/model_ready/model_ready_manifest.json
 *.inspect.ndjson
 
+# Local rendering, inspection, and exploratory preview outputs are reproducible
+# and should not be committed with the deployable app.
+analysis/node_modules
+analysis/artifact_work/
+analysis/*_previews/
+analysis/*render*/
+analysis/*.png
+analysis/trish_model_audit/
+docs/Project_Canary_Team_Walkthrough/
+
 # Farm workbooks are intentionally excluded from source control.
 FARM HARVEST DATA*.xlsx
 Farm Performance Summary*.xlsx

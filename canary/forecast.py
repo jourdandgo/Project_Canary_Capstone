@@ -358,7 +358,7 @@ def recovery_feature_contributions(
     as_of: pd.Timestamp,
     model_dir: str | Path = DEFAULT_MODEL_DIR,
 ) -> pd.DataFrame:
-    """Explain how each Ridge input moved the raw recovery estimate.
+    """Explain how each linear-model input moved the raw recovery estimate.
 
     Contributions are model associations around the fitted intercept. They are
     not causal effects and are calculated before the current-survival cap.
@@ -367,6 +367,7 @@ def recovery_feature_contributions(
     feature = extract_feature_row(dataset, cycle_id, building_id, as_of)
     manifest, model = load_model_bundle("recovery", model_dir)
     if feature is None or model is None or manifest["selected_model"] not in {
+        "linear_regression",
         "ridge",
         "ridge_no_weight",
         "ridge_core",

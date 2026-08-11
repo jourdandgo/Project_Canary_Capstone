@@ -6,6 +6,8 @@ import argparse
 import json
 from pathlib import Path
 
+import joblib
+
 from canary import load_workbook, save_day35_manifest, train_day35_weight_baseline
 from canary.modeling import load_final_weight_labels, save_training_result, train_outcome_model
 
@@ -31,7 +33,10 @@ def _write_model_card(summaries: dict, day35: dict, output: Path) -> None:
         f"| Predicted harvest recovery | {recovery['model_version']} | {recovery['selected_model']} | {len(recovery['training_cycles'])} | {recovery['training_building_cycles']} | {recovery['selected_metrics']['mae'] * 100:.2f} points | Prototype; trained on last-recorded recovery proxy |",
         f"| Projected Day 35 weight | {day35['model_version']} | {day35['selected_model']} | {len(day35['training_cycles'])} | {day35['training_building_cycles']} | {day35['selected_metrics']['mae_kg']:.3f} kg | Prototype; {day35['actual_target_hits']} historical 1.8 kg hits |",
         "",
-        "Validation holds out one complete recorded cycle at a time. Recovery training is balanced to Days 7, 14, 21, 28, and the latest eligible checkpoint for each building-cycle. The Day 35 comparison uses one building checkpoint at Days 7, 14, 21, and 28.",
+        "Validation is nested: the outer loop holds out one complete recorded cycle, while the inner loop tunes only within the remaining cycles. Repeated snapshots receive equal building-cycle weight. Recovery uses Days 7, 14, 21, 28, and the latest eligible checkpoint; Day 35 weight uses checkpoints at Days 7, 14, 21, and 28.",
+        "",
+        f"Recovery learned challenger: {recovery['research_champion']}; operational method: {recovery['selected_model']}. Continuous-estimate gate passed: {recovery['champion_gates']['regression_gate_passed']}; 95% classification gate passed: {recovery['champion_gates']['target_classification_gate_passed']}.",
+        f"Weight learned challenger: {day35['research_champion']}; operational method: {day35['selected_model']}. Learned-model regression gate passed: {day35['champion_gates']['regression_gate_passed']}; target-classification gate passed: {day35['champion_gates']['target_classification_gate_passed']}.",
         "",
         "## Day 14 recovery backtest",
         "",
@@ -45,29 +50,42 @@ def _write_model_card(summaries: dict, day35: dict, output: Path) -> None:
         f"- Target-side accuracy: {day14['target_side_accuracy']:.1%}; always-below majority baseline: {day14['majority_side_accuracy']:.1%}",
         "- Interpretation: target-side accuracy does not beat the majority baseline and must not be presented as discrimination proof.",
         "",
-        "## Recovery model reliance",
+        "## Recovery candidate comparison",
         "",
-        "Standardized Ridge coefficients describe association and direction in the fitted model; they do not prove causality.",
-        "",
-        "| Model input | Relative reliance | Direction | Standardized effect |",
-        "|---|---:|---|---:|",
+        "| Candidate | MAE | Cycle-balanced MAE | RMSE | R² |",
+        "|---|---:|---:|---:|---:|",
     ]
-    for item in recovery.get("global_feature_importance", []):
+    for candidate, metrics in recovery["metrics"].items():
         lines.append(
-            f"| {item['feature']} | {item['absolute_importance_pct']:.1f}% | {item['direction']} | {item['coefficient_per_standard_deviation'] * 100:+.2f} recovery points |"
+            f"| {candidate} | {metrics['mae'] * 100:.2f} pts | {metrics['cycle_macro_mae'] * 100:.2f} pts | {metrics['rmse'] * 100:.2f} pts | {metrics['r2']:.3f} |"
+        )
+    lines.extend(
+        [
+            "",
+            "## Recovery model reliance",
+            "",
+            "Held-out permutation importance describes predictive reliance on unseen cycles; it does not prove causality.",
+            "",
+            "| Model input | Relative reliance | Held-out MAE increase |",
+            "|---|---:|---:|",
+        ]
+    )
+    for item in recovery.get("held_out_permutation_importance", []):
+        lines.append(
+            f"| {item['feature']} | {item['relative_importance_pct']:.1f}% | {item['mean_mae_increase'] * 100:.3f} recovery points |"
         )
     lines.extend(
         [
             "",
             "## Day 35 candidate comparison",
             "",
-            "| Candidate | MAE | RMSE | Within 200 g |",
-            "|---|---:|---:|---:|",
+            "| Candidate | MAE | Cycle-balanced MAE | RMSE | R² | Within 200 g |",
+            "|---|---:|---:|---:|---:|---:|",
         ]
     )
     for candidate, metrics in day35["candidate_metrics"].items():
         lines.append(
-            f"| {candidate} | {metrics['mae_kg']:.3f} kg | {metrics['rmse_kg']:.3f} kg | {metrics['within_200g_rate']:.1%} |"
+            f"| {candidate} | {metrics['mae_kg']:.3f} kg | {metrics['cycle_macro_mae_kg']:.3f} kg | {metrics['rmse_kg']:.3f} kg | {metrics['r2']:.3f} | {metrics['within_200g_rate']:.1%} |"
         )
     lines.extend(
         [
@@ -86,16 +104,16 @@ def _write_model_card(summaries: dict, day35: dict, output: Path) -> None:
             "",
             "- Recovery is trained on five recorded cycle histories and 25 building outcomes. The label is last-recorded population divided by beginning population, not confirmed actual-harvest recovery.",
             f"- Day 35 weight uses {day35['training_building_cycles']} building outcomes across {len(day35['training_cycles'])} cycles. The current cycle is excluded from training.",
-            "- Recovery selection uses cycle-balanced MAE with a 10% simplicity tolerance; Day 35 weight uses a 5% tolerance. This avoids promoting complexity for a trivial gain.",
+            "- Both comparisons use nested whole-cycle validation and cycle-balanced MAE as the primary metric. RMSE and R² are secondary checks; target-side metrics describe decision usefulness.",
             "- Uncertainty ranges use the 80th percentile of held-out absolute errors. They are empirical prototype ranges, not formal clinical or statistical guarantees.",
             "- Risk thresholds remain provisional until farm experts approve them. Recommendations remain pending Doc Raymond's action table.",
             "",
             "## Day 35 weight improvement plan",
             "",
-            f"The current champion is {day35['selected_model']}. Historical remaining gain remains a required transparent benchmark; it is not used for live forecasts when Ridge remains the validated winner.",
+            f"The best learned challenger is {day35['research_champion']}. The operational method is {day35['selected_model']} because no learned challenger cleared every approved gate.",
             "",
             "1. Standardize weights near Days 7, 14, 21, 28, and 35, including sample size and zone.",
-            "2. Continue comparing historical remaining gain with target-curve, recent-ADG, Ridge, Random Forest, and gradient-boosting candidates as new data arrives.",
+            "2. Continue comparing historical remaining gain, ordinary linear regression, Ridge, constrained Gradient Boosting, and XGBoost where its runtime is available.",
             "3. Keep one building record per checkpoint and hold out complete unseen cycles.",
             "4. Report MAE in grams, bias, within-100 g / within-200 g rates, and target-hit usefulness once target hits exist.",
             "",
@@ -129,6 +147,39 @@ def main() -> None:
 
     day35_manifest = train_day35_weight_baseline(dataset)
     save_day35_manifest(day35_manifest, args.output / "day35_weight_manifest.json")
+
+    # Portable, versioned supplementary artifacts for the capstone team.  The
+    # dashboard uses the manifest for transparent inference; these packages
+    # preserve the exact selected-model parameters and feature schema.
+    recovery_model = summaries["recovery"]
+    recovery_artifact = args.output / "harvest_recovery_champion.pkl"
+    joblib.dump(
+        {
+            "outcome": "harvest_recovery",
+            "selected_model": recovery_model["selected_model"],
+            "model_version": recovery_model["model_version"],
+            "feature_columns": recovery_model["feature_columns"],
+            "validation": recovery_model["selected_metrics"],
+            "model": joblib.load(args.output / "recovery_model.joblib"),
+        },
+        recovery_artifact,
+    )
+    joblib.dump(
+        {
+            "outcome": "day35_average_weight",
+            "selected_model": day35_manifest["selected_model"],
+            "research_champion": day35_manifest["research_champion"],
+            "model_version": day35_manifest["model_version"],
+            "feature_columns": day35_manifest["ridge_parameters"]["features"],
+            "ridge_parameters": day35_manifest["ridge_parameters"],
+            "remaining_gain_by_measurement_day_kg": day35_manifest[
+                "remaining_gain_by_measurement_day_kg"
+            ],
+            "validation": day35_manifest["selected_metrics"],
+            "note": "Operational package. Historical remaining gain is used when learned challengers fail the approved gates; Ridge parameters are retained for audit of the best linear challenger.",
+        },
+        args.output / "day35_weight_champion.pkl",
+    )
 
     training_summary = {**summaries, "day35_weight": day35_manifest}
     (args.output / "training_summary.json").write_text(

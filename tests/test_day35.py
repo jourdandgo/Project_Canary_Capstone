@@ -12,27 +12,33 @@ SOURCE = Path(
 )
 
 
-def test_day35_model_compares_adg_ridge_and_transparent_baselines():
+def test_day35_model_compares_five_models_on_complete_cycle_holdouts():
     manifest = train_day35_weight_baseline(load_workbook(SOURCE))
     metrics = manifest["candidate_metrics"]
 
-    assert "recent_linear_adg" in metrics
+    assert len(metrics) == 4  # XGBoost is recorded unavailable when macOS lacks libomp.
+    assert "historical_remaining_gain" in metrics
+    assert "linear_regression" in metrics
     assert "ridge_regression" in metrics
-    assert "random_forest" in metrics
     assert "gradient_boosting" in metrics
-    best_macro = min(value["cycle_macro_mae_kg"] for value in metrics.values())
-    assert manifest["selected_metrics"]["cycle_macro_mae_kg"] <= best_macro * 1.05
-    assert manifest["selected_model"] == "ridge_regression"
-    assert (
-        metrics[manifest["selected_model"]]["mae_kg"]
-        < metrics["recent_linear_adg"]["mae_kg"]
-    )
-    assert manifest["model_version"] == "day35-weight-0.4.0"
-    assert manifest["selection_metric"] == "cycle_macro_mae_kg_within_5pct_then_simplest"
+    assert len(manifest["candidate_registry"]) == 5
+    assert manifest["research_champion"] in metrics
+    assert manifest["selected_model"] == "historical_remaining_gain"
+    assert manifest["champion_gates"]["operational_fallback_applied"] is True
+    assert manifest["champion_gates"]["regression_gate_passed"] is False
+    assert all("r2" in value for value in metrics.values())
+    assert manifest["model_version"] == "day35-weight-1.0.0"
+    assert manifest["selection_metric"] == "nested_leave_one_complete_cycle_out_cycle_macro_mae_kg"
     assert manifest["training_building_cycles"] == 31
     assert manifest["day14_backtest_metrics"]["building_cycles"] == 31
     assert len(manifest["day14_backtest"]) == 31
     assert manifest["target_weight_kg"] == 1.8
     assert manifest["actual_target_hits"] == 5
     assert manifest["day14_backtest_metrics"]["target_side_accuracy"] > 0.8
-    assert {"selected_method_drivers", "feature_importance_interpretation"}.issubset(manifest)
+    assert {
+        "selected_method_drivers",
+        "feature_importance_interpretation",
+        "held_out_permutation_importance",
+        "secondary_within_cycle_metrics",
+        "primary_whole_cycle_bootstrap_mae_95ci",
+    }.issubset(manifest)

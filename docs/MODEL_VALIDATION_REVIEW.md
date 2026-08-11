@@ -4,8 +4,8 @@ Status: **PASS**
 
 ## Executive verdict
 
-- Recovery: Directional point estimate only; target-side discrimination is not established. Held-out MAE is 1.32 points overall and 1.43 points at Day 14.
-- Day 35 weight: Useful limited-data Ridge forecast; uncertainty is material and target-hit evidence remains small. Held-out MAE is about 172 g overall and 167 g from Day 14.
+- Recovery: Ordinary linear regression is a validated prototype for a continuous estimate. Nested whole-cycle MAE is 1.37 points overall and 1.65 points at Day 14. Target-side discrimination is not established.
+- Day 35 weight: No learned model cleared the champion gates. Historical remaining gain is the transparent operational fallback at about 178 g overall MAE and 181 g from Day 14; uncertainty remains material.
 - Risk: retain as a transparent operational-priority score, not as a probability model. Thresholds still require farm validation.
 
 ## Data foundation
@@ -14,13 +14,13 @@ The source contained 1,785 rows. Canary consolidated 119 repeated rows into 1,66
 
 ## Recovery model
 
-The selected method is `ridge_core`, a compact Ridge regression trained/evaluated across 5 cycles and 25 distinct building outcomes. The 122 checkpoint rows are repeated time snapshots, not independent flock outcomes. Current survival remains a valid input because it is the current numerator of the same recovery ratio; raw beginning inventory and building identity were removed because they did not strengthen the defensible held-out result.
+The selected continuous-estimate method is ordinary linear regression trained/evaluated across 5 cycles and 25 distinct building outcomes. The 122 checkpoint rows are repeated time snapshots, not independent flock outcomes, and each building-cycle receives equal total weight. Current survival remains a valid input because it is known on the review date and constrains possible final recovery; raw beginning inventory and building identity are excluded.
 
-At Day 14, target-side accuracy is 84.0%, equal to the 84.0% majority baseline; at/above-target recall is 0.0%.
+At Day 14, target-side accuracy is 80.0%, below the 84.0% majority baseline; at/above-target recall is 0.0%.
 
 ## Day 35 weight model
 
-The selected method is `ridge_regression`, validated across 6 historical cycles and 31 Day 35 building outcomes using 124 leakage-safe checkpoint rows. Overall, about 65% of projections were within 200 g. At Day 14, MAE is about 167 g and target-side accuracy is about 87%. Five outcomes reached the revised 1.8 kg goal; recognition of this small hit group remains weak. Historical remaining gain remains the strongest transparent benchmark at about 178 g MAE.
+The operational method is historical remaining gain, validated across 6 historical cycles and 31 Day 35 building outcomes using 124 leakage-safe checkpoint rows. Overall, about 65% of projections were within 200 g. At Day 14, MAE is about 181 g and target-side accuracy is about 84%. Five outcomes reached the revised 1.8 kg goal and at/above-target recall remains 0%, so this is an experimental point estimate rather than a reliable target classifier. Ridge is documented as the best learned challenger but is not deployed.
 
 ## Required interpretation
 

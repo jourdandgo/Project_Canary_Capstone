@@ -22,15 +22,15 @@ Product definition: **Day 35 is the primary 1.8 kg management milestone.** Canar
 - Show risk priority, dimension evidence, daily score history, rule version, and provisional-threshold status.
 - Expose an end-to-end decision trace with raw observations, calculations, applied thresholds, dimension scores, score equation, label mapping, problem pattern, action-rule status, and audit metadata.
 - Build leakage-safe daily modeling snapshots using only complete recorded cycles and information available as of each day.
-- Compare a trend baseline, historical mean, Ridge regression, and random forest with leave-one-cycle-out validation.
+- Compare exactly five declared recovery candidates—historical mean, ordinary linear regression, Compact Ridge, constrained Gradient Boosting, and constrained XGBoost—using nested leave-one-complete-cycle-out validation. XGBoost remains visibly unavailable in the local Mac audit until its Linux/OpenMP run is reproduced.
 - Forecast harvest recovery with a point estimate, target gap, empirical uncertainty range, model version, and plain-language confidence note. The historical target is explicitly disclosed as last-recorded recovery because confirmed harvest status is not available in the source workbook.
-- Project Day 35 average weight with compact Ridge regression using only checkpoint evidence known by the review date. Historical remaining gain remains the transparent benchmark and fallback candidate.
+- Project Day 35 average weight with the leakage-safe historical remaining-gain fallback because no learned candidate passed the predeclared champion gates. Ridge remains the best learned challenger, not the operational winner.
 - Keep forecasting fully independent of the rules-based risk score.
 - Present a simple owner-first view: how many buildings need attention and which ones, the inventory-weighted projected harvest recovery and target gap, estimated gross revenue at risk, and the first building/action to review.
 - Use a multipage sidebar shell: owner pages (Home, Building View, Business Value), capstone-evidence pages (EDA & Insights, Canary Methodology), and administration pages (Action Playbook, Data & Settings).
 - Show current recovery and latest measured weight beside predicted recovery and the projected Day 35 result.
 - Constrain predicted final recovery so it never exceeds survival already recorded today under the agreed accounting rule.
-- Compare Day 35 historical mean, target-curve, recent-ADG, historical remaining-gain, Ridge, Random Forest, and gradient-boosting candidates; select Ridge because it has the lowest cycle-balanced held-out MAE and beats the simple benchmark beyond the 5% tolerance.
+- Compare exactly five declared Day 35 candidates—historical remaining gain, ordinary linear regression, Ridge, constrained Gradient Boosting, and constrained XGBoost. Retain historical remaining gain operationally because the learned candidates did not improve cycle-balanced MAE by at least 10%, maintain at least 70% within 200 g, and improve target-side usefulness.
 - Treat each eligible building checkpoint as a separate as-of training example and pool examples across buildings; do not fit unreliable building-specific models or use later checkpoint weights in an earlier forecast.
 - Provide a dedicated adjustable Business Value page and card-level estimated gross revenue at risk, clearly separated from profit or guaranteed savings.
 - Provide dedicated question-led EDA and detailed Canary Methodology pages for capstone defense, separate from the owner-facing Home dashboard.
@@ -54,6 +54,9 @@ Handoff documents:
 - `docs/OPEN_ITEMS.md`
 - `docs/PROJECT_CANARY_DEFENSE_CHEAT_SHEET.md`
 - `docs/Project_Canary_Defense_Cheat_Sheet.docx`
+- `docs/Project_Canary_Defense_Cheat_Sheet.pdf`
+- `docs/Project_Canary_Team_Walkthrough.pptx`
+- `docs/TRISH_MODEL_AUDIT.md`
 - `outputs/model_ready/Project_Canary_Model_Ready_Data.xlsx`
 - `outputs/model_ready/recovery_training.csv`
 - `outputs/model_ready/day35_weight_training.csv`

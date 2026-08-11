@@ -78,7 +78,7 @@ This notebook does not calculate the independent rules-based risk score and does
 - **Important:** this is the agreed capstone recovery proxy, not a verified harvest-event label.
 - **One outcome:** one building in one completed cycle.
 - **One training snapshot:** that building's facts known at a selected age. To avoid overweighting long cycles, training retains Days 7, 14, 21, 28, plus the last eligible pre-outcome snapshot.
-- **Candidate X inputs:** production age; current survival; mortality level and recent trend; feed; latest weight evidence; and available recent temperature/humidity summaries. The selected compact model deliberately excludes building identity and raw inventory size.
+- **Candidate X inputs:** production age; current survival; recent mortality; weight gap and measurement freshness; and temperature/humidity deviations from approved age bands. Feed is withheld until its recorded unit is confirmed. The compact set excludes building identity, raw inventory size, and algebraic duplicates.
 """),
         code(SETUP),
         code(r"""
@@ -105,16 +105,18 @@ print("Export reconciliation passed: the CSV contains the exact 122 balanced rec
 
 1. Convert the workbook to one canonical building-day row; zone rows are aggregated before modeling.
 2. Construct every snapshot with records dated on or before its review date; later records are excluded.
-3. Median-impute missing numeric inputs inside each training fold. Ridge also adds missingness indicators and standardizes inputs.
-4. Use **leave-one-complete-cycle-out cross-validation**: train on all but one cycle and test on the unseen cycle. This is the appropriate grouped equivalent of K-fold CV here.
-5. Compare candidates primarily on **cycle-macro MAE** so each cycle has equal influence. If methods are within 10% of the best, choose the simpler explainable method.
+3. Give each building-cycle equal total weight despite repeated checkpoints.
+4. Use **nested leave-one-complete-cycle-out cross-validation**: the outer loop tests a completely unseen cycle; the inner loop tunes only within the remaining cycles. Imputation and scaling stay inside those folds.
+5. Compare exactly five declared candidates primarily on **cycle-macro MAE**. A learned recovery model must improve the historical mean by at least 10% and keep positive whole-cycle R² before replacing the baseline for the continuous estimate.
 
 No random row split is used because rows from the same flock history are related and would leak information across train and test sets.
 """),
         code(r"""
 result = train_outcome_model(dataset, "recovery")
 manifest = result.manifest
-print("Champion:", manifest["selected_model"])
+print("Operational continuous estimator:", manifest["selected_model"])
+print("Best learned challenger:", manifest["research_champion"])
+print("Champion gates:", manifest["champion_gates"])
 print("Model version:", manifest["model_version"])
 print("Selected X inputs:")
 for feature in manifest["feature_columns"]:
@@ -124,16 +126,18 @@ for feature in manifest["feature_columns"]:
         code(r"""
 comparison = pd.DataFrame([
     {
-        "Candidate": name,
-        "MAE (points)": metrics["mae"] * 100,
-        "Cycle-macro MAE (points)": metrics["cycle_macro_mae"] * 100,
-        "RMSE (points)": metrics["rmse"] * 100,
-        "Bias (points)": metrics["bias"] * 100,
-        "Target-side accuracy": metrics["target_side_accuracy"],
+        "Candidate": entry["model"],
+        "Available": entry["available"],
+        "Role": "Operational" if entry["model"] == manifest["selected_model"] else "Best learned challenger" if entry["model"] == manifest["research_champion"] else "Compared",
+        "MAE (points)": manifest["metrics"].get(entry["model"], {}).get("mae", np.nan) * 100,
+        "Cycle-macro MAE (points)": manifest["metrics"].get(entry["model"], {}).get("cycle_macro_mae", np.nan) * 100,
+        "RMSE (points)": manifest["metrics"].get(entry["model"], {}).get("rmse", np.nan) * 100,
+        "R²": manifest["metrics"].get(entry["model"], {}).get("r2", np.nan),
+        "Target-side accuracy": manifest["metrics"].get(entry["model"], {}).get("target_side_accuracy", np.nan),
     }
-    for name, metrics in manifest["metrics"].items()
+    for entry in manifest["candidate_registry"]
 ]).sort_values("Cycle-macro MAE (points)")
-comparison.round({"MAE (points)": 2, "Cycle-macro MAE (points)": 2, "RMSE (points)": 2, "Bias (points)": 2, "Target-side accuracy": 3})
+comparison.round({"MAE (points)": 2, "Cycle-macro MAE (points)": 2, "RMSE (points)": 2, "R²": 3, "Bias (points)": 2, "Target-side accuracy": 3})
 """),
         code(r"""
 cycle_performance = pd.DataFrame.from_dict(manifest["selected_metrics"]["cycle"], orient="index")
@@ -153,20 +157,19 @@ print(f"Target-side accuracy: {selected['target_side_accuracy']:.1%}")
 print(f"Majority baseline accuracy: {selected['majority_side_accuracy']:.1%}")
 """),
         md("""
-**Interpretation:** the compact Ridge is useful as a continuous estimate, but its target-side accuracy does not beat the majority baseline. It should be presented as a prototype projection with uncertainty—not as a proven classifier of 95% target attainment.
+**Interpretation:** the operational learned estimator clears the continuous MAE/R² gate, but its target-side accuracy does not beat the majority baseline. Present it as a prototype continuous estimate with uncertainty—not as a proven classifier of 95% target attainment.
 """),
         md("## 4. What the selected model relies on"),
         code(r"""
-importance = pd.DataFrame(manifest["global_feature_importance"])
+importance = pd.DataFrame(manifest["held_out_permutation_importance"])
 importance.head(10).rename(columns={
     "feature": "Input",
-    "coefficient_per_standard_deviation": "Recovery change for +1 SD",
-    "absolute_importance_pct": "Share of absolute reliance (%)",
-    "direction": "Direction",
+    "mean_mae_increase": "Held-out MAE increase",
+    "relative_importance_pct": "Relative held-out reliance (%)",
 }).round(4)
 """),
         md("""
-These are standardized Ridge coefficients. They show model reliance after accounting for other inputs; they are **associations, not causal effects**. Missing-value indicators can rank highly because environmental coverage is sparse.
+These are out-of-fold permutation importances from complete unseen cycles. They show predictive reliance and are **associations, not causal effects**.
 """),
         md("## 5. Day 14 held-out proof and one complete example"),
         code(BOOTSTRAP),
@@ -200,7 +203,7 @@ day14.head(8)[["cycle_id", "building_id", "predicted", "actual", "error_points"]
         md("""
 ## 7. Defense takeaway
 
-Canary's recovery output is a **cycle-held-out Ridge estimate of the agreed last-recorded recovery proxy**. Its held-out MAE is roughly 1–2 percentage points, but it is not yet strong at recognizing the small number of cycles that finish at or above 95%. Use it to rank likely outcome gaps and guide attention, not to claim certainty.
+Canary's recovery output is a **nested whole-cycle-validated estimate of the agreed last-recorded recovery proxy**. Its held-out error is roughly 1–2 percentage points, but it is not yet strong at recognizing the small number of outcomes at or above 95%. Use it to size likely gaps and guide attention, not to claim certainty.
 """),
     ]
     return nbf.v4.new_notebook(cells=cells, metadata={"kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"}, "language_info": {"name": "python", "version": "3"}})
@@ -221,7 +224,7 @@ def weight_notebook():
 - **Y target:** observed building average bodyweight on production Day 35.
 - **One independent outcome:** one building in one cycle with a Day 35 measurement.
 - **Training rows:** up to four checkpoint views of that outcome—Day 7, 14, 21, and 28. These are repeated views, not 124 independent flocks.
-- **X inputs for Ridge:** measurement day; latest weight; weight ÷ the interpolated farm target for that day; recent and cumulative average daily gain; and the Day 7/14/21/28 checkpoint weights known by that review date.
+- **Candidate X inputs:** measurement day; latest/checkpoint weights; weight ÷ the farm target for that day; recent and cumulative average daily gain; current survival; and environmental-band exposure known by that review date.
 - The interpolated 1,800 g target curve is an input/reference. It is **not** the Y label and does not manufacture an actual Day 35 result.
 """),
         code(SETUP),
@@ -256,13 +259,15 @@ print("Export reconciliation passed: the CSV contains the exact 124 engineered w
 1. Correct weight rows during workbook standardization and aggregate zone records to one building-day.
 2. Keep only observed checkpoint weights and observed Day 35 labels; never fill a missing Day 35 Y from the target curve.
 3. At each checkpoint, hide future checkpoint weights.
-4. Median-impute missing X values inside the training fold; Ridge inputs are standardized.
-5. Use **leave-one-complete-cycle-out cross-validation** so every test prediction comes from a model that never saw that cycle.
-6. Optimize **cycle-macro MAE in kilograms**. Choose the simplest model within 5% of the best to avoid rewarding tiny unstable gains.
+4. Give each building-cycle equal total weight across its repeated checkpoints.
+5. Use **nested leave-one-complete-cycle-out cross-validation** so tuning, imputation and scaling never see the outer test cycle.
+6. Optimize **cycle-macro MAE in kilograms**. A learned model replaces historical remaining gain only if it improves MAE by 10%, keeps positive R², places at least 70% within 200 g, and improves target-side classification.
 """),
         code(r"""
 manifest = train_day35_weight_baseline(dataset)
-print("Champion:", manifest["selected_model"])
+print("Operational method:", manifest["selected_model"])
+print("Best learned challenger:", manifest["research_champion"])
+print("Champion gates:", manifest["champion_gates"])
 print("Model version:", manifest["model_version"])
 print("Selected X inputs:")
 for feature in manifest["ridge_parameters"]["features"]:
@@ -272,17 +277,19 @@ for feature in manifest["ridge_parameters"]["features"]:
         code(r"""
 comparison = pd.DataFrame([
     {
-        "Candidate": name,
-        "MAE (g)": metrics["mae_kg"] * 1000,
-        "Cycle-macro MAE (g)": metrics["cycle_macro_mae_kg"] * 1000,
-        "RMSE (g)": metrics["rmse_kg"] * 1000,
-        "Bias (g)": metrics["bias_kg"] * 1000,
-        "Within 200 g": metrics["within_200g_rate"],
-        "Target-side accuracy": metrics["target_side_accuracy"],
+        "Candidate": entry["model"],
+        "Available": entry["available"],
+        "Role": "Operational fallback" if entry["model"] == manifest["selected_model"] else "Best learned challenger" if entry["model"] == manifest["research_champion"] else "Compared",
+        "MAE (g)": manifest["candidate_metrics"].get(entry["model"], {}).get("mae_kg", np.nan) * 1000,
+        "Cycle-macro MAE (g)": manifest["candidate_metrics"].get(entry["model"], {}).get("cycle_macro_mae_kg", np.nan) * 1000,
+        "RMSE (g)": manifest["candidate_metrics"].get(entry["model"], {}).get("rmse_kg", np.nan) * 1000,
+        "R²": manifest["candidate_metrics"].get(entry["model"], {}).get("r2", np.nan),
+        "Within 200 g": manifest["candidate_metrics"].get(entry["model"], {}).get("within_200g_rate", np.nan),
+        "Target-side accuracy": manifest["candidate_metrics"].get(entry["model"], {}).get("target_side_accuracy", np.nan),
     }
-    for name, metrics in manifest["candidate_metrics"].items()
+    for entry in manifest["candidate_registry"]
 ]).sort_values("Cycle-macro MAE (g)")
-comparison.round({"MAE (g)": 0, "Cycle-macro MAE (g)": 0, "RMSE (g)": 0, "Bias (g)": 0, "Within 200 g": 3, "Target-side accuracy": 3})
+comparison.round({"MAE (g)": 0, "Cycle-macro MAE (g)": 0, "RMSE (g)": 0, "R²": 3, "Bias (g)": 0, "Within 200 g": 3, "Target-side accuracy": 3})
 """),
         code(r"""
 cycle_performance = pd.DataFrame.from_dict(manifest["selected_metrics"]["cycle"], orient="index")
@@ -303,20 +310,19 @@ print(f"Correct side of 1,800 g: {selected['target_side_accuracy']:.1%}")
 print(f"Historical target hits: {manifest['actual_target_hits']} of {manifest['training_building_cycles']}")
 """),
         md("""
-**Interpretation:** Ridge is selected because it has the best cycle-macro MAE and remains simple and explainable. The target-side percentage looks high partly because 26 of 31 historical outcomes are below 1,800 g; the model recognizes below-target outcomes much better than the five hits.
+**Interpretation:** no learned challenger cleared all approved gates, so historical remaining gain stays operational. The high target-side percentage partly reflects that 26 of 31 historical outcomes are below 1,800 g; it is not proof of balanced target classification.
 """),
         md("## 4. What the selected model relies on"),
         code(r"""
-importance = pd.DataFrame(manifest["ridge_feature_importance"])
+importance = pd.DataFrame(manifest["held_out_permutation_importance"])
 importance.head(10).rename(columns={
     "feature": "Input",
-    "coefficient_kg_per_standard_deviation": "Weight change for +1 SD (kg)",
-    "absolute_importance_pct": "Share of absolute reliance (%)",
-    "direction": "Direction",
+    "mean_mae_increase_kg": "Held-out MAE increase (kg)",
+    "relative_importance_pct": "Relative held-out reliance (%)",
 }).round(4)
 """),
         md("""
-These are standardized Ridge coefficients, not causal effects. Weight features are correlated, so a counterintuitive sign for one variable does not mean management should reverse it; use the overall forecast and recorded operational evidence.
+These are held-out permutation importances for the best learned challenger, not causal effects. Weight features are correlated; use the operational forecast and recorded evidence rather than treating importance as an intervention instruction.
 """),
         md("## 5. Day 14 held-out proof and one complete example"),
         code(BOOTSTRAP),
@@ -344,7 +350,7 @@ For every eligible training building at a checkpoint age:
 
 `remaining gain = observed Day 35 weight − checkpoint weight`
 
-The baseline averages those gains in the training cycles and adds the average to the current weight. During validation, the held-out cycle is excluded. It is a transparent benchmark and fallback—not the live champion while Ridge remains better.
+The baseline averages those gains in the training cycles and adds the average to the current weight. During validation, the held-out cycle is excluded. It remains the live operational method because the learned challengers did not clear every gate.
 """),
         code(r"""
 remaining = pd.DataFrame({
@@ -361,12 +367,12 @@ remaining.round(0)
 - Synthetic weight paths may violate biological growth and can make validation look falsely precise.
 - The class-like target imbalance is reported explicitly instead of hidden.
 
-**Safer strategy:** regularized Ridge, simple baselines, complete-cycle holdouts, checkpoint/horizon metrics, cycle-level bootstrap intervals, and more standardized Day 35 outcomes over time. A hierarchical model can be considered later, after more cycles—not as a capstone requirement.
+**Safer strategy:** regularized linear models, simple baselines, nested complete-cycle holdouts, checkpoint/horizon metrics, cycle-level bootstrap intervals, and more standardized Day 35 outcomes over time. A hierarchical model can be considered later, after more cycles—not as a capstone requirement.
 """),
         md("""
 ## 8. Defense takeaway
 
-Canary's weight output is a **cycle-held-out Ridge regression for observed Day 35 average weight**, trained on 31 historical building outcomes and their earlier checkpoints. Overall held-out MAE is about 172 g; at Day 14 it is about 167 g. This is useful directional decision support, not a guarantee that a building will hit 1,800 g.
+Canary's weight output uses **historical remaining gain as the operational fallback**, validated on 31 historical Day 35 building outcomes and their earlier checkpoints. Learned linear and boosted challengers were tested under nested whole-cycle validation but did not clear all replacement gates. This is useful directional decision support, not a guarantee that a building will hit 1,800 g.
 """),
     ]
     return nbf.v4.new_notebook(cells=cells, metadata={"kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"}, "language_info": {"name": "python", "version": "3"}})

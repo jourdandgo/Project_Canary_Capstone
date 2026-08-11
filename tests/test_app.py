@@ -59,7 +59,8 @@ def test_dashboard_renders_without_streamlit_errors(monkeypatch):
         "5 · How the outlook changed",
     ]
     expander_labels = [expander.label for expander in detail.expander]
-    assert "See the forecast evidence and model proof" in expander_labels
+    assert "See raw forecast inputs and calculation trace" in expander_labels
+    assert "What Canary adopted from the teammate model—and what it rejected" in expander_labels
     assert "See why this action was selected" in expander_labels
     assert "Technical audit details" in expander_labels
     detail_visible = " ".join(
@@ -70,9 +71,14 @@ def test_dashboard_renders_without_streamlit_errors(monkeypatch):
     assert "Why this building needs attention" in detail_visible
     assert "Possible contributing conditions" in detail_visible
     assert "What management should check next" in detail_visible
-    assert "What is driving today’s outlook?" in detail_visible
-    assert "strongest building-specific factors" in detail_visible
-    assert "Day 35 weight method: direct drivers" in detail_visible
+    assert "A. Harvest Recovery Model" in detail_visible
+    assert "A. Day 35 Average Weight Model" in detail_visible
+    assert "B. Executive Summary" in detail_visible
+    assert "C. Input and Output Variables" in detail_visible
+    assert "D. Pre-processing Steps" in detail_visible
+    assert "E. Model Selection and Comparison" in detail_visible
+    assert "F. Interpretation" in detail_visible
+    assert "How this building’s projection was calculated" in detail_visible
 
     cycle = next(widget for widget in detail.selectbox if widget.label == "Harvest cycle")
     cycle.set_value("2025-5").run()
@@ -188,8 +194,11 @@ def test_model_proof_exposes_targets_features_and_validation(monkeypatch):
     assert "Day 14 prediction versus last-recorded recovery" in visible_text
     assert "Data foundation" in visible_text
     assert "balanced decision snapshots" in visible_text
-    assert "compact Ridge regression" in visible_text
-    assert "straight-line ADG" in visible_text
+    assert "gated learned models with a transparent fallback" in visible_text
+    assert "nested whole-cycle validation" in visible_text.lower()
+    assert "historical remaining gain" in visible_text.lower()
+    assert "ordinary linear regression" in visible_text.lower()
+    assert "gradient boosting" in visible_text.lower()
     assert "Which inputs the selected recovery model relies on" in visible_text
     assert "Top five recorded inputs in the fitted recovery model" in visible_text
     assert "How Canary handles temperature, humidity, feed, water, and heat stress" in visible_text
@@ -225,7 +234,16 @@ def test_evidence_page_states_findings_and_limits(monkeypatch):
     visible = " ".join(item.value for item in [*app.markdown, *app.info, *app.warning, *app.success] if isinstance(item.value, str))
     assert "association is not proof" in visible
     assert "Exploratory Data Analysis" in visible
-    assert "Five questions" in visible
+    assert len(app.tabs) == 7
+    assert [tab.label for tab in app.tabs] == [
+        "1 · Data coverage",
+        "2 · Day 14 → Day 35",
+        "3 · Day 14 → Recovery",
+        "4 · Environment",
+        "5 · Survival paths",
+        "6 · Model accuracy",
+        "7 · Target attainment",
+    ]
 
 
 def test_business_value_page_exposes_editable_assumptions_and_estimates(monkeypatch):

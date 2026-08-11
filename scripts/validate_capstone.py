@@ -19,10 +19,12 @@ from canary.risk import load_risk_rules, score_cycle_snapshot
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+_BUNDLED_WORKBOOK = PROJECT_ROOT / "data" / "FARM HARVEST DATA.xlsx"
+_ADJACENT_WORKBOOK = PROJECT_ROOT.parent / "FARM HARVEST DATA.xlsx"
 DEFAULT_WORKBOOK = Path(
     os.getenv(
         "CANARY_DEFAULT_WORKBOOK",
-        str(PROJECT_ROOT.parent / "FARM HARVEST DATA.xlsx"),
+        str(_BUNDLED_WORKBOOK if _BUNDLED_WORKBOOK.exists() else _ADJACENT_WORKBOOK),
     )
 )
 DEFAULT_OUTPUT = PROJECT_ROOT / "artifacts" / "capstone_validation.json"
