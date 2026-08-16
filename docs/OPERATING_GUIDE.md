@@ -81,10 +81,10 @@ This is a deliberate capstone convention. The source workbook's `End Date` is th
 
 ## Why the model counts differ
 
-- The workbook contains **34 recorded building-cycle histories across seven cycles**, including the current 2026-3 cycle.
-- The recovery model uses **25 independent outcomes across five fully eligible cycles**: 2025-2 through 2026-1.
-- The Day 35 weight model uses **31 observed outcomes across six historical cycles**: the same 25 plus six observed Day 35 weights from 2026-2.
-- The six 2026-2 recovery endpoints remain excluded because later Lagundi rows contain carried-forward populations and incomplete daily evidence. The Harvest Analysis page may show the recorded proxy with a warning, but it does not present those rows as recovery-training evidence.
+- The refreshed workbook contains **34 recorded building-cycle histories across seven cycles**, including the later 2026-3 audit cycle.
+- The recovery model uses **31 independent outcomes across six historical cycles**: 2025-2 through 2026-2.
+- The Day 35 weight model also uses **31 observed outcomes across those six historical cycles**.
+- The refreshed 2026-2 records now include the later Lagundi population observations required by the agreed recovery-proxy rule. The three 2026-3 Day 35 outcomes remain excluded from fitting and are used as a genuinely later prospective weight audit.
 - Repeated Day 7, 14, 21, and 28 snapshots are historical decision points—not additional independent flocks.
 
 ## Current-cycle data-state behavior

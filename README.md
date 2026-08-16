@@ -2,6 +2,8 @@
 
 Local Streamlit prototype for daily broiler-farm decision support.
 
+Current model release: **Trish v18 prospective deployment**. Cycle 2026-3 is excluded from fitting and scored using Trish's exact engineered feature rows. See `docs/TRISH_V18_INTEGRATION.md`.
+
 Product definition: **Day 35 is the primary 1.8 kg management milestone.** Canary uses Days 1–14 as the early-warning window, projects each building's Day 35 average weight when a measured weight exists, and separately forecasts harvest recovery against 95%.
 
 ## Completed capstone scope through Sprint 5

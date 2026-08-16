@@ -1,0 +1,110 @@
+{
+  "completed_cycles": 6,
+  "building_outcomes": 31,
+  "recovery_by_cycle": [
+    {
+      "cycle_id": "2025-2",
+      "recovery_pct": 94.93627450980392
+    },
+    {
+      "cycle_id": "2025-3",
+      "recovery_pct": 92.06567602274812
+    },
+    {
+      "cycle_id": "2025-4",
+      "recovery_pct": 92.58007808040912
+    },
+    {
+      "cycle_id": "2025-5",
+      "recovery_pct": 93.10780383326926
+    },
+    {
+      "cycle_id": "2026-1",
+      "recovery_pct": 91.08529245986291
+    },
+    {
+      "cycle_id": "2026-2",
+      "recovery_pct": 88.52893746640387
+    }
+  ],
+  "weight_by_cycle": [
+    {
+      "cycle_id": "2025-2",
+      "day35": 1.8099999999999998
+    },
+    {
+      "cycle_id": "2025-3",
+      "day35": 1.5679159999999999
+    },
+    {
+      "cycle_id": "2025-4",
+      "day35": 1.469332
+    },
+    {
+      "cycle_id": "2025-5",
+      "day35": 1.4031666666666667
+    },
+    {
+      "cycle_id": "2026-1",
+      "day35": 1.65962
+    },
+    {
+      "cycle_id": "2026-2",
+      "day35": 1.3257133333333335
+    }
+  ],
+  "day14_day35_pearson": 0.6009575094517018,
+  "day14_recovery_pearson": 0.47171654235266125,
+  "day14_target_hits": 1,
+  "day35_target_hits": 5,
+  "checkpoint_attainment": [
+    {
+      "age_day": 7,
+      "n": 34,
+      "mean_attainment": 63.854498269896176,
+      "median_attainment": 63.382352941176464
+    },
+    {
+      "age_day": 14,
+      "n": 34,
+      "mean_attainment": 67.88777089783281,
+      "median_attainment": 63.9157894736842
+    },
+    {
+      "age_day": 21,
+      "n": 34,
+      "mean_attainment": 67.72977941176471,
+      "median_attainment": 69.55687499999999
+    },
+    {
+      "age_day": 28,
+      "n": 34,
+      "mean_attainment": 75.08024509803924,
+      "median_attainment": 74.91666666666667
+    },
+    {
+      "age_day": 35,
+      "n": 34,
+      "mean_attainment": 83.90562091503269,
+      "median_attainment": 85.19888888888889
+    }
+  ],
+  "operational_correlations": [
+    {
+      "signal": "Mean daily mortality/1,000",
+      "correlation": -0.910126198484601
+    },
+    {
+      "signal": "Mean temperature",
+      "correlation": -0.4935025710990171
+    },
+    {
+      "signal": "Daily temperature range",
+      "correlation": -0.43277767730726024
+    },
+    {
+      "signal": "Mean humidity",
+      "correlation": 0.42994124149128227
+    }
+  ]
+}

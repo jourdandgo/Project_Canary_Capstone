@@ -19,18 +19,21 @@ def test_real_workbook_resolves_to_unique_building_days():
     dataset = load_workbook(SOURCE)
     quality = dataset.quality
 
-    assert quality.source_rows == 1785
-    assert quality.canonical_rows == 1666
-    assert quality.duplicate_keys == 119
-    assert quality.duplicate_rows_consolidated == 119
-    assert quality.zone_aggregated_days == 119
-    assert quality.maximum_environment_sections == 2
+    # The refreshed farm workbook is already consolidated to one row per
+    # building-day.  The earlier workbook had 1,785 rows and 119 Zone A/B
+    # duplicates; those source duplicates are no longer present in this file.
+    assert quality.source_rows == 1624
+    assert quality.canonical_rows == 1624
+    assert quality.duplicate_keys == 0
+    assert quality.duplicate_rows_consolidated == 0
+    assert quality.zone_aggregated_days == 0
+    assert quality.maximum_environment_sections == 1
     assert quality.production_conflict_keys == 0
     assert quality.passed
     assert not dataset.daily.duplicated(["cycle_id", "building_id", "age_day"]).any()
 
 
-def test_environment_duplicates_are_aggregated_without_multiplying_production():
+def test_environment_is_already_one_row_per_building_day():
     dataset = load_workbook(SOURCE)
     row = dataset.daily.loc[
         (dataset.daily["cycle_id"] == "2026-2")
@@ -38,32 +41,28 @@ def test_environment_duplicates_are_aggregated_without_multiplying_production():
         & (dataset.daily["age_day"] == 1)
     ].iloc[0]
 
-    assert row["source_row_count"] == 2
-    assert bool(row["had_source_duplicates"])
+    assert row["source_row_count"] == 1
+    assert not bool(row["had_source_duplicates"])
     assert row["population"] == 11174
     assert row["mortality_daily"] == 16
-    assert row["temperature_avg_c"] == pytest.approx((31.853277 + 33.122017) / 2, rel=1e-6)
-    assert row["environment_section_count"] == 2
-    assert row["environment_sections"] == "A, B"
-    assert bool(row["zone_aggregated"])
-    assert row["temperature_zone_spread_c"] == pytest.approx(
-        abs(31.853277 - 33.122017), rel=1e-6
-    )
+    assert row["environment_section_count"] == 1
+    assert not bool(row["zone_aggregated"])
 
 
-def test_blank_operational_days_remain_missing_not_zero():
+def test_blank_mortality_remains_missing_not_zero():
     dataset = load_workbook(SOURCE)
     row = dataset.daily.loc[
-        (dataset.daily["cycle_id"] == "2025-2")
-        & (dataset.daily["building_id"] == "Tags 1")
-        & (dataset.daily["age_day"] == 26)
+        (dataset.daily["cycle_id"] == "2026-1")
+        & (dataset.daily["building_id"] == "Lags 3")
+        & (dataset.daily["age_day"] == 44)
     ].iloc[0]
 
     assert pd.isna(row["mortality_daily"])
-    assert pd.isna(row["feed_daily_bags"])
     assert not bool(row["mortality_recorded"])
-    assert not bool(row["feed_recorded"])
-    assert not bool(row["operational_recorded"])
+    assert row["feed_daily_bags"] == 19
+    assert bool(row["feed_recorded"])
+    assert bool(row["operational_recorded"])
+    assert not bool(row["daily_complete"])
 
 
 def test_revised_targets_are_smoothed_and_hold_at_1_8kg_after_day_35():

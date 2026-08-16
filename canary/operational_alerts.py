@@ -141,7 +141,7 @@ def evaluate_operational_alerts(
             ))
 
     feed = history.loc[history["feed_daily_kg_per_bird"].notna()]
-    if not feed.empty:
+    if bool(rules.get("feed_alert_enabled", False)) and not feed.empty:
         record = feed.iloc[-1]
         age = int(record["age_day"])
         stale_days = int(latest["age_day"] - age)

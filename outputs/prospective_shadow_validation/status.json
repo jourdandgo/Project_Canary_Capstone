@@ -1,0 +1,19 @@
+{
+  "shadow_version": "prospective-shadow-1.0.0",
+  "progress": {
+    "recovery": {
+      "qualifying_cycles": 0,
+      "required_cycles": 3,
+      "remaining_cycles": 3,
+      "status": "Collecting prospective evidence"
+    },
+    "bodyweight": {
+      "qualifying_cycles": 0,
+      "required_cycles": 3,
+      "remaining_cycles": 3,
+      "status": "Collecting prospective evidence"
+    }
+  },
+  "operational_models_changed": false,
+  "note": "Promotion is not automatic after three cycles; the frozen performance gates must still be evaluated."
+}

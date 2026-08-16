@@ -1,0 +1,53 @@
+Act as an independent senior machine-learning engineer specializing in poultry growth, longitudinal data, and limited-sample prediction. I want a genuine second opinion—not a reproduction of our existing Project Canary weight method.
+
+I will upload two files:
+
+1. `FARM HARVEST DATA.xlsx` — the corrected primary source. Inspect all relevant sheets and columns yourself. It contains daily building records, measured bodyweights, approved target-weight references and deficits, populations, mortality, feed, minimum/maximum/average temperature, temperature range, minimum/maximum/average humidity, humidity range, weekly summaries, and building-cycle outcomes.
+2. `Project_Canary_Model_Ready_Data.xlsx` — a transparent reference showing how our current team reconciled one outcome per building-cycle and constructed historical checkpoint rows. Use it to understand definitions and audit lineage. You are not required to train from its prepared Weight Training sheet or reproduce our features.
+
+Business objective:
+
+Build the strongest honest and explainable model you can for predicting average building bodyweight on Day 35 against the farm's 1,800 g milestone, using only information available at a selected earlier review date. Day 14 is an important early-warning checkpoint, but forecasts should also be evaluated at later checkpoints.
+
+Outcome definition:
+
+Y is the observed average building bodyweight recorded on production Day 35. You may model Day 35 weight directly, remaining growth from the current measurement, a growth-curve parameterization, or another defensible formulation. Explain and compare the alternatives rather than assuming our current formulation is best.
+
+Important context and boundaries:
+
+- A building-cycle appears on many daily rows and can have several weight checkpoints. These are repeated observations of one flock, not independent outcomes.
+- Bodyweights are not measured every day. Some cycles have weekly measurements; later cycles contain more frequent early measurements.
+- Use observed weights as measurements. Target or interpolated weights are reference curves and must not be treated as observed flock weights.
+- Never use the Day 35 outcome or a later checkpoint weight as an input for an earlier forecast.
+- Do not let data recorded after the selected review date influence preprocessing, feature engineering, tuning, or prediction.
+- The current/later 2026-3 cycle should not influence model design or champion selection. Use its three observed Day 35 outcomes only after the final pipeline is frozen as a small later-cycle audit.
+- Feed columns may have unresolved units. Inspect them, document assumptions, and avoid relying on them silently.
+- Zone A/B environmental records may create multiple source rows for a building-day. Diagnose and handle the grain appropriately.
+
+Please independently decide and justify:
+
+- The appropriate analytical grain and representation of the longitudinal weight history.
+- Data cleaning and reconciliation rules.
+- The target formulation.
+- Whether biological growth curves, tabular regression, longitudinal features, residual correction, ensembles, or other methods are appropriate.
+- Feature engineering, including whether mortality, survival, feed, temperature, humidity, target progress, growth velocity, and measurement timing genuinely help.
+- Missing-data and outlier handling.
+- Training, validation, grouping, and hyperparameter-tuning strategy.
+- How uncertainty should be estimated.
+
+What I want to see in the notebook:
+
+- A complete, reproducible end-to-end workflow starting from the raw workbook.
+- A clear table defining Y, candidate X features, units, timing availability, and leakage risk.
+- EDA of observed growth trajectories, checkpoint coverage, target attainment, missingness, outliers, cycle/building differences, and relationships relevant to Day 35 weight.
+- A comparison of at least five reasonable approaches, including at least one simple benchmark. Choose the methods yourself.
+- A model-comparison table reporting at minimum MAE in grams, RMSE, R², bias, within-100 g rate, within-200 g rate, and stability across groups or periods.
+- Performance at Day 7, Day 14, Day 21, and Day 28.
+- Actual-versus-predicted, residual, error-by-checkpoint, and observed-versus-forecast-growth visualizations.
+- An explicit test of whether mortality/population-loss and environmental features improve predictions on unseen data.
+- A clear separation between development results and the final untouched 2026-3 audit.
+- Feature importance and SHAP analysis for suitable finalists, including global and individual-building explanations. Treat importance as association, not proof of causality.
+- An honest comparison with simple growth baselines and a clear explanation of why the champion was selected.
+- Exported model/pipeline, feature list, hyperparameters, predictions, comparison table, and key charts.
+
+Do not assume our current historical remaining-gain method is correct. Challenge it. If a different target, growth representation, validation design, or model family performs more credibly, demonstrate that with evidence. Prioritize performance on unseen flocks/cycles, biological plausibility, and explainability over training scores. End with a plain-language verdict: what the model can be trusted for, what it cannot yet do, and what future measurements would most improve it.

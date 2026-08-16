@@ -135,7 +135,14 @@ def historical_remaining_gain(
 
 def canonical_weight() -> pd.DataFrame:
     rows = pd.read_csv(CANONICAL / "outputs/model_ready/day35_weight_training.csv")
-    identifiers = {"cycle_id", "building_id", "validation_cycle", "actual_day35_weight_kg_y"}
+    identifiers = {
+        "cycle_id",
+        "building_id",
+        "validation_cycle",
+        "actual_day35_weight_kg_y",
+        # This is derived directly from the label and therefore cannot be an X.
+        "remaining_gain_to_day35_kg_y",
+    }
     features = [column for column in rows.columns if column not in identifiers]
     x = rows[features]
     y = rows["actual_day35_weight_kg_y"].to_numpy(float)

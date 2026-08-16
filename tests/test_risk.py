@@ -122,7 +122,7 @@ def test_missing_weight_is_not_treated_as_zero_risk(dataset):
     assert row["evidence_status"] == "Reduced evidence"
     available = [row[column] for column in ["population_loss_score", "daily_mortality_score", "environment_score"]]
     assert row["risk_score"] == sum(value for value in available if pd.notna(value))
-    assert row["cycle_day"] == 22
+    assert row["cycle_day"] == 35
     assert row["risk_rating"] != "Not rated"
 
 
@@ -130,9 +130,9 @@ def test_stale_environment_is_explained_and_not_scored_as_safe(dataset):
     as_of = default_as_of_date(dataset, "2026-3")
     row = score_cycle_snapshot(dataset, "2026-3", as_of).query("building_id == 'Tags 1'").iloc[0]
 
-    assert row["cycle_day"] == 22
+    assert row["cycle_day"] == 35
     assert row["environment_measurement_day"] == 17
-    assert row["environment_staleness_days"] == 5
+    assert row["environment_staleness_days"] == 18
     assert pd.isna(row["environment_score"])
     assert row["environment_status"].startswith("Stale")
     assert pd.notna(row["environment_last_temperature_range_c"])
@@ -162,7 +162,7 @@ def test_risk_history_stops_at_selected_date_and_stays_as_of_safe(dataset):
     history = build_risk_history(dataset, "2026-3", "Tags 1", as_of)
 
     assert history["record_date"].max().date() == as_of
-    assert history["cycle_day"].max() == 22
+    assert history["cycle_day"].max() == 35
     assert history.loc[history["risk_score"].notna(), "risk_score"].between(0, 12).all()
 
 

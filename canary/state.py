@@ -69,6 +69,10 @@ def build_cycle_snapshot(
     as_of_ts = pd.Timestamp(as_of).normalize()
     cycle_meta = dataset.cycles.loc[dataset.cycles["cycle_id"] == cycle_id]
     cycle_daily = dataset.daily.loc[dataset.daily["cycle_id"] == cycle_id]
+    latest_cycle = str(
+        dataset.cycles.groupby("cycle_id")["start_date"].min().idxmax()
+    )
+    is_latest_cycle = str(cycle_id) == latest_cycle
     target_by_age = dataset.targets.set_index("age_day")["target_weight_kg"]
     records: list[dict[str, object]] = []
 
@@ -152,7 +156,7 @@ def build_cycle_snapshot(
             base["weight_staleness_days"] = max(0, selected_cycle_day - weight_day)
             base["weight_freshness"] = _freshness_label(base["weight_staleness_days"])
 
-        if as_of_ts >= end:
+        if as_of_ts >= end and not is_latest_cycle:
             # ``end`` is the maximum daily-record date, not a confirmed harvest
             # date. Preserve the last recorded evidence and keep model outputs
             # as forecasts rather than silently replacing them with "actuals".
@@ -174,7 +178,12 @@ def build_cycle_snapshot(
             exact_complete = bool(exact_day["daily_complete"].any()) if not exact_day.empty else False
             if exact_complete:
                 base["state"] = "Active"
-                base["status_note"] = "Daily mortality and feed observations are available."
+                if is_latest_cycle and as_of_ts >= end:
+                    base["status_note"] = (
+                        "Latest current-cycle record; harvest completion is not confirmed."
+                    )
+                else:
+                    base["status_note"] = "Daily mortality and feed observations are available."
             else:
                 base["state"] = "Incomplete"
                 if exact_day.empty:

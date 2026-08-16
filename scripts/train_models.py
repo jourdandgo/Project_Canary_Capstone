@@ -7,9 +7,85 @@ import json
 from pathlib import Path
 
 import joblib
+import numpy as np
+import pandas as pd
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
-from canary import load_workbook, save_day35_manifest, train_day35_weight_baseline
+from canary import (
+    extract_feature_row,
+    load_workbook,
+    save_day35_manifest,
+    train_day35_weight_baseline,
+)
+from canary.forecast import _predict
 from canary.modeling import load_final_weight_labels, save_training_result, train_outcome_model
+
+
+def _add_latest_recovery_audit(dataset, result) -> None:
+    """Attach a genuinely later-cycle checkpoint audit without refitting."""
+
+    latest_start = pd.to_datetime(dataset.cycles["start_date"]).max()
+    latest = dataset.cycles.loc[
+        pd.to_datetime(dataset.cycles["start_date"]).eq(latest_start)
+    ]
+    records: list[dict[str, object]] = []
+    for outcome in latest.itertuples(index=False):
+        for day in (7, 14, 21, 28):
+            as_of = pd.Timestamp(outcome.start_date) + pd.Timedelta(days=day - 1)
+            feature = extract_feature_row(
+                dataset, str(outcome.cycle_id), str(outcome.building_id), as_of
+            )
+            if feature is None or pd.isna(feature.get("percentage_alive")):
+                continue
+            prediction = _predict(
+                feature, "recovery", result.manifest, result.model
+            )
+            actual = float(outcome.final_recovery_rate)
+            records.append(
+                {
+                    "cycle_id": str(outcome.cycle_id),
+                    "building_id": str(outcome.building_id),
+                    "review_day": day,
+                    "as_of_date": as_of.date().isoformat(),
+                    "current_percentage_alive": float(feature["percentage_alive"]),
+                    "predicted_final_recovery": float(prediction),
+                    "last_recorded_recovery_proxy": actual,
+                    "error": float(prediction - actual),
+                    "absolute_error": float(abs(prediction - actual)),
+                }
+            )
+    if not records:
+        return
+    frame = pd.DataFrame(records)
+    actual = frame["last_recorded_recovery_proxy"].to_numpy(float)
+    predicted = frame["predicted_final_recovery"].to_numpy(float)
+    checkpoint_metrics = {}
+    for day, group in frame.groupby("review_day"):
+        group_actual = group["last_recorded_recovery_proxy"].to_numpy(float)
+        group_predicted = group["predicted_final_recovery"].to_numpy(float)
+        checkpoint_metrics[str(int(day))] = {
+            "rows": int(len(group)),
+            "mae": float(mean_absolute_error(group_actual, group_predicted)),
+            "rmse": float(mean_squared_error(group_actual, group_predicted) ** 0.5),
+            "bias": float(np.mean(group_predicted - group_actual)),
+        }
+    result.manifest["prospective_latest_cycle_audit"] = {
+        "cycle_id": str(frame["cycle_id"].iloc[0]),
+        "training_exclusion": "Excluded from fitting, preprocessing, tuning and champion selection.",
+        "endpoint_definition": "Day 35 last-recorded population divided by beginning population; provisional proxy, not verified harvest recovery.",
+        "independent_outcomes": int(
+            frame[["cycle_id", "building_id"]].drop_duplicates().shape[0]
+        ),
+        "checkpoint_rows": int(len(frame)),
+        "metrics": {
+            "mae": float(mean_absolute_error(actual, predicted)),
+            "rmse": float(mean_squared_error(actual, predicted) ** 0.5),
+            "r2": float(r2_score(actual, predicted)),
+            "bias": float(np.mean(predicted - actual)),
+        },
+        "checkpoint_metrics": checkpoint_metrics,
+        "predictions": records,
+    }
 
 
 def _write_model_card(summaries: dict, day35: dict, output: Path) -> None:
@@ -34,6 +110,10 @@ def _write_model_card(summaries: dict, day35: dict, output: Path) -> None:
         f"| Projected Day 35 weight | {day35['model_version']} | {day35['selected_model']} | {len(day35['training_cycles'])} | {day35['training_building_cycles']} | {day35['selected_metrics']['mae_kg']:.3f} kg | Prototype; {day35['actual_target_hits']} historical 1.8 kg hits |",
         "",
         "Validation is nested: the outer loop holds out one complete recorded cycle, while the inner loop tunes only within the remaining cycles. Repeated snapshots receive equal building-cycle weight. Recovery uses Days 7, 14, 21, 28, and the latest eligible checkpoint; Day 35 weight uses checkpoints at Days 7, 14, 21, and 28.",
+        "",
+        "Recovery whole-cycle holdouts: " + ", ".join(recovery["training_cycles"]) + ". Day 35 weight whole-cycle holdouts: " + ", ".join(day35["training_cycles"]) + ". The latest cycle with newly recorded Day 35 weights is reserved as a prospective audit and is not used in model fitting or champion selection.",
+        "",
+        "For live dates between recovery checkpoints, expected remaining loss is linearly interpolated between the surrounding Days 7, 14, 21, and 28 values. The Day 28 value is held after Day 28 because a verified harvest-date horizon is unavailable.",
         "",
         f"Recovery learned challenger: {recovery['research_champion']}; operational method: {recovery['selected_model']}. Continuous-estimate gate passed: {recovery['champion_gates']['regression_gate_passed']}; 95% classification gate passed: {recovery['champion_gates']['target_classification_gate_passed']}.",
         f"Weight learned challenger: {day35['research_champion']}; operational method: {day35['selected_model']}. Learned-model regression gate passed: {day35['champion_gates']['regression_gate_passed']}; target-classification gate passed: {day35['champion_gates']['target_classification_gate_passed']}.",
@@ -105,7 +185,7 @@ def _write_model_card(summaries: dict, day35: dict, output: Path) -> None:
             "",
             "## Important limitations",
             "",
-            "- Recovery is trained on five recorded cycle histories and 25 building outcomes. The label is last-recorded population divided by beginning population, not confirmed actual-harvest recovery.",
+            f"- Recovery is trained on {len(recovery['training_cycles'])} recorded cycle histories and {recovery['training_building_cycles']} building outcomes. The label is last-recorded population divided by beginning population, not confirmed actual-harvest recovery.",
             f"- Day 35 weight uses {day35['training_building_cycles']} building outcomes across {len(day35['training_cycles'])} cycles. The current cycle is excluded from training.",
             "- Both comparisons use nested whole-cycle validation and cycle-balanced MAE as the primary metric. RMSE and R² are secondary checks; target-side metrics describe decision usefulness.",
             "- Uncertainty ranges use the 80th percentile of held-out absolute errors. They are empirical prototype ranges, not formal clinical or statistical guarantees.",
@@ -145,6 +225,8 @@ def main() -> None:
             outcome,
             final_weight_labels if outcome == "weight" else None,
         )
+        if outcome == "recovery":
+            _add_latest_recovery_audit(dataset, result)
         save_training_result(result, args.output)
         summaries[outcome] = result.manifest
 

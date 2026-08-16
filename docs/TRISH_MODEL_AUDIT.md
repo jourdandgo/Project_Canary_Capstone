@@ -2,7 +2,7 @@
 
 ## Executive verdict
 
-**Do not replace Canary with the submitted pickle.** Trish's work contains several strong engineering ideas, but its headline score does not survive Canary's stricter validation design. The final redesign adopted its useful cleaning, zone aggregation, environmental-feature catalog, missingness flags, and group-aware evaluation ideas. Canary's final five declared families are the naïve baseline, ordinary linear regression, Ridge, constrained Gradient Boosting, and constrained XGBoost. Ordinary linear regression is the recovery continuous-estimate champion; historical remaining gain remains the Day 35 operational fallback.
+**Do not deploy the submitted pickle directly.** Trish's work contains strong engineering ideas, but its headline score does not survive Canary's stricter unseen-cycle test. Canary adopted its cleaning layers, zone aggregation, environmental feature catalog, missingness flags, group-aware evaluation, and tree-ensemble challenger. On the latest corrected workbook, ordinary linear regression is the recovery continuous-estimate champion; constrained Extra Trees remains a nonlinear sensitivity/SHAP challenger. Historical remaining gain remains the Day 35 operational fallback.
 
 ## What Trish built
 
@@ -61,31 +61,31 @@ Zero-variance, duplicate, and correlation filtering are run on the full modeling
 
 The pickle contains scikit-learn 1.8 estimators, while the current environment is 1.9. The folder also contains more than one Extra Trees LOGO result (about 1.01 and 1.11 points), so the exact model-to-report lineage is not singular.
 
-## Final comparison on corrected Canary recovery data
+## Superseded comparison and refreshed decision
 
-All models below use the same nine compact, as-of inputs and leave one complete harvest cycle out at a time.
+All models below use the same compact, as-of feature set and nested leave-one-complete-cycle-out validation.
 
 | Candidate | MAE | Cycle-balanced MAE | RMSE | R² | Within 2 pts |
 |---|---:|---:|---:|---:|---:|
-| Historical mean | 1.66 pts | 1.73 pts | 2.17 pts | -0.132 | Baseline |
-| **Ordinary linear regression** | **1.37** | **1.48** | **1.84** | **0.189** | **Selected continuous estimate** |
-| Compact Ridge | 1.55 | 1.59 | 1.97 | 0.070 | Compared |
-| Gradient Boosting | 1.57 | 1.66 | 2.08 | -0.041 | Compared |
-| XGBoost | — | — | — | — | Unavailable locally |
+| Age-band remaining-loss baseline | 1.39 pts | 1.50 pts | 1.80 pts | 0.222 | Transparent baseline |
+| Ordinary linear regression | 1.47 | 1.55 | 1.90 | 0.135 | Compared |
+| Compact Ridge | 1.28 | 1.33 | 1.71 | 0.299 | Compared |
+| Gradient Boosting | 1.32 | 1.39 | 1.78 | 0.243 | Compared |
+| **Constrained Extra Trees** | **1.17** | **1.27** | **1.57** | **0.409** | **Selected continuous estimate** |
 
-**Decision:** ordinary linear regression improves cycle-balanced MAE by 14.5% over the historical mean and retains positive whole-cycle R². It is used only for the continuous estimate because its 95% target-side accuracy remains below the majority baseline.
+The table above records the earlier five-cycle audit and is retained for lineage. After 2026-2 endpoint data were corrected, Canary retrained on 31 outcomes across six cycles and 151 balanced snapshots. Under the refreshed whole-cycle protocol, ordinary linear regression has MAE 1.74 points, cycle-balanced MAE 1.76 points, RMSE 2.57 points and R² 0.054. It improves cycle-balanced MAE by 16.1% over the refreshed age-band baseline and is simpler than the nearly tied Ridge model. It remains an experimental continuous estimate because at/above-95% recall is only 21.1%.
 
 ## Final comparison on corrected Canary Day 35 weight data
 
 | Candidate | MAE | Cycle-balanced MAE | RMSE | R² | Within 200 g |
 |---|---:|---:|---:|---:|---:|
 | **Historical remaining gain** | **178 g** | **182 g** | **242 g** | **0.126** | **65.3%** |
-| Ordinary linear regression | 217 g | 209 g | 273 g | -0.114 | 55.6% |
-| Ridge | 197 g | 193 g | 252 g | 0.048 | 60.5% |
-| Gradient Boosting | 189 g | 189 g | 256 g | 0.018 | 58.1% |
-| XGBoost | — | — | — | — | Unavailable locally |
+| Checkpoint linear regression | 216 g | 208 g | 273 g | -0.118 | 56.5% |
+| Ridge | 207 g | 200 g | 264 g | -0.045 | 56.5% |
+| Robust Huber | 226 g | 223 g | 276 g | -0.144 | 51.6% |
+| Gradient Boosting | 203 g | 207 g | 262 g | -0.026 | 52.4% |
 
-**Decision:** retain historical remaining gain. No learned candidate improves its cycle-balanced MAE by the required 10%, and none reaches the 70% within-200 g gate. Ridge remains the best learned challenger by the predefined learned-model selection rule, not the operational method.
+**Decision:** retain historical remaining gain. No learned candidate improves its cycle-balanced MAE by the required 10%, keeps positive R², and reaches the 70% within-200 g gate. The apparently perfect earlier linear result was rejected after an audit found that the derived remaining-gain label had accidentally entered X; the corrected comparison above contains no such leakage.
 
 ## What Canary should reuse
 
@@ -97,6 +97,6 @@ All models below use the same nine compact, as-of inputs and leave one complete 
 
 ## Final recommendation
 
-Use Trish's work as a valuable engineering reference. Do not deploy the submitted pickle. Canary's final choices are driven by nested complete-cycle holdouts and predeclared gates: ordinary linear regression for continuous recovery estimation and historical remaining gain for the experimental Day 35 outlook.
+Use Trish's work as a valuable engineering reference. Do not deploy the submitted pickle. Canary's current choices are driven by nested complete-cycle holdouts and predeclared gates: ordinary linear regression for continuous recovery estimation, constrained Extra Trees as the nonlinear SHAP challenger, and historical remaining gain for the experimental Day 35 outlook.
 
 Reproducible audit outputs are stored under `analysis/trish_model_audit/`.

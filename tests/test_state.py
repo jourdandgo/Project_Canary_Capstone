@@ -41,7 +41,7 @@ def test_default_date_uses_latest_complete_operation_not_planned_end():
     ].max().date()
 
     assert suggested == expected
-    assert suggested < maximum
+    assert suggested <= maximum
     assert (build_cycle_snapshot(dataset, "2026-3", suggested)["state"] == "Active").any()
 
 
@@ -64,22 +64,30 @@ def test_day_14_weight_is_observed_and_fresh():
     assert tags1["weight_target_at_measurement_kg"] == 0.38
 
 
-def test_padded_day_is_incomplete_and_uses_last_observed_day():
+def test_incomplete_operational_day_keeps_available_population():
     dataset = load_workbook(SOURCE)
     meta = dataset.cycles.loc[
-        (dataset.cycles["cycle_id"] == "2025-2")
-        & (dataset.cycles["building_id"] == "Tags 1")
+        (dataset.cycles["cycle_id"] == "2026-1")
+        & (dataset.cycles["building_id"] == "Lags 3")
     ].iloc[0]
-    as_of = pd.Timestamp(meta["start_date"]) + pd.DateOffset(days=29)
-    snapshot = build_cycle_snapshot(dataset, "2025-2", as_of)
-    tags1 = snapshot.loc[snapshot["building_id"] == "Tags 1"].iloc[0]
+    as_of = pd.Timestamp(meta["start_date"]) + pd.DateOffset(days=43)
+    snapshot = build_cycle_snapshot(dataset, "2026-1", as_of)
+    lags3 = snapshot.loc[snapshot["building_id"] == "Lags 3"].iloc[0]
 
-    assert tags1["state"] == "Incomplete"
-    assert tags1["cycle_day"] == 30
-    assert tags1["latest_operational_day"] == 25
-    assert tags1["data_staleness_days"] == 5
-    assert tags1["latest_population"] == 6411
-    assert tags1["percentage_alive"] == pytest.approx(6411 / 6800)
+    assert lags3["state"] == "Incomplete"
+    assert lags3["cycle_day"] == 44
+    assert lags3["latest_operational_day"] == 44
+    assert lags3["data_staleness_days"] == 0
+    expected_population = dataset.daily.loc[
+        dataset.daily["cycle_id"].eq("2026-1")
+        & dataset.daily["building_id"].eq("Lags 3")
+        & dataset.daily["age_day"].eq(44),
+        "population",
+    ].iloc[0]
+    assert lags3["latest_population"] == expected_population
+    assert lags3["percentage_alive"] == pytest.approx(
+        expected_population / meta["beginning_inventory"]
+    )
 
 
 def test_end_date_is_last_recorded_state_not_assumed_harvest():

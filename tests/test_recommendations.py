@@ -43,16 +43,16 @@ def test_pattern_and_risk_rating_map_to_action_and_urgency(dataset):
     result = apply_recommendations(risk)
 
     tags2 = result.query("building_id == 'Tags 2'").iloc[0]
-    assert tags2["risk_pattern"] == "Low Body Weight"
-    assert tags2["recommendation_rule_id"] == "DOC-002"
+    assert tags2["risk_pattern"] == "Rapid Population Loss"
+    assert tags2["recommendation_rule_id"] == "DOC-004"
     assert tags2["recommendation_urgency"] == "Current shift"
-    assert "weight" in tags2["recommended_action"].lower()
+    assert "population" in tags2["recommended_action"].lower()
     assert tags2["recommendation_guidance_status"].startswith("Preliminary")
     assert tags2["recommendation_source"] == "Farmer Validation Workbook (Doc Raymond)"
     assert "Canary team expanded" in tags2["recommendation_wording_provenance"]
 
     trace = build_recommendation_trace(tags2)
-    assert trace.loc[trace["Decision element"] == "Action rule", "Applied value"].iloc[0] == "DOC-002"
+    assert trace.loc[trace["Decision element"] == "Action rule", "Applied value"].iloc[0] == "DOC-004"
     assert trace.loc[trace["Decision element"] == "Risk-level urgency", "Applied value"].iloc[0] == "High → Current shift"
     assert trace.loc[trace["Decision element"] == "Source", "Applied value"].iloc[0] == "Farmer Validation Workbook (Doc Raymond)"
 

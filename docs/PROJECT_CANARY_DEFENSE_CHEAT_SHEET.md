@@ -1,16 +1,20 @@
 # Project Canary — Capstone Defense Cheat Sheet
 
-> Updated 11 August 2026. Use this as the shared answer key for the dashboard, notebooks, model files, and presentation.
+> Updated 12 August 2026. Use this as the shared answer key for the dashboard, notebooks, model files, and presentation.
 
 ## One-page “memorize this” summary
 
 ### What is Project Canary?
 
-Project Canary is an early-warning and decision-support system for a broiler farm. It identifies buildings that need attention, explains the recorded warning signs, estimates harvest recovery and Day 35 average weight, and links confirmed operating patterns to Doc Raymond’s action playbook.
+Project Canary is an early-warning and decision-support system for a broiler farm. Its purpose is to help make production outcomes more consistent by giving management earlier visibility of buildings that are going off-track. It identifies recorded warning signs, estimates harvest recovery and Day 35 average weight, and links confirmed operating patterns to Doc Raymond’s action playbook.
+
+Canary does not directly control mortality or growth. Its value is earlier visibility, so management can investigate and intervene before weak daily signals become final outcomes.
 
 ### What business question does it answer?
 
-**Which buildings need attention today, why, what harvest recovery and Day 35 weight should we expect, and what should management check next?**
+**How can the farm make production outcomes more consistent? Specifically: which buildings are going off-track, what evidence explains the concern, what harvest recovery and Day 35 weight are currently expected, and what should management check first?**
+
+The Day 35 weight milestone is **1,800 g**; the harvest-recovery goal is **95%**. Day 14 is the principal early-warning checkpoint, but Canary continues updating through Day 35 and harvest.
 
 ### What are the three engines?
 
@@ -20,8 +24,8 @@ Project Canary is an early-warning and decision-support system for a broiler far
 
 ### What data do we have?
 
-- 1,785 source rows became **1,666 unique building-day records** after repeated Zone A/B environment rows were consolidated.
-- Recovery: **25 independent building-cycle outcomes**, represented by **122 balanced decision snapshots**; 1,122 leakage-safe daily snapshots are retained for audit.
+- The newest workbook contains **1,624 unique building-day records with no duplicate building-day keys**. The row count fell because unsupported forward-filled Days 36–49 were removed from 2026-3; this prevents Day 35 population from being mistaken for a later harvest endpoint.
+- Recovery: **31 independent building-cycle outcomes**, represented by **151 balanced decision snapshots**; 1,355 leakage-safe daily snapshots are retained for audit.
 - Day 35 weight: **31 independent building-cycle outcomes**, represented by **124 Day 7/14/21/28 checkpoint rows**.
 - Recovery endpoint is the agreed proxy: last-recorded population ÷ beginning population. The redesigned **training Y** is the additional population loss after each review date.
 - Weight endpoint is observed average bodyweight on Day 35. The redesigned **training Y** is the remaining gain from the current checkpoint to Day 35.
@@ -29,12 +33,13 @@ Project Canary is an early-warning and decision-support system for a broiler far
 
 ### What models are operational?
 
-- **Recovery:** the operational method is the **age-band remaining-loss baseline**. Whole-cycle MAE is **1.40 percentage points**; cycle-balanced MAE is **1.50 points**; RMSE is **1.80 points**; R² is **0.222**. Robust Huber is the best learned research challenger (**1.24-point MAE, R² 0.260**) but remains experimental because it fails the 95% classification gate and is less stable under rolling-origin validation.
+- **Recovery:** **ordinary linear remaining-loss regression** is the operational continuous-estimate model. Whole-cycle MAE is **1.74 percentage points**; cycle-balanced MAE is **1.76 points**; RMSE is **2.57 points**; R² is **0.054**. It improves cycle-balanced MAE by **16.1%** over the refreshed age-band baseline and is effectively tied with Ridge while remaining simpler to explain. It remains experimental because at/above-95% recall is only **21.1%**.
 - **Day 35 weight:** **historical remaining gain** remains operational. MAE is **178 g**; cycle-balanced MAE is **182 g**; RMSE is **242 g**; R² is **0.126**; **65.3%** are within 200 g. Every learned challenger performs worse on unseen cycles.
+- **Later 2026-3 audit:** weight was encouraging at **63 g MAE** across 12 checkpoint forecasts, but recovery was weak at **4.08 percentage-point MAE** and biased low. These three later buildings were excluded from all model selection. The recovery result is a clear warning that more completed cycles and a verified harvest endpoint are needed.
 
 ### What is the honest claim?
 
-Canary is a **validated prototype**, not a production guarantee. Recovery is useful directionally as a continuous estimate. Day 35 weight uses the more defensible transparent fallback because the learned models do not yet improve enough on unseen cycles.
+Canary is a **validated prototype**, not a production guarantee. Recovery is useful directionally as a continuous estimate, but its low held-out R² means most across-cycle variation remains unexplained. Day 35 weight uses the more defensible transparent fallback because learned models still do not improve enough on unseen cycles.
 
 ## Five-step explanation: Engine 1 — Risk scoring
 
@@ -46,7 +51,7 @@ Canary is a **validated prototype**, not a production guarantee. Recovery is use
 
 ### Why rules rather than a risk classifier?
 
-- Only 25–31 independent outcomes are available.
+- Only 31 independent outcomes are available.
 - The owner needs to see the exact rule and measurement behind every flag.
 - Rules keep operating concern separate from statistical forecasts.
 - Thresholds can be reviewed and changed without retraining a model.
@@ -57,7 +62,7 @@ Canary is a **validated prototype**, not a production guarantee. Recovery is use
 2. **Inputs (X):** age and remaining days; current survival and cumulative loss; mortality level/acceleration; latest weight gap/freshness; temperature/humidity exposure and freshness. Feed is withheld until its unit is confirmed.
 3. **Process:** create Day 7/14/21/28/latest snapshots; give every building-cycle equal total weight; impute, scale, tune, and compare models inside nested whole-cycle folds.
 4. **Output:** current survival minus predicted remaining loss, plus target gap, empirical range, model version, forecast date, and predictive context.
-5. **Limitation:** Y is a last-recorded recovery proxy, only five historical cycles are available, and the model cannot yet distinguish 95% hits from misses better than the majority rule.
+5. **Limitation:** Y is a last-recorded recovery proxy, only six historical cycles are available, and the model strongly recognizes below-target cases but still misses most at/above-95% cases.
 
 ### Recovery workflow — explain it from start to finish
 
@@ -72,6 +77,34 @@ Canary is a **validated prototype**, not a production guarantee. Recovery is use
 | **Selection** | Compares five declared methods on cycle-balanced MAE, then checks R², cycle stability, target-side performance, and champion gates. |
 | **Live output** | Returns current survival minus expected remaining loss, a likely range, gap to 95%, model version, and non-causal driver context. |
 
+### Memorize: what “held-out cycle” means
+
+Recovery uses six complete-cycle folds: **2025-2, 2025-3, 2025-4, 2025-5, 2026-1, and 2026-2**. In each test, every building from one named cycle is removed, Canary learns from the other cycles, and then it predicts the excluded cycle as if it were new. The current 2026-3 cycle is never part of historical model selection. The weight model uses the same six historical folds; its newly observed 2026-3 weights are reserved as a small prospective audit.
+
+This applies to predictive models. Risk alerts are transparent rules, so they are replayed using a historical review date rather than trained and held out.
+
+### Memorize: Day 14 retrospective
+
+1. Freeze each completed building at Day 14.
+2. Remove its entire cycle from training.
+3. Estimate the additional loss after Day 14 from the other cycles.
+4. Calculate `Day 14 survival − expected remaining loss`.
+5. Compare with `last-recorded population ÷ beginning population`.
+
+Example — **2025-2 Tags 1**: projected **92.75%**, recorded proxy **94.28%**, error **−1.53 points**.
+
+Day 14 recovery results: **MAE 1.95 points**, **RMSE 2.71 points**, **bias +0.49 points**, **R² 0.025**, and empirical 80% range about **±2.70 points**. Target-side accuracy is **87.1%**, equal to the always-below majority baseline, with **0% recall** of actual ≥95% outcomes. Day 14 remains useful for early operational warning, but its recovery forecast is directional rather than a reliable target-hit classifier.
+
+### Memorize: live dates between checkpoints
+
+The selected ordinary linear remaining-loss model can score any review date using that date's leakage-safe feature snapshot. If the fitted model is unavailable, Canary falls back to the transparent Day 7/14/21/28 remaining-loss baseline and interpolates between checkpoints so the fallback does not jump abruptly.
+
+Revenue at risk is not another model:
+
+`beginning birds × recovery gap to 95% × assumed sale weight × price/kg`
+
+Therefore, recovery forecast changes directly change the displayed revenue scenario.
+
 ### Recovery Y target
 
 `additional loss Y = current percentage alive − final recovery proxy`
@@ -84,28 +117,30 @@ The value is used only after prediction for evaluation. Current survival may be 
 
 | Candidate | MAE (pts) | Cycle-balanced MAE (pts) | RMSE (pts) | R² | Decision |
 |---|---:|---:|---:|---:|---|
-| **Age-band remaining-loss baseline** | **1.40** | **1.50** | **1.80** | **0.222** | **Operational fallback** |
-| Linear remaining-loss regression | 1.29 | 1.40 | 1.80 | 0.224 | Compared |
-| Ridge remaining-loss regression | 1.31 | 1.43 | 1.82 | 0.207 | Compared |
-| Robust Huber remaining-loss regression | 1.24 | 1.33 | 1.76 | 0.260 | Best research challenger |
-| Gradient Boosting remaining-loss | 1.25 | 1.37 | 1.78 | 0.243 | Compared |
+| Age-band remaining-loss baseline | 2.00 | 2.09 | 2.66 | -0.010 | Transparent baseline |
+| **Linear remaining-loss regression** | **1.74** | **1.76** | **2.57** | **0.054** | **Selected continuous estimate** |
+| Ridge remaining-loss regression | 1.74 | 1.76 | 2.57 | 0.055 | Compared |
+| Gradient Boosting remaining-loss | 1.76 | 1.84 | 2.47 | 0.129 | Compared |
+| Constrained Extra Trees | 1.73 | 1.80 | 2.47 | 0.129 | Nonlinear sensitivity challenger |
 
-### Why not automatically deploy Huber because its MAE is best?
+### Why select linear regression—and why not call it a 95% classifier?
 
-Huber improves cycle-balanced MAE by **11.2%** and keeps positive R², but its rolling-origin cycle MAE is **1.73 points** versus **1.35** for the age-band baseline, and it does not beat the majority rule for identifying the 95% target side. The strict gate therefore keeps the transparent baseline operational while Huber remains the research champion.
+Linear regression improves cycle-balanced MAE by **16.1%** versus the refreshed age-band baseline, keeps positive held-out R², and is effectively tied with Ridge. Extra Trees has slightly lower pooled MAE and higher R² but worse cycle-balanced MAE. The simpler linear method therefore wins under the prespecified cycle-balanced MAE and simplicity rule. However, it detects only **21.1%** of actual at/above-95% snapshots. Canary therefore shows a point estimate and range, not a probability that the flock will hit 95%.
 
 ### Recovery classification warning
 
-- Target-side accuracy: **86.1%** for the operational baseline.
-- Majority baseline: **84.4%** overall.
-- Day 14: **84.0%**, equal to the **84.0%** majority baseline.
-- At/above-95% recall: **0%**.
+- Target-side accuracy: **90.1%** for the selected linear estimate.
+- Majority baseline: **87.4%** overall.
+- Day 14: **87.1%**, equal to the **87.1%** majority baseline.
+- Below-95% recall: **100%**.
+- At/above-95% recall: **21.1%**.
+- Balanced target accuracy: **60.5%**; still operationally weak because the positive-side sample is small.
 
 Therefore, do not say “the model accurately classifies whether recovery will hit 95%.” Say: **it estimates the continuous recovery level, but target-side classification is not validated.**
 
 ### Recovery top held-out drivers
 
-Canary reports held-out permutation importance for the Huber research challenger. These are predictive associations—not proof that changing a factor will cause recovery to improve. The live baseline itself uses only current survival and the age-band historical remaining loss.
+Canary reports held-out permutation importance for the operational linear model and held-out SHAP for the strongest nonlinear sensitivity challenger, Extra Trees. SHAP is calculated only after removing the complete test cycle. It shows which inputs moved model estimates and whether higher values generally moved the estimate up or down. These are predictive associations—not proof that changing a factor will cause recovery to improve. Building-specific SHAP explains one forecast; actual actions still require a recorded rule violation and Doc Raymond's playbook.
 
 ## Five-step explanation: Engine 2B — Day 35 weight
 
@@ -264,7 +299,7 @@ No. Importance shows association and predictive reliance. The action table must 
 
 ### “Are these models reliable?”
 
-They are useful as validated prototype estimates, not guarantees. The recovery Huber challenger passes the continuous-error gate but not the full deployment gate; Canary therefore keeps the transparent age-band fallback. Weight learned models also fail the replacement gates, so Canary uses historical remaining gain.
+They are useful as validated prototype estimates, not guarantees. The linear recovery model reduces typical error but has low R² and weak at/above-95% recall. Weight learned models fail the replacement gates, so Canary uses historical remaining gain.
 
 ### “What would most improve the models?”
 

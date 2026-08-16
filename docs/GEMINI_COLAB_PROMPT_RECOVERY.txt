@@ -1,0 +1,52 @@
+Act as an independent senior machine-learning engineer with experience in poultry, agricultural, longitudinal, and limited-sample datasets. I want a genuine second opinion—not a reproduction of our existing Project Canary model.
+
+I will upload two files:
+
+1. `FARM HARVEST DATA.xlsx` — the corrected primary source. Inspect all relevant sheets and columns yourself. It contains daily building records, populations, mortality, feed, observed bodyweights, target-weight references and deficits, minimum/maximum/average temperature, temperature range, minimum/maximum/average humidity, humidity range, weekly summaries, and building-cycle outcomes.
+2. `Project_Canary_Model_Ready_Data.xlsx` — a transparent reference showing how our current team reconciled outcomes and historical review-date snapshots. Use its Data Dictionary, Building Outcomes, and audit sheets to understand definitions and cross-check your work. You are not required to train from its prepared training sheets or follow our existing feature engineering.
+
+Business objective:
+
+Build the strongest honest and explainable model you can for forecasting a building's eventual harvest-recovery outcome using only information that would have been known on the selected review date. The management goal is earlier visibility of buildings drifting below the 95% recovery goal.
+
+Outcome definition:
+
+For this capstone, harvest recovery is the last recorded population for a building-cycle divided by its beginning population. This remains a proxy because a verified harvest-event field is not available. You may model final recovery directly or propose a more defensible target formulation. Explain your choice in plain language.
+
+Important context and boundaries:
+
+- The same building-cycle appears on many daily rows. Those rows are repeated observations of one flock, not independent outcomes.
+- Never use information recorded after the prediction/review date as an input.
+- Do not use ending population, final recovery, future mortality, future bodyweight, or any future-derived interpolation as predictors for an earlier forecast.
+- The current/later 2026-3 cycle should not influence feature selection, preprocessing choices, tuning, or champion selection. Use it only after the final approach is frozen as a small later-cycle audit.
+- Feed columns may have unresolved units. Inspect them, state your interpretation, and avoid relying on them silently.
+- Zone A/B environmental records may create multiple source rows for one building-day. Diagnose and handle the grain appropriately.
+- Target-weight curves are known references, not observed bodyweights.
+
+Please independently decide and justify:
+
+- The correct analytical grain and modeling table.
+- Data cleaning and reconciliation rules.
+- Whether and how daily records should become review-date snapshots or longitudinal inputs.
+- The target formulation.
+- Feature engineering and feature selection.
+- Missing-data and outlier handling.
+- Training, validation, grouping, and hyperparameter-tuning strategy.
+- Which algorithms are appropriate for this sample size.
+- How uncertainty should be estimated.
+
+What I want to see in the notebook:
+
+- A complete, reproducible end-to-end workflow from raw workbook inspection through final evaluation.
+- A clear table stating Y, candidate X features, units, timing availability, and leakage risk.
+- EDA of the target, feature coverage, cycle/building counts, endpoint dates, missingness, outliers, and relationships most relevant to recovery.
+- A comparison of at least five reasonable approaches, including at least one simple benchmark. Choose the approaches yourself.
+- A model-comparison table reporting at minimum MAE in recovery percentage points, RMSE, R², bias, and variability across evaluation groups or periods.
+- Performance by review age, especially Day 7, Day 14, Day 21, and Day 28 where possible.
+- Actual-versus-predicted, residual, error-by-age, and stability visualizations.
+- A clear separation between model-development results and the final untouched 2026-3 audit.
+- Feature importance and SHAP analysis for suitable finalists, including global and building-level explanations. Explain that these show predictive association, not causation.
+- An honest comparison against simple baselines and an explicit explanation of whether the champion is genuinely useful.
+- Exported model/pipeline, feature list, hyperparameters, predictions, comparison table, and key charts.
+
+Do not assume our current model design is correct. Challenge it. If another grain, target, feature set, validation method, or model family is more appropriate, propose it and demonstrate why with evidence. Prioritize credible performance on unseen flocks/cycles over an impressive training score. End with a plain-language verdict: what the model can be trusted for, what it cannot yet do, and what new farm data would most improve it.

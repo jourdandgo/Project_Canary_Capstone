@@ -23,6 +23,7 @@ from canary import (
     RiskConfigurationError,
     WorkbookValidationError,
     apply_recommendations,
+    attach_management_priority,
     attach_forecasts,
     attach_historical_day14_backtests,
     build_operational_driver_trace,
@@ -45,6 +46,11 @@ from canary import (
     save_recommendation_playbook,
     save_risk_rules,
     recovery_feature_contributions,
+    rank_management_priorities,
+    display_name,
+    feature_display_name,
+    load_outcome_research_evidence,
+    load_prospective_shadow_status,
     DAY35_TARGET_KG,
 )
 from canary.harvest_analysis import (
@@ -63,6 +69,9 @@ from canary.business_value import (
     ValueAssumptions,
     attach_business_value,
 )
+from canary.anomaly import build_age_adjusted_anomalies
+from canary.feedback import record_alert_feedback
+from canary.trish_models import load_v18_manifest, v18_local_contributions
 
 
 st.set_page_config(page_title="Project Canary", page_icon="🐤", layout="wide")
@@ -142,6 +151,9 @@ st.markdown(
       .decision-question strong { display:block; color:#23412d; font-size:1.02rem; line-height:1.35; margin:.1rem 0 .25rem; }
       .decision-goals { display:flex; flex-wrap:wrap; gap:.35rem; }
       .goal-chip { display:inline-flex; padding:.16rem .48rem; border-radius:999px; background:white; border:1px solid #d4dfc4; color:#526348; font-size:.66rem; font-weight:750; }
+      .value-path { display:flex; flex-wrap:wrap; gap:.45rem; align-items:center; justify-content:center; background:#f3f8da; border:1px solid #d6e99c; border-left:7px solid #8bb627; border-radius:16px; padding:.78rem 1rem; margin:0 0 .85rem; color:#23412d; font-size:.86rem; font-weight:800; box-shadow:0 7px 18px rgba(72,100,32,.06); }
+      .value-path .path-arrow { color:#789329; font-size:1.05rem; }
+      .value-path-note { display:block; width:100%; text-align:center; color:#5d6c62; font-size:.71rem; font-weight:650; }
       .executive-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.68rem; margin:.15rem 0 .8rem; }
       .executive-card { background:white; border:1px solid var(--line); border-radius:15px; padding:.78rem .85rem; min-height:112px; box-shadow:0 6px 16px rgba(17,59,43,.045); }
       .executive-card.priority { background:linear-gradient(145deg,#173f31,#295f47); border-color:#295f47; }
@@ -321,6 +333,7 @@ def _candidate_metrics_table(manifest: dict[str, object], outcome: str) -> pd.Da
         "remaining_loss_ridge": "Ridge remaining-loss regression",
         "remaining_loss_huber": "Robust Huber remaining-loss regression",
         "remaining_loss_gradient_boosting": "Gradient Boosting remaining-loss",
+        "remaining_loss_extra_trees": "Extra Trees remaining-loss model",
         "historical_remaining_gain": "Historical remaining-gain baseline",
         "checkpoint_linear_remaining_gain": "Checkpoint linear remaining-gain",
         "ridge_remaining_gain": "Ridge remaining-gain",
@@ -501,6 +514,7 @@ def _rolling_origin_summary(manifest: dict[str, object], outcome: str) -> pd.Dat
         "remaining_loss_ridge": "Ridge remaining-loss regression",
         "remaining_loss_huber": "Robust Huber remaining-loss regression",
         "remaining_loss_gradient_boosting": "Gradient Boosting remaining-loss",
+        "remaining_loss_extra_trees": "Extra Trees remaining-loss model",
         "historical_remaining_gain": "Historical remaining-gain baseline",
         "checkpoint_linear_remaining_gain": "Checkpoint linear remaining-gain",
         "ridge_remaining_gain": "Ridge remaining-gain",
@@ -579,6 +593,25 @@ FEATURE_DISPLAY = {
 
 def _global_recovery_importance_table(manifest: dict[str, object]) -> pd.DataFrame:
     rows = []
+    shap_records = manifest.get("held_out_shap_importance", [])
+    if shap_records:
+        for item in shap_records:
+            feature = str(item["feature"])
+            missing = feature.startswith("missingindicator_")
+            source = feature.removeprefix("missingindicator_")
+            rows.append(
+                {
+                    "Model input": (
+                        f"Missing-data flag: {FEATURE_DISPLAY.get(source, source.replace('_', ' ').title())}"
+                        if missing
+                        else FEATURE_DISPLAY.get(source, source.replace("_", " ").title())
+                    ),
+                    "Relative reliance": f"{float(item['relative_mean_abs_shap_pct']):.1f}%",
+                    "When this input is higher": item["direction_when_value_increases"],
+                    "Mean |SHAP|": f"{float(item['mean_abs_shap_recovery']) * 100:.3f} recovery pts",
+                }
+            )
+        return pd.DataFrame(rows)
     coefficient_records = manifest.get("global_feature_importance", [])
     if not coefficient_records:
         importance = manifest.get("held_out_permutation_importance", []) or manifest.get(
@@ -638,6 +671,24 @@ def _owner_recovery_driver_table(contributions: pd.DataFrame) -> pd.DataFrame:
     return recorded.rename(columns={"Model input": "Factor"})[
         ["Factor", "Current value", "Effect on estimate"]
     ]
+
+
+def _owner_v18_driver_table(contributions: pd.DataFrame, unit: str) -> pd.DataFrame:
+    """Turn local SHAP associations into a compact owner-readable table."""
+
+    if contributions.empty:
+        return pd.DataFrame()
+    result = contributions.head(3).copy()
+    result["Factor"] = result["feature"].map(
+        lambda value: str(value).replace("_", " ").strip().title()
+    )
+    result["Direction"] = result["contribution"].map(
+        lambda value: "Raises outlook" if float(value) > 0 else "Lowers outlook"
+    )
+    result["Relative influence"] = result["absolute_contribution"].map(
+        lambda value: f"{float(value) * 100:.2f} pts" if unit == "recovery" else f"{float(value):.0f} g"
+    )
+    return result[["Factor", "Direction", "Relative influence"]]
 
 
 def _eda_coverage_table(dataset) -> pd.DataFrame:
@@ -830,6 +881,354 @@ def _day35_milestone(dataset, cycle_id: str, building_id: str, as_of: object, ro
     return "Missed", f"Recorded Day 35 weight was {observed:.3f} kg, below the 1.8 kg milestone."
 
 
+CHECKPOINT_COLORS = {
+    7: "#2A6F97",
+    14: "#E9C46A",
+    21: "#D17A22",
+    28: "#A64D79",
+}
+
+
+def _render_model_evidence_outcome(outcome: str) -> None:
+    """Render finalized held-out evidence and the retained shadow challenger."""
+
+    evidence = load_outcome_research_evidence(outcome)
+    metrics = evidence.selected_metrics
+    challenger_metrics = evidence.challenger_metrics
+    manifest = evidence.manifest
+    promotion = manifest["promotion_gate"]
+    recovery = outcome == "recovery"
+    unit = "percentage points" if recovery else "g"
+    short_unit = "pp" if recovery else "g"
+    outcome_title = "Harvest recovery" if recovery else "Day 35 bodyweight"
+    target_text = "95% final recovery" if recovery else "1,800 g on Day 35"
+    challenger_name = display_name(evidence.challenger)
+    selected_name = display_name(evidence.one_se_selection)
+    improvement = float(promotion["cycle_macro_rmse_improvement_pct"])
+
+    summary = st.columns(4)
+    summary[0].metric("Selected capstone forecast", selected_name)
+    summary[1].metric("Cycle-macro RMSE", f"{float(metrics['cycle_macro_rmse']):.2f} {short_unit}")
+    summary[2].metric("Held-out MAE", f"{float(metrics['mae']):.2f} {short_unit}")
+    summary[3].metric("Held-out R²", f"{float(metrics['r2']):.2f}")
+
+    if promotion["retrospective_gate_passed"]:
+        st.success(
+            f"{challenger_name} passed the retrospective research gates, but remains shadow-only until "
+            f"it succeeds across {promotion['prospective_cycles_required']} new complete cycles."
+        )
+    else:
+        failed = [
+            label.replace("_", " ")
+            for label, passed in promotion["checks"].items()
+            if not passed
+        ]
+        st.warning(
+            f"{challenger_name} had the lowest error, but did not pass every stability gate "
+            f"({'; '.join(failed)}). It is research evidence—not an operational replacement."
+        )
+    st.info(
+        f"The one-standard-error rule selected **{selected_name}**. The lowest-error learned approach, "
+        f"**{challenger_name}**, changed cycle-macro RMSE by only **{improvement:.2f}%** versus the baseline "
+        f"({float(challenger_metrics['cycle_macro_rmse']):.2f} vs {float(metrics['cycle_macro_rmse']):.2f} {short_unit}). "
+        "It remains a shadow research comparator."
+    )
+
+    st.subheader("Top five models on unseen harvest cycles")
+    top = evidence.top_five.copy().sort_values("rank")
+    top_table = pd.DataFrame(
+        {
+            "Rank": top["rank"].astype(int),
+            "Model": top["candidate"].map(display_name),
+            "Family": top["family"].map(display_name),
+            f"Cycle-macro RMSE ({short_unit})": top["cycle_macro_rmse"].round(2),
+            f"MAE ({short_unit})": top["mae"].round(2),
+            "R²": top["r2"].round(3),
+            f"Bias ({short_unit})": top["bias"].round(2),
+            f"Worst-cycle RMSE ({short_unit})": top["worst_cycle_rmse"].round(2),
+        }
+    )
+    st.dataframe(top_table, hide_index=True, width="stretch")
+    compare = top.assign(model=top["candidate"].map(display_name))
+    comparison_chart = (
+        alt.Chart(compare)
+        .mark_bar(cornerRadiusEnd=4, color="#286245")
+        .encode(
+            y=alt.Y("model:N", sort=alt.EncodingSortField(field="cycle_macro_rmse", order="ascending"), title=None),
+            x=alt.X("cycle_macro_rmse:Q", title=f"Cycle-macro RMSE ({unit})", scale=alt.Scale(zero=False)),
+            tooltip=[alt.Tooltip("model:N", title="Model"), alt.Tooltip("cycle_macro_rmse:Q", title="RMSE", format=".2f")],
+        )
+        .properties(height=230)
+    )
+    st.altair_chart(comparison_chart, width="stretch")
+    st.caption(
+        "Selection is based primarily on mean RMSE across held-out harvest cycles, not on a random row split or training fit. "
+        "Lower is better. R² measures variation explained on those same held-out predictions."
+    )
+
+    st.subheader("Actual versus predicted, colored by information available")
+    predictions = evidence.selected_predictions.copy()
+    if recovery:
+        predictions[["actual", "predicted"]] = predictions[["actual", "predicted"]] * 100
+    predictions["checkpoint"] = predictions["review_day"].map(lambda day: f"Day {int(day)}")
+    color_domain = ["Day 7", "Day 14", "Day 21", "Day 28"]
+    color_range = [CHECKPOINT_COLORS[day] for day in (7, 14, 21, 28)]
+    lower = float(min(predictions["actual"].min(), predictions["predicted"].min()))
+    upper = float(max(predictions["actual"].max(), predictions["predicted"].max()))
+    diagonal = pd.DataFrame({"actual": [lower, upper], "predicted": [lower, upper]})
+    points = (
+        alt.Chart(predictions)
+        .mark_circle(size=72, opacity=0.72, stroke="white", strokeWidth=0.5)
+        .encode(
+            x=alt.X("actual:Q", title=f"Actual {outcome_title.lower()} ({'%' if recovery else 'g'})"),
+            y=alt.Y("predicted:Q", title=f"Predicted {outcome_title.lower()} ({'%' if recovery else 'g'})"),
+            color=alt.Color("checkpoint:N", scale=alt.Scale(domain=color_domain, range=color_range), title="Review checkpoint"),
+            tooltip=["cycle_id:N", "building_id:N", "checkpoint:N", alt.Tooltip("actual:Q", format=".1f"), alt.Tooltip("predicted:Q", format=".1f")],
+        )
+    )
+    ideal = alt.Chart(diagonal).mark_line(color="#607069", strokeDash=[6, 5]).encode(x="actual:Q", y="predicted:Q")
+    st.altair_chart((ideal + points).properties(height=420), width="stretch")
+    st.caption(
+        "Each dot is an out-of-fold building prediction from a cycle the model did not train on. Dots closer to the dashed line are more accurate. "
+        "Checkpoint colors show whether the estimate used evidence through Day 7, 14, 21, or 28."
+    )
+
+    st.subheader("Does error decrease as the flock gets older?")
+    checkpoint = evidence.selected_checkpoints.copy()
+    checkpoint_long = checkpoint.melt(
+        id_vars="review_day", value_vars=["cycle_macro_rmse", "mae"], var_name="metric", value_name="error"
+    )
+    checkpoint_long["metric"] = checkpoint_long["metric"].map(
+        {"cycle_macro_rmse": "Cycle-macro RMSE", "mae": "MAE"}
+    )
+    checkpoint_long["checkpoint"] = checkpoint_long["review_day"].map(lambda day: f"Day {int(day)}")
+    checkpoint_chart = (
+        alt.Chart(checkpoint_long)
+        .mark_bar(cornerRadiusTopLeft=3, cornerRadiusTopRight=3)
+        .encode(
+            x=alt.X("checkpoint:N", sort=color_domain, title="Review checkpoint"),
+            xOffset="metric:N",
+            y=alt.Y("error:Q", title=f"Held-out error ({unit})"),
+            color=alt.Color("checkpoint:N", scale=alt.Scale(domain=color_domain, range=color_range), legend=None),
+            opacity=alt.Opacity("metric:N", scale=alt.Scale(domain=["Cycle-macro RMSE", "MAE"], range=[1.0, 0.55]), title="Metric"),
+            tooltip=["checkpoint:N", "metric:N", alt.Tooltip("error:Q", format=".2f")],
+        )
+        .properties(height=330)
+    )
+    st.altair_chart(checkpoint_chart, width="stretch")
+    checkpoint_table = checkpoint[["review_day", "cycle_macro_rmse", "mae", "r2", "bias"]].copy()
+    checkpoint_table.columns = ["Day", f"Cycle-macro RMSE ({short_unit})", f"MAE ({short_unit})", "R²", f"Bias ({short_unit})"]
+    st.dataframe(checkpoint_table.round(2), hide_index=True, width="stretch")
+    st.caption(
+        "More days do not guarantee a perfectly monotonic improvement: new measurements help, but cycle drift, sparse weight sampling, and a small number of independent flocks still affect each checkpoint."
+    )
+
+    daily_root = evidence.root.parent / "daily_accuracy"
+    daily_path = daily_root / f"{outcome}_daily_metrics.csv"
+    daily_predictions_figure = daily_root / f"{outcome}_actual_vs_predicted_by_day.png"
+    if daily_path.exists():
+        st.subheader("Daily estimates between the validation checkpoints")
+        daily = pd.read_csv(daily_path)
+        daily_long = daily.melt(
+            id_vars="review_day",
+            value_vars=["cycle_macro_rmse", "cycle_macro_mae"],
+            var_name="metric",
+            value_name="error",
+        )
+        daily_long["metric"] = daily_long["metric"].map(
+            {"cycle_macro_rmse": "Cycle-macro RMSE", "cycle_macro_mae": "Cycle-macro MAE"}
+        )
+        daily_chart = (
+            alt.Chart(daily_long)
+            .mark_line(point=True)
+            .encode(
+                x=alt.X("review_day:Q", title="Forecast age (day)", scale=alt.Scale(domain=[7, 34])),
+                y=alt.Y("error:Q", title=f"Held-out error ({unit})", scale=alt.Scale(zero=False)),
+                color=alt.Color("metric:N", scale=alt.Scale(range=["#174C3C", "#377EB8"]), title=None),
+                tooltip=["review_day:Q", "metric:N", alt.Tooltip("error:Q", format=".2f")],
+            )
+            .properties(height=320)
+        )
+        checkpoint_rules = (
+            alt.Chart(pd.DataFrame({"review_day": [7, 14, 21, 28]}))
+            .mark_rule(strokeDash=[5, 4], color="#8A9991", opacity=0.55)
+            .encode(x="review_day:Q")
+        )
+        st.altair_chart(daily_chart + checkpoint_rules, width="stretch")
+        highlight = daily.loc[daily["review_day"].isin([7, 10, 14, 20, 21, 28, 34]), ["review_day", "cycle_macro_rmse", "cycle_macro_mae", "r2", "bias"]].copy()
+        highlight.columns = ["Day", f"Cycle RMSE ({short_unit})", f"Cycle MAE ({short_unit})", "R²", f"Bias ({short_unit})"]
+        st.dataframe(highlight.round(2), hide_index=True, width="stretch")
+        if daily_predictions_figure.exists():
+            st.image(
+                str(daily_predictions_figure),
+                caption="Held-out actual versus predicted at checkpoint and between-checkpoint days",
+                width="stretch",
+            )
+        st.caption(
+            "Canary can forecast on Day 10, Day 20, and every Day 7–34. Days 7/14/21/28 remain the principal validation anchors. "
+            "For bodyweight, a forecast changes materially when a new actual weight is recorded; a stale weight is never relabelled as a new measurement."
+        )
+
+    st.subheader("Top ten predictive drivers (held-out SHAP)")
+    shap = evidence.top_shap.copy()
+    if recovery:
+        shap[["mean_abs_shap", "mean_shap"]] = shap[["mean_abs_shap", "mean_shap"]] * 100
+    shap["feature_label"] = shap["feature"].map(feature_display_name)
+    shap["direction"] = np.where(
+        ~shap["direction_stable"].astype(bool),
+        "Direction unstable across cycles",
+        np.where(shap["value_shap_correlation"] >= 0, "Higher values tend to push prediction up", "Higher values tend to push prediction down"),
+    )
+    shap_chart = (
+        alt.Chart(shap.sort_values("mean_abs_shap"))
+        .mark_bar(cornerRadiusEnd=4)
+        .encode(
+            y=alt.Y("feature_label:N", sort=None, title=None),
+            x=alt.X("mean_abs_shap:Q", title=f"Mean |SHAP| ({unit})"),
+            color=alt.Color("direction_stable:N", scale=alt.Scale(domain=[True, False], range=["#286245", "#D17A22"]), title="Stable direction"),
+            tooltip=[alt.Tooltip("feature_label:N", title="Feature"), alt.Tooltip("mean_abs_shap:Q", title="Mean |SHAP|", format=".2f"), alt.Tooltip("direction:N", title="Direction")],
+        )
+        .properties(height=340)
+    )
+    st.altair_chart(shap_chart, width="stretch")
+    st.dataframe(
+        shap[["feature_label", "mean_abs_shap", "direction"]].rename(
+            columns={"feature_label": "Feature", "mean_abs_shap": f"Mean |SHAP| ({short_unit})", "direction": "Held-out direction"}
+        ).round(2),
+        hide_index=True,
+        width="stretch",
+    )
+    image_root = evidence.root.parent / "executive_reports"
+    image_prefix = "recovery" if recovery else "bodyweight"
+    image_columns = st.columns(2)
+    beeswarm = image_root / f"{image_prefix}_shap_beeswarm.png"
+    dependence = image_root / f"{image_prefix}_shap_dependence.png"
+    if beeswarm.exists():
+        image_columns[0].image(str(beeswarm), caption="Held-out SHAP distribution: feature value and direction across predictions", width="stretch")
+    if dependence.exists():
+        image_columns[1].image(str(dependence), caption="Leading-feature dependence: how the model response changes across observed values", width="stretch")
+    st.warning(
+        f"SHAP is shown for **{display_name(evidence.explanation_model)}**, a compatible learned shadow model—not "
+        f"for the selected transparent baseline, **{selected_name}**. The baseline is explained by its explicit "
+        "age-specific remaining-loss or remaining-gain calculation."
+    )
+    st.caption(
+        "SHAP shows predictive association, not causation. Orange bars flag features whose directional effect changed across held-out cycles; they should not be used to prescribe an intervention."
+    )
+
+    with st.expander("Promotion-gate audit and technical provenance"):
+        checks = pd.DataFrame(
+            {
+                "Gate": [label.replace("_", " ").capitalize() for label in promotion["checks"]],
+                "Result": ["Pass" if passed else "Fail" for passed in promotion["checks"].values()],
+            }
+        )
+        st.dataframe(checks, hide_index=True, width="stretch")
+        st.markdown(
+            f"- **Research round:** {manifest['round_version']}\n"
+            f"- **Primary validation:** {manifest['primary_validation']}\n"
+            f"- **Development sample:** {manifest['development_building_cycles']} building-cycles across {len(manifest['development_cycles'])} harvest cycles\n"
+            f"- **Locked later-cycle audit:** {manifest['locked_audit_cycle']}\n"
+            f"- **Target:** {target_text}\n"
+            f"- **Operational models changed:** {'Yes' if manifest['operational_models_changed'] else 'No'}"
+        )
+
+
+def _render_biology_aware_evidence(outcome: str) -> None:
+    """Render the isolated daily-landmark research bundle when it exists."""
+    folder = "recovery" if outcome == "recovery" else "bodyweight"
+    root = Path(__file__).resolve().parent / "outputs" / "biology_aware_modeling_round" / folder
+    manifest_path = root / "manifest.json"
+    if not manifest_path.exists():
+        st.info("The biology-aware daily-landmark research round has not been generated yet.")
+        return
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    top = pd.read_csv(root / "top_five_models.csv").sort_values("rank")
+    daily = pd.read_csv(root / "daily_metrics.csv")
+    best = manifest["selection"]["lowest_error_candidate"]
+    metrics = top.loc[top["candidate"].eq(best)].iloc[0]
+    unit = "pp" if outcome == "recovery" else "g"
+    columns = st.columns(4)
+    columns[0].metric("Lowest-error research model", display_name(best))
+    columns[1].metric("Daily cycle-macro RMSE", f"{float(metrics['cycle_macro_rmse']):.2f} {unit}")
+    columns[2].metric("Daily held-out MAE", f"{float(metrics['mae']):.2f} {unit}")
+    columns[3].metric("Daily held-out R²", f"{float(metrics['r2']):.3f}")
+    if manifest["promotion_gate"]["retrospective_gate_passed"]:
+        st.success("The retrospective gates passed, but three new complete prospective cycles are still required before promotion.")
+    else:
+        st.warning("The biology-aware challenger did not pass every retrospective promotion gate and remains research-only.")
+    st.dataframe(
+        top[["rank", "candidate", "family", "cycle_macro_rmse", "mae", "r2", "bias", "worst_cycle_rmse"]].rename(
+            columns={"rank": "Rank", "candidate": "Model", "family": "Family", "cycle_macro_rmse": f"Cycle RMSE ({unit})", "mae": f"MAE ({unit})", "r2": "R²", "bias": f"Bias ({unit})", "worst_cycle_rmse": f"Worst cycle ({unit})"}
+        ), hide_index=True, width="stretch",
+    )
+    learning = daily.loc[daily["candidate"].eq(best)].copy()
+    st.line_chart(learning.set_index("review_day")[["rmse", "mae"]], height=280)
+    st.caption(
+        "Daily estimates are available from Day 7 through Day 34. Days 7, 14, 21 and 28 are principal validated checkpoints; intervening days use only evidence available by that date and never represent a stale weight as newly measured."
+    )
+    visual_columns = st.columns(2)
+    with visual_columns[0]:
+        st.image(str(root / "figures" / "actual_vs_predicted_by_day.png"), caption="Held-out actual versus predicted")
+    with visual_columns[1]:
+        st.image(str(root / "figures" / "accuracy_and_uncertainty_by_day.png"), caption="Error and interval width by day")
+    shap_columns = st.columns(2)
+    with shap_columns[0]:
+        st.image(str(root / "figures" / "shap_top10.png"), caption="Top 10 held-out SHAP drivers")
+    with shap_columns[1]:
+        st.image(str(root / "figures" / "shap_beeswarm.png"), caption="SHAP direction and magnitude")
+    st.caption("SHAP describes predictive association in the tree residual challenger. It does not prove causation or prescribe treatment.")
+
+
+def _render_architecture_evidence(outcome: str) -> None:
+    """Render the research-only pooled/checkpoint/hybrid comparison."""
+    folder = "recovery" if outcome == "recovery" else "bodyweight"
+    root = Path(__file__).resolve().parent / "outputs" / "robust_model_architecture_test" / folder
+    manifest_path = root / "manifest.json"
+    if not manifest_path.exists():
+        st.info("The robust model-architecture test has not been generated yet.")
+        return
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    comparison = pd.read_csv(root / "candidate_comparison.csv").sort_values("rank")
+    daily = pd.read_csv(root / "daily_metrics.csv")
+    selection = manifest["selection"]
+    best = selection["lowest_error_candidate"]
+    capstone = selection["daily_capable_champion"]
+    daily_best = selection["daily_capable_lowest_error"]
+    metrics = comparison.loc[comparison["candidate"].eq(best)].iloc[0]
+    unit = "pp" if outcome == "recovery" else "g"
+    cards = st.columns(4)
+    cards[0].metric("Lowest-error model", display_name(best))
+    cards[1].metric("Architecture", str(metrics["architecture"]).title())
+    cards[2].metric("Matched cycle RMSE", f"{float(metrics['cycle_macro_rmse']):.2f} {unit}")
+    cards[3].metric("Held-out R²", f"{float(metrics['r2']):.3f}")
+    st.caption(
+        f"One-SE capstone selection: **{display_name(capstone)}**. Lowest-error daily challenger: **{display_name(daily_best)}**. All architectures are compared on identical held-out Days 7, 14, 21 and 28; only pooled and hybrid models are scored on intervening days."
+    )
+    if manifest["promotion_gate"]["retrospective_gate_passed"]:
+        st.success("The retrospective gate passed, but prospective shadow evidence is still required before promotion.")
+    else:
+        st.warning("No architecture cleared the retrospective replacement gate. Operational forecasts remain unchanged.")
+    st.dataframe(
+        comparison.head(10)[["rank", "candidate", "architecture", "family", "cycle_macro_rmse", "mae", "r2", "bias"]].rename(
+            columns={"rank": "Rank", "candidate": "Model", "architecture": "Architecture", "family": "Family", "cycle_macro_rmse": f"Cycle RMSE ({unit})", "mae": f"MAE ({unit})", "r2": "R²", "bias": f"Bias ({unit})"}
+        ), hide_index=True, width="stretch",
+    )
+    learning = daily.loc[daily["candidate"].eq(daily_best)].set_index("review_day")
+    st.line_chart(learning[["cycle_macro_rmse", "mae"]], height=280)
+    visual_columns = st.columns(2)
+    with visual_columns[0]:
+        st.image(str(root / "figures" / "architecture_comparison.png"), caption="Pooled, checkpoint and hybrid comparison")
+    with visual_columns[1]:
+        st.image(str(root / "figures" / "actual_vs_predicted_by_checkpoint.png"), caption="Held-out actual versus predicted, marked by checkpoint")
+    shap_columns = st.columns(2)
+    with shap_columns[0]:
+        st.image(str(root / "figures" / "shap_top10.png"), caption="Top held-out SHAP associations")
+    with shap_columns[1]:
+        st.image(str(root / "figures" / "shap_beeswarm.png"), caption="SHAP direction and magnitude")
+    st.caption("SHAP describes predictive association for a compatible learned challenger. It does not prove causation and does not drive recommendations.")
+
+
 VIEW_PRIORITIES = "Home"
 VIEW_DETAILS = "Building View"
 VIEW_HARVEST = "Harvest Analysis"
@@ -837,6 +1236,7 @@ VIEW_VALUE = "Business Value"
 VIEW_ACTIONS = "Action Playbook"
 VIEW_CHECKS = "Data & Settings"
 VIEW_EVIDENCE = "EDA"
+VIEW_MODEL_EVIDENCE = "Model Evidence"
 VIEW_METHODS = "Canary Methodology"
 
 
@@ -850,7 +1250,10 @@ PAGE_HARVEST = st.Page(
 PAGE_VALUE = st.Page(
     "pages/business_value.py", title="Business Value", icon=":material/payments:"
 )
-PAGE_EDA = st.Page("pages/eda.py", title="EDA & Insights", icon=":material/insights:")
+PAGE_EDA = st.Page("pages/eda.py", title="Farm Insights", icon=":material/insights:")
+PAGE_MODEL_EVIDENCE = st.Page(
+    "pages/model_evidence.py", title="Model Evidence", icon=":material/model_training:"
+)
 PAGE_METHODS = st.Page(
     "pages/methodology.py", title="Canary Methodology", icon=":material/schema:"
 )
@@ -863,8 +1266,7 @@ PAGE_DATA = st.Page(
 
 navigation = st.navigation(
     {
-        "Farm owner": [PAGE_HOME, PAGE_BUILDING, PAGE_HARVEST, PAGE_VALUE],
-        "Capstone evidence": [PAGE_EDA, PAGE_METHODS],
+        "Farm owner": [PAGE_HOME, PAGE_BUILDING, PAGE_HARVEST, PAGE_EDA],
         "Administration": [PAGE_ACTIONS, PAGE_DATA],
     }
 )
@@ -1103,7 +1505,6 @@ def _building_card(row: pd.Series) -> str:
         else ""
     )
     predicted_recovery = row.get("predicted_final_recovery", pd.NA)
-    revenue_at_risk = row.get("gross_revenue_at_risk_php", pd.NA)
     current_recovery = row.get("percentage_alive", pd.NA)
     latest_weight = row.get("latest_weight_kg", pd.NA)
     weight_day = row.get("weight_measurement_day", pd.NA)
@@ -1126,7 +1527,6 @@ def _building_card(row: pd.Series) -> str:
         <div class="outcome-row"><div class="outcome-name">Harvest recovery</div><div class="outcome-detail"><div class="outcome-flow"><span>Current recorded: {_percent(current_recovery)}</span><span class="outcome-arrow">→</span><strong>Projected: {_percent(predicted_recovery)}</strong></div><span class="gap-tag {recovery_class}">{html.escape(recovery_gap)} · harvest goal 95%</span></div></div>
         <div class="outcome-row"><div class="outcome-name">Average weight (g)</div><div class="outcome-detail"><div class="outcome-flow"><span>Latest: {html.escape(current_weight_text)}</span><span class="outcome-arrow">→</span><strong>Projected Day 35: {weight_value}</strong></div><span class="gap-tag {weight_class}">{html.escape(weight_gap)} · Day 35 goal 1,800 g</span></div></div>
       </div>
-      <div class="value-strip"><div class="label">Gross revenue at risk to 95%</div><strong>{_php(revenue_at_risk)}</strong></div>
       <div class="action"><div class="label">Next action · {html.escape(str(row['recommendation_urgency']))}</div>{html.escape(owner_action)}</div>
     </div>
     """
@@ -1255,10 +1655,13 @@ if hasattr(load_day35_manifest, "cache_clear"):
     load_day35_manifest.cache_clear()
 recovery_manifest, _recovery_model = load_model_bundle("recovery")
 day35_manifest = load_day35_manifest()
+try:
+    trish_release = load_v18_manifest()["bundle_version"]
+except (FileNotFoundError, KeyError, ValueError):
+    trish_release = None
 with st.sidebar:
     st.caption(
-        f"Model release · Recovery {recovery_manifest['model_version']} · "
-        f"Day 35 weight {day35_manifest['model_version']}"
+        f"Model release · {trish_release or recovery_manifest['model_version']}"
     )
 performance_path = _default_performance_workbook()
 final_weight_labels = None
@@ -1305,16 +1708,12 @@ else:
     snapshot = apply_recommendations(
         attach_forecasts(dataset, risk_snapshot), recommendation_playbook
     )
+    snapshot = attach_management_priority(snapshot)
     snapshot = attach_business_value(snapshot, value_assumptions)
     snapshot = _attach_owner_action_context(
         snapshot, dataset, selected_cycle, selected_date
     )
-    ranked = (
-        snapshot.assign(_rated=snapshot["risk_score"].notna())
-        .sort_values(["_rated", "risk_score", "building_order"], ascending=[False, False, True])
-        .drop(columns="_rated")
-        .reset_index(drop=True)
-    )
+    ranked = rank_management_priorities(snapshot)
 all_buildings = snapshot.sort_values("building_order").reset_index(drop=True)
 if historical_cycle:
     placed = ranked.iloc[0:0]
@@ -1333,16 +1732,17 @@ if selected_view == VIEW_PRIORITIES:
     st.markdown(
         """
         <div class="hero"><small>PROJECT CANARY · EARLY WARNING AND DECISION SUPPORT</small>
-          <h1>Identify at-risk buildings early and act before targets are missed.</h1>
-          <p>Project Canary is an early-warning and decision-support system for broiler farms. It identifies buildings at risk of missing the 1,800 g Day 35 and 95% harvest-recovery targets, projects both outcomes from the latest available data, explains why a building was flagged, and recommends what management should check next.</p>
+          <h1>Make production outcomes more consistent by identifying off-track buildings early.</h1>
+          <p>Project Canary is an early-warning and decision-support system for broiler farms. It gives management earlier visibility into buildings at risk of missing the 1,800 g Day 35 weight milestone or 95% harvest-recovery goal, explains the recorded warning signs, projects likely outcomes, and recommends what to check next.</p>
         </div>
         <div class="intro-grid">
-          <div class="intro-panel"><span class="intro-kicker">The management problem</span><strong>Daily records do not clearly show which building needs attention first.</strong><span>Weight, survival, mortality, feed, and environmental readings are spread across rows and dates, so the six buildings must be compared manually.</span></div>
-          <div class="intro-panel solution"><span class="intro-kicker">What Canary does</span><strong>Canary turns the latest records into one daily decision view.</strong><span>It scores operational risk, projects Day 35 weight and harvest recovery, shows each gap to target, and recommends the next inspection.</span></div>
+          <div class="intro-panel"><span class="intro-kicker">The management problem</span><strong>Production outcomes are inconsistent.</strong><span>Harvest recovery varies and can fall below the 95% goal. Birds also do not consistently reach the desired Day 35 weight milestone.</span></div>
+          <div class="intro-panel solution"><span class="intro-kicker">The management gap</span><strong>The farm needs earlier visibility of off-track flocks.</strong><span>Daily records alone do not make it easy to see which building is drifting, why it is drifting, and where management should focus before poor results become final outcomes.</span></div>
         </div>
+        <div class="value-path"><span>Earlier visibility</span><span class="path-arrow">→</span><span>Earlier investigation and action</span><span class="path-arrow">→</span><span>More consistent recovery and growth outcomes</span><span class="value-path-note">Canary supports management decisions; it does not diagnose disease, prescribe treatment, or guarantee outcomes.</span></div>
         <div class="decision-question">
           <div class="decision-icon">?</div>
-          <div><span class="decision-kicker">The business question</span><strong>Which buildings are at risk of missing the 1,800 g Day 35 or 95% harvest-recovery goals, what results are currently projected, why are they at risk, and what should management do next?</strong><div class="decision-goals"><span class="goal-chip">1,800 g average weight by Day 35</span><span class="goal-chip">95% recovery at harvest</span></div></div>
+          <div><span class="decision-kicker">The business question</span><strong>How can the farm make production outcomes more consistent? Which buildings are going off-track, what evidence explains the concern, what recovery and Day 35 weight are currently expected, and what should management check first?</strong><div class="decision-goals"><span class="goal-chip">1,800 g average weight by Day 35</span><span class="goal-chip">95% recovery at harvest</span></div></div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -1416,9 +1816,6 @@ if selected_view == VIEW_PRIORITIES:
             help="Completed buildings with a defensible final average weight match in Farm Performance Summary.",
         )
     else:
-        total_revenue_at_risk = placed["gross_revenue_at_risk_php"].sum(
-            min_count=1
-        )
         priority = ranked.loc[ranked["state"].isin(["Active", "Incomplete"])].head(1)
         attention_names = placed.loc[
             placed["risk_rating"].isin(["Medium", "High", "Critical"]), "building_id"
@@ -1448,6 +1845,11 @@ if selected_view == VIEW_PRIORITIES:
         else:
             first = priority.iloc[0]
             priority_name = html.escape(str(first["building_id"]))
+            priority_risk_text = (
+                f"{first['risk_rating']} observed risk · {int(first['risk_score'])}/12"
+                if pd.notna(first.get("risk_score"))
+                else "Observed risk not assessable"
+            )
             priority_sub = html.escape(
                 f"{first['risk_rating']} risk · {first['recommendation_urgency']}"
             )
@@ -1462,7 +1864,7 @@ if selected_view == VIEW_PRIORITIES:
             <div class="executive-grid">
               <div class="executive-card"><div class="eyebrow">Buildings needing attention</div><div class="metric-value">{html.escape(attention_value)}</div><div class="metric-sub">{html.escape(attention_sub)}</div></div>
               <div class="executive-card"><div class="eyebrow">Projected harvest recovery</div><div class="metric-value">{_percent(portfolio_recovery)}</div><div class="metric-sub">{html.escape(portfolio_gap_text)} · inventory-weighted</div></div>
-              <div class="executive-card"><div class="eyebrow">Estimated gross revenue at risk</div><div class="metric-value">{_php(total_revenue_at_risk)}</div><div class="metric-sub">Recovery gap to 95% using editable planning assumptions</div></div>
+              <div class="executive-card"><div class="eyebrow">Review first</div><div class="metric-value">{priority_name}</div><div class="metric-sub">{priority_sub}</div></div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -1478,7 +1880,7 @@ if selected_view == VIEW_PRIORITIES:
                 owner_action = str(first.get("owner_action", first["recommended_action"]))
                 with priority_columns[0]:
                     st.markdown(
-                        f'<div class="priority-cell"><span class="priority-kicker">Review first</span><span class="priority-name">{html.escape(str(first["building_id"]))}</span><span class="priority-copy">{html.escape(str(first["risk_rating"]))} risk · {int(first["risk_score"])}/12</span></div>',
+                        f'<div class="priority-cell"><span class="priority-kicker">Review first · {html.escape(str(first["management_priority"]))}</span><span class="priority-name">{html.escape(str(first["building_id"]))}</span><span class="priority-copy">{html.escape(priority_risk_text)}<br>{html.escape(str(first["management_priority_reason"]))}</span></div>',
                         unsafe_allow_html=True,
                     )
                 with priority_columns[1]:
@@ -1528,11 +1930,6 @@ if selected_view == VIEW_PRIORITIES:
                         _open_building_details(str(row["building_id"]))
     if not historical_cycle and not recommendation_playbook["approval_status"].startswith("Approved"):
         st.caption("Recommended actions are preliminary guidance pending Doc Raymond’s review.")
-    if not historical_cycle:
-        st.caption(
-            f"Business-value estimate uses an editable planning assumption of ₱{value_assumptions.price_php_per_kg:,.0f}/kg and "
-            f"{value_assumptions.sale_weight_kg:.2f} kg per recovered bird. Adjust these in Business Value."
-        )
 
 if selected_view == VIEW_HARVEST:
     st.markdown('<div class="title">Harvest Analysis</div>', unsafe_allow_html=True)
@@ -1541,7 +1938,7 @@ if selected_view == VIEW_HARVEST:
         unsafe_allow_html=True,
     )
     st.caption(
-        f"Model release · Recovery {recovery_manifest['model_version']} · Day 35 weight {day35_manifest['model_version']}"
+        f"Model release · {trish_release or recovery_manifest['model_version']}"
     )
 
     harvest_rows = build_harvest_analysis_rows(
@@ -1969,14 +2366,14 @@ if selected_view == VIEW_HARVEST:
             mime="text/csv",
         )
 
-    with st.expander("Why recovery uses 25 outcomes while weight uses 31"):
+    with st.expander("Why snapshot rows are not additional independent flocks"):
         st.markdown(
             f"""
             - **All recorded history:** 34 building-cycle records across seven cycles, including the current 2026-3 cycle.
             - **Recovery training:** {recovery_manifest['training_building_cycles']} independent outcomes across {len(recovery_manifest['training_cycles'])} fully eligible cycles.
             - **Day 35 weight training:** {day35_manifest['training_building_cycles']} observed Day 35 outcomes across {len(day35_manifest['training_cycles'])} historical cycles.
 
-            The extra six weight outcomes are the six buildings in **2026-2**. Their Day 35 weights were observed, but several later Lagundi recovery rows contain carried-forward populations and incomplete daily evidence. Canary therefore shows the recorded recovery proxy with a warning but excludes 2026-2 from recovery-model training.
+            The refreshed 2026-2 records now provide eligible population endpoints for all six buildings, so recovery and Day 35 weight each use **31 historical building outcomes across six cycles**. The latest 2026-3 Day 35 weights are kept out of fitting and used as a genuinely later prospective audit.
 
             Repeated Day 7, 14, 21, and 28 training snapshots are different historical decision points—not additional independent flocks.
             """
@@ -2264,7 +2661,7 @@ if selected_view == VIEW_DETAILS:
             )
         st.stop()
 
-    dcols = st.columns(5)
+    dcols = st.columns(4)
     dcols[0].metric("Risk level", building["risk_rating"])
     dcols[1].metric("Risk score", "—" if pd.isna(building["risk_score"]) else f"{int(building['risk_score'])}/12")
     dcols[2].metric(
@@ -2277,12 +2674,6 @@ if selected_view == VIEW_DETAILS:
         detail_weight,
         help="Estimated average liveweight on production Day 35, compared with the 1.8 kg milestone.",
     )
-    dcols[4].metric(
-        "Gross revenue at risk",
-        _php(building.get("gross_revenue_at_risk_php", pd.NA)),
-        help="Editable estimate based on the predicted recovery gap to 95%. Adjust assumptions in Business Value.",
-    )
-
     st.subheader("1 · Decision summary and next check")
     dimension_trace = build_dimension_trace(building, rules)
     operational_alerts = evaluate_operational_alerts(
@@ -2375,13 +2766,13 @@ if selected_view == VIEW_DETAILS:
     with fcols[0]:
         if pd.notna(building["recovery_interval_low"]):
             st.caption(
-                f"Expected survival range: {_percent(building['recovery_interval_low'])}–{_percent(building['recovery_interval_high'])}. {building['recovery_confidence']}"
+                f"{building.get('recovery_interval_label', '80% interval')}: {_percent(building['recovery_interval_low'])}–{_percent(building['recovery_interval_high'])} · {building['recovery_target_status']} · {building['recovery_checkpoint_status']}. {building['recovery_confidence']}"
             )
         else:
             st.caption(building["recovery_forecast_status"])
     with fcols[1]:
         if pd.notna(building["day35_weight_interval_low_kg"]):
-            st.caption(f"Expected Day 35 range: {_weight(building['day35_weight_interval_low_kg'])}–{_weight(building['day35_weight_interval_high_kg'])}. {building['day35_weight_confidence']}")
+            st.caption(f"80% Day 35 interval: {_weight(building['day35_weight_interval_low_kg'])}–{_weight(building['day35_weight_interval_high_kg'])} · {building['day35_weight_target_status']} · {building['day35_weight_checkpoint_status']}. {building['day35_weight_confidence']}")
         else:
             st.caption(building["day35_weight_status"])
 
@@ -2400,8 +2791,10 @@ if selected_view == VIEW_DETAILS:
             recovery_delta = None if pd.isna(building["recovery_target_gap_pp"]) else f"{float(building['recovery_target_gap_pp']):+.1f} pts vs 95% goal"
             st.metric("Current prediction", _percent(building["predicted_final_recovery"]), recovery_delta)
             if pd.notna(building["recovery_interval_low"]):
-                st.write(f"Likely range: **{_percent(building['recovery_interval_low'])}–{_percent(building['recovery_interval_high'])}**")
-            recovery_note = "This estimate updates as survival, mortality, feed, and available environment evidence are recorded. Its historical training target is last-recorded recovery, used as the capstone proxy until true harvest status is available."
+                st.write(f"{building.get('recovery_interval_label', '80% interval')}: **{_percent(building['recovery_interval_low'])}–{_percent(building['recovery_interval_high'])}**")
+                if pd.notna(building.get("recovery_interval_90_low")):
+                    st.caption(f"90% interval: {_percent(building['recovery_interval_90_low'])}–{_percent(building['recovery_interval_90_high'])}")
+            recovery_note = "This estimate updates as survival, mortality, measured weight, and available environmental evidence are recorded. Feed is excluded while its units remain unresolved. Its target is last-recorded recovery, used as the capstone proxy until true harvest status is available."
             st.markdown(f'<div class="forecast-note">{recovery_note}</div>', unsafe_allow_html=True)
     with forecast_columns[1]:
         with st.container(border=True):
@@ -2410,7 +2803,9 @@ if selected_view == VIEW_DETAILS:
             weight_metric_label = "Observed result" if building["day35_weight_scope"] == "Recorded Day 35 result" else "Current projection"
             st.metric(weight_metric_label, detail_weight, weight_delta)
             if pd.notna(building["day35_weight_interval_low_kg"]):
-                st.write(f"Likely range: **{_weight(building['day35_weight_interval_low_kg'])}–{_weight(building['day35_weight_interval_high_kg'])}**")
+                st.write(f"{building.get('day35_weight_interval_label', '80% interval')}: **{_weight(building['day35_weight_interval_low_kg'])}–{_weight(building['day35_weight_interval_high_kg'])}**")
+                if pd.notna(building.get("day35_weight_interval_90_low_kg")):
+                    st.caption(f"90% interval: {_weight(building['day35_weight_interval_90_low_kg'])}–{_weight(building['day35_weight_interval_90_high_kg'])}")
             weight_note = (
                 "This is the building's recorded Day 35 measurement."
                 if building["day35_weight_scope"] == "Recorded Day 35 result"
@@ -2428,9 +2823,107 @@ if selected_view == VIEW_DETAILS:
         "Recovery is compared with 95%. Weight is projected specifically to Day 35 and compared with 1.8 kg."
     )
 
-    recovery_contributions = recovery_feature_contributions(
-        dataset, selected_cycle, chosen, pd.Timestamp(selected_date)
+    uses_trish = str(building.get("trish_bundle_version", "Not available")) != "Not available"
+    if uses_trish:
+        recovery_contributions = v18_local_contributions(
+            "model_1", selected_cycle, chosen, int(building["cycle_day"])
+        )
+        weight_model_id = "model_2" if int(building["cycle_day"]) <= 14 else "model_3"
+        weight_contributions = v18_local_contributions(
+            weight_model_id, selected_cycle, chosen, int(building["cycle_day"])
+        )
+    else:
+        recovery_contributions = recovery_feature_contributions(
+            dataset, selected_cycle, chosen, pd.Timestamp(selected_date)
+        )
+        weight_contributions = pd.DataFrame()
+    st.subheader("4 · What influenced the outlook")
+    st.caption(
+        "These explanations describe how recorded inputs shaped the estimate. They do not prove cause and do not prescribe treatment."
     )
+    influence_columns = st.columns(2)
+    with influence_columns[0]:
+        st.markdown("**Recovery outlook**")
+        owner_drivers = (
+            _owner_v18_driver_table(recovery_contributions, "recovery")
+            if uses_trish
+            else _owner_recovery_driver_table(recovery_contributions).head(3)
+        )
+        if owner_drivers.empty:
+            st.info("No building-specific recovery explanation is available for this date.")
+        else:
+            st.dataframe(owner_drivers, hide_index=True, width="stretch")
+    with influence_columns[1]:
+        st.markdown("**Day 35 weight outlook**")
+        if uses_trish and not weight_contributions.empty:
+            st.dataframe(
+                _owner_v18_driver_table(weight_contributions, "weight"),
+                hide_index=True,
+                width="stretch",
+            )
+        elif pd.notna(building["projected_day35_weight_kg"]) and pd.notna(building["latest_weight_kg"]):
+            remaining_gain_g = (
+                float(building["projected_day35_weight_kg"])
+                - float(building["latest_weight_kg"])
+            ) * 1000
+            st.write(
+                f"Latest measured weight **{_grams(building['latest_weight_kg'])}** on Day "
+                f"**{int(building['weight_measurement_day'])}**, plus an expected remaining gain of "
+                f"**{remaining_gain_g:.0f} g**, produces the current Day 35 outlook."
+            )
+        else:
+            st.info("A measured building weight is required before Canary can explain a Day 35 outlook.")
+        st.caption("Use the measured growth gap to decide whether to reweigh and inspect feed, water, bird condition, and house conditions.")
+
+    if pd.notna(building.get("estimated_day_to_1_8kg", pd.NA)):
+        with st.expander("Harvest planning outlook"):
+            planning_columns = st.columns(3)
+            planning_columns[0].metric(
+                "Estimated 1.8 kg timing", f"Day {float(building['estimated_day_to_1_8kg']):.1f}"
+            )
+            planning_columns[1].metric(
+                "Estimated 2.0 kg timing", f"Day {float(building['estimated_day_to_2_0kg']):.1f}"
+            )
+            planning_columns[2].metric(
+                "Sale-window recovery", _percent(building["projected_sale_window_recovery"])
+            )
+            st.caption(
+                "Models 4–6 provide secondary planning ranges. Their timing targets are partly curve-derived and do not set an automatic harvest or sale decision."
+            )
+
+    st.subheader("5 · How the outlook changed")
+    if forecast_history.empty:
+        st.info("No daily history is available for this selection.")
+    else:
+        chart = forecast_history.set_index("as_of_date")
+        history_columns = st.columns(3)
+        with history_columns[0]:
+            st.caption("Risk score (out of 12)")
+            st.line_chart(chart[["risk_score"]], height=230)
+        with history_columns[1]:
+            st.caption("Projected recovery (%)")
+            recovery_chart = chart[["predicted_final_recovery"]].mul(100)
+            recovery_chart["95% goal"] = 95.0
+            st.line_chart(recovery_chart, height=230)
+        with history_columns[2]:
+            st.caption("Projected Day 35 weight (kg)")
+            weight_chart = chart[["projected_day35_weight_kg"]].copy()
+            weight_chart["1.8 kg goal"] = DAY35_TARGET_KG
+            st.line_chart(weight_chart, height=230)
+
+    with st.expander("Data availability for this review"):
+        st.markdown(
+            f"- Review date: **{pd.Timestamp(selected_date).strftime('%d %b %Y')}**\n"
+            f"- Weight evidence: **{building['weight_freshness']}**\n"
+            f"- Daily-data evidence: **{building['data_freshness']}**\n"
+            f"- Risk checks scored: **{int(building['scored_dimensions'])}/4**\n"
+            "- Later records are excluded from this review. Missing evidence remains missing."
+        )
+    st.caption(
+        "Canary supports prioritization and investigation. It does not diagnose disease, automatically prescribe treatment, replace veterinary judgment, or guarantee an outcome."
+    )
+    st.stop()
+
     st.markdown("### Understand how each forecast was built")
     st.caption(
         "Choose an outcome below. Each model follows the same six-part explanation so the owner and panel can trace the question, data, method, result, and limitation."
@@ -2454,10 +2947,28 @@ if selected_view == VIEW_DETAILS:
                 help="Mean absolute error on complete harvest cycles that were excluded from training.",
             )
             summary_cols[3].metric("95% hit/miss test", "Not validated")
+            selected_recovery_name = {
+                "age_band_remaining_loss": "age-band remaining-loss baseline",
+                "remaining_loss_linear": "ordinary linear regression",
+                "remaining_loss_ridge": "Ridge regression",
+                "remaining_loss_gradient_boosting": "Gradient Boosting",
+                "remaining_loss_extra_trees": "Extra Trees",
+            }.get(recovery_manifest["selected_model"], recovery_manifest["selected_model"])
             st.write(
-                "Canary operationally uses the **age-band remaining-loss baseline**: current survival minus the additional loss historically observed after this age. "
-                f"The best learned challenger is **{recovery_manifest['research_champion'].replace('_', ' ').title()}**, but it did not pass every stability and 95% target-classification gate."
+                f"Canary uses **{selected_recovery_name}** to estimate additional loss after today, then subtracts that loss from current survival. "
+                + (
+                    "It clears the minimum overall target-side gate, but sensitivity for actual 95% achievers remains weak, so it is still presented as an experimental estimate—not a probability."
+                    if recovery_manifest["champion_gates"]["target_classification_gate_passed"]
+                    else "It did not pass the stricter 95% hit/miss classification gate."
+                )
             )
+            if pd.notna(building.get("recovery_expected_additional_loss_pp")):
+                st.info(
+                    f"**Today's calculation:** {_percent(building['percentage_alive'])} currently recorded alive "
+                    f"− {float(building['recovery_expected_additional_loss_pp']):.2f} points of expected remaining loss "
+                    f"= **{_percent(building['predicted_final_recovery'])} projected recovery**. "
+                    f"Age handling: {building['recovery_live_age_policy']}."
+                )
 
         st.markdown("#### C. Input and Output Variables")
         st.dataframe(
@@ -2474,7 +2985,12 @@ if selected_view == VIEW_DETAILS:
             hide_index=True,
             width="stretch",
         )
-        with st.expander("See the exact ten recovery-model inputs"):
+        st.caption(
+            "Recovery holdout folds: " + ", ".join(recovery_manifest["training_cycles"]) + ". "
+            "In each fold, every building from the named cycle was removed before training. "
+            "The latest 2026-3 cycle was reserved for a later audit and never used in model fitting. Risk alerts are deterministic rules, so they are replayed at historical dates rather than trained with holdouts."
+        )
+        with st.expander(f"See the exact {len(recovery_manifest['feature_columns'])} recovery-model inputs"):
             st.dataframe(
                 pd.DataFrame(
                     {
@@ -2493,8 +3009,8 @@ if selected_view == VIEW_DETAILS:
         st.dataframe(
             pd.DataFrame(
                 [
-                    {"Stage": "1 · Data cleaning", "What happened": "Standardized cycle, building, date and units; combined Zone A/B environment rows; reduced 1,785 source rows to 1,666 unique building-days; preserved missing values instead of treating them as zero."},
-                    {"Stage": "2 · Label and snapshot creation", "What happened": "Created 25 completed building outcomes and 122 Day 7/14/21/28/latest decision snapshots. Y was reframed as the additional population loss after each snapshot; every X value was frozen on that date."},
+                    {"Stage": "1 · Data cleaning", "What happened": "Standardized cycle, building, date and units; combined Zone A/B environment rows; produced 1,624 unique building-days with no duplicated building-day keys; preserved missing values instead of treating them as zero."},
+                    {"Stage": "2 · Label and snapshot creation", "What happened": f"Created {recovery_manifest['training_building_cycles']} completed building outcomes and {recovery_manifest['training_snapshot_rows']} Day 7/14/21/28/latest decision snapshots. Y was reframed as the additional population loss after each snapshot; every X value was frozen on that date."},
                     {"Stage": "3 · Feature engineering", "What happened": "Created current survival, recent mortality, mortality change, age-target weight gap, days since weighing, environmental deviation, recent out-of-band days and reading freshness."},
                     {"Stage": "4 · Fold-only preparation", "What happened": "Within each training fold, numeric gaps were median-imputed, missingness flags were added, and linear-model inputs were standardized. The held-out cycle never set these values."},
                     {"Stage": "5 · Train/test split", "What happened": "No random 80/20 row split was used. The outer test fold removed one complete harvest cycle, trained on all remaining cycles, predicted the unseen cycle, and repeated for every cycle."},
@@ -2512,6 +3028,85 @@ if selected_view == VIEW_DETAILS:
             hide_index=True,
             width="stretch",
         )
+        comparison_plot = _candidate_metrics_table(recovery_manifest, "recovery")
+        comparison_plot = comparison_plot.dropna(subset=["MAE (percentage points)"])
+        chart_cols = st.columns(2)
+        with chart_cols[0]:
+            st.altair_chart(
+                alt.Chart(comparison_plot)
+                .mark_bar(cornerRadiusEnd=5, color="#286245")
+                .encode(
+                    x=alt.X("MAE (percentage points):Q", title="Held-out MAE (percentage points)"),
+                    y=alt.Y("Candidate:N", sort="x", title=None),
+                    tooltip=["Candidate", "MAE (percentage points)", "Cycle-balanced MAE (percentage points)"],
+                )
+                .properties(title="Typical error by model", height=190),
+                width="stretch",
+            )
+        with chart_cols[1]:
+            st.altair_chart(
+                alt.Chart(comparison_plot)
+                .mark_bar(cornerRadiusEnd=5, color="#6b9b78")
+                .encode(
+                    x=alt.X("R²:Q", title="Held-out R²"),
+                    y=alt.Y("Candidate:N", sort="-x", title=None),
+                    tooltip=["Candidate", "R²"],
+                )
+                .properties(title="Unseen-cycle variation explained", height=190),
+                width="stretch",
+            )
+        recovery_backtest = pd.DataFrame(recovery_manifest.get("backtest_predictions", []))
+        checkpoint_rows = pd.DataFrame(
+            [
+                {
+                    "Review day": int(day),
+                    "MAE (points)": float(values["mae"]) * 100,
+                    "RMSE (points)": float(values["rmse"]) * 100,
+                    "R²": float(values["r2"]),
+                }
+                for day, values in recovery_manifest.get("checkpoint_performance", {}).items()
+            ]
+        )
+        proof_cols = st.columns(2)
+        with proof_cols[0]:
+            if not recovery_backtest.empty:
+                recovery_backtest["Actual recovery (%)"] = recovery_backtest["actual_final_recovery_proxy"] * 100
+                recovery_backtest["Predicted recovery (%)"] = recovery_backtest["predicted_final_recovery"] * 100
+                low = float(min(recovery_backtest["Actual recovery (%)"].min(), recovery_backtest["Predicted recovery (%)"].min()))
+                high = float(max(recovery_backtest["Actual recovery (%)"].max(), recovery_backtest["Predicted recovery (%)"].max()))
+                points = alt.Chart(recovery_backtest).mark_circle(size=70, opacity=0.7).encode(
+                    x=alt.X("Actual recovery (%):Q", scale=alt.Scale(domain=[low, high])),
+                    y=alt.Y("Predicted recovery (%):Q", scale=alt.Scale(domain=[low, high])),
+                    color=alt.Color("cycle_day:Q", title="Review day"),
+                    tooltip=["cycle_id", "building_id", "cycle_day", alt.Tooltip("Actual recovery (%):Q", format=".1f"), alt.Tooltip("Predicted recovery (%):Q", format=".1f")],
+                )
+                diagonal = alt.Chart(pd.DataFrame({"x": [low, high], "y": [low, high]})).mark_line(strokeDash=[5, 4], color="#718096").encode(x="x:Q", y="y:Q")
+                st.altair_chart((diagonal + points).properties(title="Actual proxy vs held-out prediction", height=280), width="stretch")
+        with proof_cols[1]:
+            if not checkpoint_rows.empty:
+                st.altair_chart(
+                    alt.Chart(checkpoint_rows).mark_line(point=True, color="#286245").encode(
+                        x=alt.X("Review day:Q", axis=alt.Axis(values=[7, 14, 21, 28])),
+                        y=alt.Y("MAE (points):Q", title="Held-out MAE (recovery points)"),
+                        tooltip=["Review day", alt.Tooltip("MAE (points):Q", format=".2f"), alt.Tooltip("RMSE (points):Q", format=".2f"), alt.Tooltip("R²:Q", format=".3f")],
+                    ).properties(title="Does error improve with later checkpoints?", height=280),
+                    width="stretch",
+                )
+        st.caption("Each dot was predicted while its entire harvest cycle was held out. The checkpoint chart tests the mentor's question directly: later dates should be easier, but the observed pattern—not an assumption—is what Canary reports.")
+        recovery_prospective = recovery_manifest.get(
+            "prospective_latest_cycle_audit", {}
+        )
+        if recovery_prospective:
+            rpm = recovery_prospective["metrics"]
+            st.warning(
+                f"**Later-cycle audit ({recovery_prospective['cycle_id']}):** "
+                f"the refreshed Day 35 population endpoint for "
+                f"{recovery_prospective['independent_outcomes']} buildings was excluded from all fitting and selection. "
+                f"Across Day 7/14/21/28 forecasts, MAE was {float(rpm['mae']) * 100:.2f} recovery points, "
+                f"RMSE was {float(rpm['rmse']) * 100:.2f} points, and bias was {float(rpm['bias']) * 100:+.2f} points. "
+                "This is weaker than the historical cross-validation result and is a warning against presenting the forecast as production-ready. "
+                "The endpoint is still a Day 35 last-recorded-population proxy, not a verified harvest result."
+            )
         with st.expander("See the rolling-origin stability check"):
             st.caption(
                 "This stricter secondary view trains only on earlier cycles and predicts a later cycle. "
@@ -2526,12 +3121,16 @@ if selected_view == VIEW_DETAILS:
         st.caption(
             "Whole-cycle bootstrap check: the 95% interval for operational MAE is approximately "
             f"{float(recovery_ci['lower']) * 100:.2f}–{float(recovery_ci['upper']) * 100:.2f} recovery points. "
-            "The width reflects uncertainty from having only five eligible historical cycles."
+            f"The width reflects uncertainty from having only {len(recovery_manifest['training_cycles'])} eligible historical cycles."
         )
         recovery_gates = recovery_manifest["champion_gates"]
         st.info(
-            f"**Operational selection:** age-band remaining-loss baseline. The learned research champion improved cycle-balanced MAE by {float(recovery_gates['baseline_improvement_pct']):.1f}% and kept positive R², "
-            "but it did not pass every rolling-origin, stability, and 95% classification safeguard. Canary therefore uses the more transparent fallback and labels the forecast experimental."
+            f"**Selected for the continuous forecast:** {selected_recovery_name.title()}. It changed cycle-balanced MAE by {float(recovery_gates['baseline_improvement_pct']):+.1f}% versus the age-band baseline and kept held-out R² at {float(recovery_manifest['selected_metrics']['r2']):.3f}. "
+            + (
+                "It narrowly clears the minimum overall target-side gate, but recall for actual 95% achievers remains low; Canary therefore still reports an estimate and range—not a probability of success."
+                if recovery_gates["target_classification_gate_passed"]
+                else "It did not pass the separate balanced 95% hit/miss gate, so Canary reports a point estimate and uncertainty range—not a probability of success."
+            )
         )
         with st.expander("Panel question: R² is low—can we trust this forecast?"):
             st.markdown(
@@ -2539,11 +3138,11 @@ if selected_view == VIEW_DETAILS:
                 **The honest answer:** held-out R² is **{float(recovery_manifest['selected_metrics']['r2']):.3f}**, so the model explains only about
                 **{max(float(recovery_manifest['selected_metrics']['r2']), 0) * 100:.0f}%** of recovery variation in unseen cycles. Most variation remains unexplained.
 
-                This is why Canary is described as a **validated prototype**, not a production guarantee. A learned challenger improved cycle-balanced MAE,
-                but did not clear every deployment gate. Management should use the operational baseline's point estimate,
-                range, and operational evidence—not treat it as a probability of success.
+                This is why Canary is described as a **validated experimental forecast**, not a production guarantee. The selected method is retained for
+                its whole-cycle error performance, but substantial variation remains. Management should use
+                the point estimate, range, and operational evidence—not treat it as a probability of success.
 
-                Likely reasons include only **25 recovery outcomes across five fully eligible cycles**, the proxy recovery label,
+                Likely reasons include only **{recovery_manifest['training_building_cycles']} recovery outcomes across {len(recovery_manifest['training_cycles'])} fully eligible cycles**, the proxy recovery label,
                 missing or uneven measurements, and unrecorded factors such as health events and management interventions.
                 This is target-specific: the separate Day 35 weight model has **31 observed outcomes across six historical cycles**.
                 """
@@ -2579,6 +3178,10 @@ if selected_view == VIEW_DETAILS:
             )
             st.warning(
                 "Drivers show predictive association, not cause. Canary cannot claim that changing temperature or humidity by a specific amount will create a specific recovery improvement."
+            )
+            st.caption(
+                "Revenue at risk is derived from this recovery gap—not predicted by a separate model: beginning birds × gap to 95% × assumed sale weight × price/kg. "
+                "A higher projected recovery creates a smaller value-at-risk estimate; a lower projection creates a larger estimate."
             )
 
     with weight_model_tab:
@@ -2642,6 +3245,48 @@ if selected_view == VIEW_DETAILS:
             hide_index=True,
             width="stretch",
         )
+        weight_horizon_plot = pd.DataFrame(
+            [
+                {
+                    "Forecast checkpoint": day,
+                    "MAE (g)": float(values["mae_kg"]) * 1000,
+                    "Within 200 g": float(values["within_200g_rate"]),
+                }
+                for day, values in day35_manifest["selected_metrics"]["horizon"].items()
+            ]
+        )
+        st.altair_chart(
+            alt.Chart(weight_horizon_plot)
+            .mark_bar(cornerRadiusEnd=5, color="#286245")
+            .encode(
+                x=alt.X("Forecast checkpoint:N", sort=["Day 7", "Day 14", "Day 21", "Day 28"], title=None),
+                y=alt.Y("MAE (g):Q", title="Held-out MAE (grams)"),
+                tooltip=["Forecast checkpoint", alt.Tooltip("MAE (g):Q", format=".0f"), alt.Tooltip("Within 200 g:Q", format=".1%")],
+            )
+            .properties(title="Weight error changes by forecast checkpoint", height=240),
+            width="stretch",
+        )
+        weight_backtest = pd.DataFrame(day35_manifest.get("backtest_predictions", []))
+        if not weight_backtest.empty:
+            weight_backtest["Actual Day 35 weight (g)"] = weight_backtest["actual_day35_weight_kg"] * 1000
+            weight_backtest["Predicted Day 35 weight (g)"] = weight_backtest["predicted_day35_weight_kg"] * 1000
+            low = float(min(weight_backtest["Actual Day 35 weight (g)"].min(), weight_backtest["Predicted Day 35 weight (g)"].min()))
+            high = float(max(weight_backtest["Actual Day 35 weight (g)"].max(), weight_backtest["Predicted Day 35 weight (g)"].max()))
+            points = alt.Chart(weight_backtest).mark_circle(size=70, opacity=0.72).encode(
+                x=alt.X("Actual Day 35 weight (g):Q", scale=alt.Scale(domain=[low, high])),
+                y=alt.Y("Predicted Day 35 weight (g):Q", scale=alt.Scale(domain=[low, high])),
+                color=alt.Color("measurement_day:Q", title="Review day"),
+                tooltip=["cycle_id", "building_id", "measurement_day", alt.Tooltip("Actual Day 35 weight (g):Q", format=".0f"), alt.Tooltip("Predicted Day 35 weight (g):Q", format=".0f")],
+            )
+            diagonal = alt.Chart(pd.DataFrame({"x": [low, high], "y": [low, high]})).mark_line(strokeDash=[5, 4], color="#718096").encode(x="x:Q", y="y:Q")
+            st.altair_chart((diagonal + points).properties(title="Actual vs held-out Day 35 predictions", height=320), width="stretch")
+        prospective = day35_manifest.get("prospective_latest_cycle_audit", {})
+        if prospective:
+            pm = prospective["metrics"]
+            st.info(
+                f"**Truly later-cycle audit ({prospective['cycle_id']}):** {prospective['independent_outcomes']} buildings were excluded from fitting and champion selection. "
+                f"Across their checkpoints, MAE was {float(pm['mae_kg']) * 1000:.0f} g, RMSE was {float(pm['rmse_kg']) * 1000:.0f} g, and R² was {float(pm['r2']):.3f}."
+            )
         with st.expander("See the rolling-origin stability check"):
             st.caption(
                 "This secondary view trains only on earlier cycles and predicts later cycles; "
@@ -2765,6 +3410,52 @@ if selected_view == VIEW_DETAILS:
         "Temperature, humidity, feed, and daily-mortality thresholds are provisional. Water is not in the current standardized data, the Daily FI/bird unit needs confirmation, and THI is deferred until one formula and its age-specific limits are approved. None of these checks changes the formal risk score."
     )
 
+    st.markdown("### Age-adjusted anomaly watch")
+    st.caption(
+        "EWMA/CUSUM signals compare the building with age-adjusted prior-cycle patterns. They are separate investigation cues: they do not add risk points, estimate probability, or prove a cause."
+    )
+    anomaly_signals = build_age_adjusted_anomalies(
+        dataset, selected_cycle, chosen, pd.Timestamp(selected_date)
+    )
+    if anomaly_signals:
+        anomaly_table = pd.DataFrame(anomaly_signals).rename(
+            columns={
+                "metric": "Signal", "status": "Status", "latest_value": "Latest",
+                "expected_value": "Age reference", "ewma_z": "EWMA z",
+                "cusum": "CUSUM", "latest_evidence_date": "Evidence date",
+            }
+        )
+        st.dataframe(
+            anomaly_table[["Signal", "Status", "Latest", "Age reference", "EWMA z", "CUSUM", "Evidence date"]],
+            hide_index=True, width="stretch",
+        )
+        with st.expander("Record alert feedback for later evaluation"):
+            signal_options = [str(signal["metric"]) for signal in anomaly_signals]
+            with st.form("anomaly_feedback_form"):
+                feedback_signal = st.selectbox("Signal", signal_options)
+                feedback_assessment = st.selectbox(
+                    "Assessment", ["Pending review", "Confirmed", "Dismissed", "Action taken"]
+                )
+                feedback_action = st.text_input("Action taken (optional)")
+                feedback_person = st.text_input("Responsible person (optional)")
+                feedback_notes = st.text_area("Outcome notes (optional)")
+                save_feedback = st.form_submit_button("Save feedback")
+            if save_feedback:
+                ledger = Path(__file__).resolve().parent / "outputs" / "operational_feedback" / "alert_feedback.csv"
+                try:
+                    record_alert_feedback(
+                        ledger, cycle_id=selected_cycle, building_id=chosen,
+                        as_of_date=str(pd.Timestamp(selected_date).date()), signal_id=feedback_signal,
+                        assessment=feedback_assessment, action_taken=feedback_action,
+                        responsible_person=feedback_person, outcome_notes=feedback_notes,
+                    )
+                except (ValueError, OSError) as exc:
+                    st.error(f"Feedback could not be saved: {exc}")
+                else:
+                    st.success("Feedback saved for prospective evaluation. It does not retrain or change the current model.")
+    else:
+        st.info("No age-adjusted anomaly signal is available for this building and date.")
+
     st.subheader("5 · How the outlook changed")
     if forecast_history.empty:
         st.info("No daily history is available for this selection.")
@@ -2801,10 +3492,74 @@ if selected_view == VIEW_DETAILS:
             """
         )
 
+if selected_view == VIEW_MODEL_EVIDENCE:
+    st.markdown(
+        """
+        <div class="hero"><small>CAPSTONE EVIDENCE · FINAL MODEL SELECTION</small>
+          <h1>Transparent forecasts, tested against learned challengers</h1>
+          <p>Canary selects the simplest statistically competitive farm-wide forecast for each outcome. Every result below comes from harvest cycles the method did not train on; machine-learning challengers remain visible as shadow evidence.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.info(
+        "Capstone decision: use the age-band remaining-loss baseline for recovery and historical remaining gain for Day 35 bodyweight. Risk scoring and recommendations remain separate, deterministic engines."
+    )
+    try:
+        recovery_evidence = load_outcome_research_evidence("recovery")
+        weight_evidence = load_outcome_research_evidence("bodyweight")
+    except (FileNotFoundError, ValueError, KeyError, pd.errors.ParserError) as exc:
+        st.error(f"The frozen optimization evidence could not be loaded: {exc}")
+    else:
+        readiness = st.columns(4)
+        readiness[0].metric("Validation design", "LOGO-CV", help="Nested leave-one-complete-harvest-cycle-out cross-validation")
+        readiness[1].metric("Development cycles", len(recovery_evidence.manifest["development_cycles"]))
+        readiness[2].metric("Building-cycles", recovery_evidence.manifest["development_building_cycles"])
+        readiness[3].metric("Prospective cycles required", recovery_evidence.manifest["promotion_gate"]["prospective_cycles_required"])
+        shadow_progress = load_prospective_shadow_status()["progress"]
+        st.info(
+            f"Prospective shadow progress: **Recovery {shadow_progress['recovery']['qualifying_cycles']} of 3 cycles** · "
+            f"**Bodyweight {shadow_progress['bodyweight']['qualifying_cycles']} of 3 cycles**. "
+            "The frozen 2026-3 audit does not count as a new cycle."
+        )
+        st.caption(
+            "LOGO = Leave One Group Out. One complete harvest cycle is held out at a time; tuning and preprocessing use only the remaining cycles. "
+            "The 2026-3 cycle was locked until the experiment design and selection rules were frozen."
+        )
+        architecture_manifest = Path(__file__).resolve().parent / "outputs" / "robust_model_architecture_test" / "manifest.json"
+        if architecture_manifest.exists():
+            st.divider()
+            st.subheader("Pooled versus checkpoint-specific versus hybrid test")
+            st.caption(
+                "This isolated test answers whether Canary needs separate Day 7, 14, 21 and 28 models. It ranks all three designs on identical held-out checkpoint rows, while preserving daily Day 7–34 evaluation for pooled and hybrid models."
+            )
+            with st.expander("Recovery architecture", expanded=False):
+                _render_architecture_evidence("recovery")
+            with st.expander("Bodyweight architecture", expanded=False):
+                _render_architecture_evidence("bodyweight")
+        biology_manifest = Path(__file__).resolve().parent / "outputs" / "biology_aware_modeling_round" / "manifest.json"
+        if biology_manifest.exists():
+            st.divider()
+            st.subheader("Biology-aware daily-landmark research")
+            st.caption(
+                "This newer research round tests population-at-risk loss models, target-anchored state-space growth, nonlinear partial pooling, and daily Day 7–34 forecasts. It remains isolated from owner-facing operational inference."
+            )
+            with st.expander("Recovery · biology-aware research", expanded=False):
+                _render_biology_aware_evidence("recovery")
+            with st.expander("Bodyweight · biology-aware research", expanded=False):
+                _render_biology_aware_evidence("weight")
+            st.divider()
+            st.subheader("Frozen farm-wide benchmark")
+        recovery_tab, weight_tab = st.tabs(["Harvest recovery", "Day 35 bodyweight"])
+        with recovery_tab:
+            _render_model_evidence_outcome("recovery")
+        with weight_tab:
+            _render_model_evidence_outcome("bodyweight")
+
 if selected_view == VIEW_ACTIONS:
     st.markdown('<div class="title">Action playbook</div>', unsafe_allow_html=True)
     st.markdown(
-        '<div class="subtitle">Each problem pattern maps to one deterministic action. The risk level controls how quickly to respond.</div>',
+        '<div class="subtitle">Observed conditions determine the transparent risk score; deterministic priority rules order attention; the approved playbook states what staff should check next. Predictions and SHAP never prescribe treatment.</div>',
         unsafe_allow_html=True,
     )
     saved_message = st.session_state.pop("recommendation_saved_message", None)
@@ -2815,6 +3570,22 @@ if selected_view == VIEW_ACTIONS:
     else:
         st.warning(recommendation_playbook["approval_status"])
     action_summary = pd.DataFrame(recommendation_playbook["rules"])
+    approved_rules = int(action_summary["approval_status"].str.startswith("Approved").sum())
+    governed = st.columns(4)
+    governed[0].metric("Playbook version", recommendation_playbook["version"])
+    governed[1].metric("Approved rules", f"{approved_rules} of {len(action_summary)}")
+    governed[2].metric(
+        "Named owner", f"{action_summary['responsible_person'].astype(bool).sum()} of {len(action_summary)}"
+    )
+    governed[3].metric(
+        "Escalation defined", f"{action_summary['escalation_trigger'].astype(bool).sum()} of {len(action_summary)}"
+    )
+    st.markdown(
+        "**Decision chain:** Recorded evidence → 0–12 observed-condition risk → deterministic management priority → approved inspection playbook."
+    )
+    st.caption(
+        f"Risk rules: {rules['version']} · {rules['approval_status']}. Recommendation rules remain visible while pending so the farm can review and approve their wording explicitly."
+    )
     action_summary["source"] = action_summary.apply(
         lambda rule: "Canary team safeguard"
         if rule["rule_id"] in {"DOC-001", "DOC-011"}
@@ -2822,12 +3593,22 @@ if selected_view == VIEW_ACTIONS:
         axis=1,
     )
     action_summary = action_summary[
-        ["rule_id", "pattern", "dashboard_action", "source", "approval_status"]
+        [
+            "rule_id",
+            "pattern",
+            "dashboard_action",
+            "responsible_person",
+            "response_time",
+            "source",
+            "approval_status",
+        ]
     ].rename(
         columns={
             "rule_id": "Rule",
             "pattern": "Problem pattern",
             "dashboard_action": "Dashboard recommendation",
+            "responsible_person": "Responsible person",
+            "response_time": "Response time",
             "source": "Source",
             "approval_status": "Approval",
         }
@@ -3150,9 +3931,9 @@ if selected_view == VIEW_CHECKS:
 
 if selected_view == VIEW_EVIDENCE:
     evidence_path = Path(__file__).resolve().parent / "analysis" / "eda_results.json"
-    st.markdown('<div class="title">Exploratory Data Analysis</div>', unsafe_allow_html=True)
+    st.markdown('<div class="title">Farm Insights</div>', unsafe_allow_html=True)
     st.markdown(
-        '<div class="subtitle">Seven business questions covering data readiness, early warning, environment, outcomes, and forecast usefulness—with limitations shown beside the evidence.</div>',
+        '<div class="subtitle">Use the farm’s recorded history to understand growth, recovery, environmental coverage, and where better monitoring can help.</div>',
         unsafe_allow_html=True,
     )
     if not evidence_path.exists():
@@ -3166,13 +3947,29 @@ if selected_view == VIEW_EVIDENCE:
         evidence_rows = pd.DataFrame(eda["evidence_rows"])
         recovery_manifest, _ = load_model_bundle("recovery")
         day35_manifest = load_day35_manifest()
+        trish_models = load_v18_manifest()["models"] if trish_release else {}
+        recovery_mae = float(
+            trish_models.get("model_1", {}).get(
+                "reported_logo_mae", recovery_manifest["selected_metrics"]["mae"]
+            )
+        )
+        day14_weight_mae_g = float(
+            trish_models.get("model_2", {}).get(
+                "reported_logo_mae", day35_manifest["selected_metrics"]["mae_kg"] * 1000
+            )
+        )
+        day21_weight_mae_g = float(
+            trish_models.get("model_3", {}).get(
+                "reported_logo_mae", day14_weight_mae_g
+            )
+        )
         ecols = st.columns(4)
         ecols[0].metric("Historical building-cycles", coverage["completed_building_cycles"])
         ecols[1].metric("Day 14 → Day 35 pairs", coverage["paired_day14_day35"])
         ecols[2].metric("Day 14 ↔ recovery", f"r = {associations['day14_to_final_recovery']['pearson_r']:.2f}")
         ecols[3].metric(
-            "Day 35 projection MAE",
-            f"{day35_manifest['selected_metrics']['mae_kg'] * 1000:.0f} g",
+            "Day 14 weight MAE",
+            f"{day14_weight_mae_g:.0f} g",
         )
 
         st.info(
@@ -3181,7 +3978,7 @@ if selected_view == VIEW_EVIDENCE:
         )
         st.warning(
             "Important limit: association is not proof that improving weight alone causes better recovery. "
-            "There are only five recorded historical cycles, and birds, weather, feed, disease, and management can move together."
+            "There are only six completed development cycles, and birds, weather, feed, disease, and management can move together."
         )
 
         question_tabs = st.tabs(
@@ -3191,7 +3988,7 @@ if selected_view == VIEW_EVIDENCE:
                 "3 · Day 14 → Recovery",
                 "4 · Environment",
                 "5 · Survival paths",
-                "6 · Model accuracy",
+                "6 · Forecast limits",
                 "7 · Target attainment",
             ]
         )
@@ -3329,32 +4126,23 @@ if selected_view == VIEW_EVIDENCE:
                 )
 
         with question_tabs[5]:
-            st.subheader("How accurate are the two predictive methods?")
+            st.subheader("How much confidence should management place in the outlooks?")
             accuracy_columns = st.columns(2)
             with accuracy_columns[0]:
-                st.markdown("**Harvest-recovery forecast**")
                 st.metric(
-                    "Held-out MAE",
-                    f"{recovery_manifest['selected_metrics']['mae'] * 100:.2f} points",
-                )
-                st.dataframe(
-                    _horizon_metrics_table(recovery_manifest, "recovery"),
-                    hide_index=True,
-                    width="stretch",
+                    "Typical recovery miss",
+                    f"{recovery_mae * 100:.2f} points",
+                    help="Trish Model 1 reported leave-one-building-cycle-out mean absolute error.",
                 )
             with accuracy_columns[1]:
-                st.markdown("**Day 35 weight projection**")
                 st.metric(
-                    "Held-out MAE",
-                    f"{day35_manifest['selected_metrics']['mae_kg'] * 1000:.0f} g",
+                    "Typical Day 35 weight miss",
+                    f"{day14_weight_mae_g:.0f} g at Day 14 · {day21_weight_mae_g:.0f} g at Day 21",
+                    help="Reported mean absolute error for Trish Models 2 and 3.",
                 )
-                st.dataframe(
-                    _day35_horizon_metrics_table(day35_manifest),
-                    hide_index=True,
-                    width="stretch",
-                )
-            st.caption(
-                "Both methods hold out complete cycles. Recovery has five eligible training cycles; Day 35 weight uses 31 historical building outcomes across six cycles. These metrics support planning estimates, not guaranteed target classification."
+            st.info(
+                "Use these outlooks to decide where to investigate first—not as exact promises. "
+                "The risk score, recorded evidence, and farm or veterinary judgment remain the basis for action."
             )
 
         with question_tabs[6]:
@@ -3661,6 +4449,7 @@ if selected_view == VIEW_METHODS:
             "remaining_loss_ridge": "Ridge remaining-loss regression",
             "remaining_loss_huber": "Robust Huber remaining-loss regression",
             "remaining_loss_gradient_boosting": "Gradient Boosting remaining-loss",
+            "remaining_loss_extra_trees": "Extra Trees remaining-loss model",
         }.get(
             recovery_manifest["selected_model"],
             recovery_manifest["selected_model"].replace("_", " ").title(),
@@ -3668,8 +4457,8 @@ if selected_view == VIEW_METHODS:
         st.subheader(f"Recovery model: {recovery_name}")
         st.caption(
             "Five methods were tested: the age-band baseline, ordinary linear regression, "
-            "Ridge regression, robust Huber regression, and constrained Gradient Boosting. "
-            "The age-band remaining-loss baseline remains the operational fallback."
+            "Ridge regression, constrained Gradient Boosting, and constrained Extra Trees. "
+            "The selected model must beat the baseline under complete-cycle validation."
         )
         st.dataframe(
             pd.DataFrame(
@@ -3677,9 +4466,9 @@ if selected_view == VIEW_METHODS:
                     {"Workflow": "Business question", "Plain-language explanation": "Given what is known on the review date, what last-recorded recovery should we expect for this building?"},
                     {"Workflow": "Goal / Y", "Plain-language explanation": "Predict additional population loss after the review date, then subtract it from current survival. The completed-cycle endpoint remains last recorded population ÷ beginning population."},
                     {"Workflow": "Inputs / X", "Plain-language explanation": "Age, current survival, recent mortality, weight gap/freshness, and temperature/humidity band deviations known on the review date. Feed is withheld until its unit is confirmed."},
-                    {"Workflow": "Methods tried", "Plain-language explanation": "Age-band remaining-loss baseline, ordinary linear regression, Ridge regression, robust Huber regression, and constrained Gradient Boosting—exactly five compact candidates."},
+                    {"Workflow": "Methods tried", "Plain-language explanation": "Age-band remaining-loss baseline, ordinary linear regression, Ridge regression, constrained Gradient Boosting, and constrained Extra Trees—exactly five compact candidates."},
                     {"Workflow": "Fair comparison", "Plain-language explanation": "Nested validation: hold out one complete cycle; tune only within the remaining cycles; then predict the unseen cycle."},
-                    {"Workflow": "Winner", "Plain-language explanation": f"{recovery_name} remains operational. The learned research challenger improved MAE but did not clear every stability and 95% classification gate."},
+                    {"Workflow": "Winner", "Plain-language explanation": f"{recovery_name} is used for the continuous estimate because it materially improved whole-cycle MAE with positive R². It is not presented as a reliable 95% hit/miss classifier."},
                 ]
             ),
             hide_index=True,
@@ -3727,7 +4516,7 @@ if selected_view == VIEW_METHODS:
         )
         st.dataframe(recovery_features, hide_index=True, width="stretch")
         st.caption(
-            f"Selected model uses {len(selected_recovery_features)} compact inputs. It excludes raw beginning inventory, building identity, algebraic duplicates, and unconfirmed feed units. Current survival remains because it is known on the review date and logically constrains final recovery. Missing numeric inputs are filled using training-fold medians and marked with missing-value indicators."
+            f"Selected model uses {len(selected_recovery_features)} compact inputs. It excludes raw beginning inventory, exact building identity, algebraic duplicates, and unconfirmed feed units; it retains a Tags/Lags group indicator as a compact structural feature. Current survival remains because it is known on the review date and logically constrains final recovery. Missing numeric inputs are filled using training-fold medians and marked with missing-value indicators."
         )
         st.markdown("**Which inputs the selected recovery model relies on**")
         global_importance = _global_recovery_importance_table(recovery_manifest)
@@ -3739,8 +4528,46 @@ if selected_view == VIEW_METHODS:
             ].head(5)
             st.markdown("**Top five recorded inputs in the fitted recovery model**")
             st.dataframe(recorded_top_five, hide_index=True, width="stretch")
+            shap_plot = pd.DataFrame(recovery_manifest.get("held_out_shap_importance", [])).head(8)
+            if not shap_plot.empty:
+                shap_plot["Driver"] = shap_plot["feature"].map(
+                    lambda feature: FEATURE_DISPLAY.get(
+                        str(feature).removeprefix("missingindicator_"),
+                        str(feature).removeprefix("missingindicator_").replace("_", " ").title(),
+                    )
+                )
+                shap_plot["Mean |SHAP| (recovery points)"] = (
+                    shap_plot["mean_abs_shap_recovery"] * 100
+                )
+                st.altair_chart(
+                    alt.Chart(shap_plot)
+                    .mark_bar(cornerRadiusEnd=5)
+                    .encode(
+                        x=alt.X("Mean |SHAP| (recovery points):Q", title="Average absolute movement in recovery estimate (points)"),
+                        y=alt.Y("Driver:N", sort="-x", title=None),
+                        color=alt.Color(
+                            "direction_when_value_increases:N",
+                            title="When the value increases",
+                            scale=alt.Scale(
+                                domain=[
+                                    "Generally raises the recovery estimate",
+                                    "Generally lowers the recovery estimate",
+                                    "Non-linear or mixed effect",
+                                ],
+                                range=["#2f855a", "#c05640", "#81958b"],
+                            ),
+                        ),
+                        tooltip=[
+                            "Driver",
+                            alt.Tooltip("Mean |SHAP| (recovery points):Q", format=".3f"),
+                            "direction_when_value_increases:N",
+                        ],
+                    )
+                    .properties(title="Held-out SHAP: which inputs moved recovery forecasts most?", height=300),
+                    width="stretch",
+                )
             st.caption(
-                "This is the model-wide ranking across historical training data. Open Building View for the factors moving one selected building’s estimate."
+                "This SHAP ranking was computed only on complete held-out cycles. Mean |SHAP| measures how strongly a feature moved predictions; the direction summarizes whether higher values generally raised or lowered the recovery estimate. Open Building View for one building's local SHAP explanation."
             )
             with st.expander("See every recovery-model input, including missing-data flags"):
                 st.dataframe(global_importance, hide_index=True, width="stretch")
@@ -3757,7 +4584,7 @@ if selected_view == VIEW_METHODS:
                 + "This is predictive association—not proof that changing the factor will change recovery."
             )
             st.caption(
-                "The ranking uses out-of-fold permutation importance from complete held-out cycles. Correlated inputs can share or swap importance, and none of these values proves causation."
+                "SHAP and permutation importance are complementary model explanations. Correlated inputs can share or swap importance, and neither proves causation. Management actions remain tied to recorded rule violations and Doc Raymond's playbook."
             )
 
         st.markdown("**How it was validated**")
@@ -3778,9 +4605,9 @@ if selected_view == VIEW_METHODS:
                 st.dataframe(cycle_table, hide_index=True, width="stretch")
         recovery_gates = recovery_manifest["champion_gates"]
         st.caption(
-            f"Selection detail: the learned research challenger improved cycle-balanced MAE by "
+            f"Selection detail: the selected {recovery_name} method changed cycle-balanced MAE by "
             f"{float(recovery_gates['baseline_improvement_pct']):.1f}% versus the age-band baseline and kept positive R², "
-            "but the full operational gate did not pass. The transparent age-band remaining-loss method therefore remains live."
+            "so it is used for continuous recovery estimates. Its balanced 95% hit/miss gate did not pass, so no probability-of-success claim is made."
         )
         st.markdown("**Selected-model performance by forecast timing**")
         st.dataframe(
@@ -3797,7 +4624,7 @@ if selected_view == VIEW_METHODS:
             "Business interpretation: use the estimate to size the likely recovery gap and prioritize follow-up. Do not present it as a guaranteed result or as proof that a building will hit 95%."
         )
         st.warning(
-            "Straight verdict: this model is useful as a directional point estimate, but it is not yet a trustworthy hit-versus-miss classifier. It recognized historical below-95% cases, but did not recognize the small number of at/above-95% cases better than the majority baseline."
+            f"Straight verdict: this model is useful as a directional point estimate, but it is not yet a trustworthy hit-versus-miss classifier. It correctly recognized {float(rmetrics['below_target_recall']):.1%} of below-95% snapshots but only {float(rmetrics['at_or_above_target_recall']):.1%} of at/above-95% snapshots; balanced target accuracy was {float(rmetrics['balanced_target_accuracy']):.1%}."
         )
         st.caption(
             "At inference, the final-recovery estimate is capped at current recorded survival because, under the agreed capstone formula, birds already lost cannot re-enter the flock."

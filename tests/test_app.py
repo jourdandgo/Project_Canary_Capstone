@@ -26,7 +26,9 @@ def test_dashboard_renders_without_streamlit_errors(monkeypatch):
     cycle = next(widget for widget in app.selectbox if widget.label == "Harvest cycle")
     as_of = next(widget for widget in app.date_input if widget.label == "Review date")
     assert cycle.value == "2026-3"
-    assert as_of.value < as_of.max
+    # The corrected latest workbook now ends cleanly on Day 35.  When that
+    # final recorded day is complete, the default review date may equal max.
+    assert as_of.value <= as_of.max
     pages_dir = Path(__file__).parents[1] / "pages"
     assert {page.name for page in pages_dir.glob("*.py") if not page.name.startswith("_")} == {
         "home.py",
@@ -34,6 +36,7 @@ def test_dashboard_renders_without_streamlit_errors(monkeypatch):
         "harvest_analysis.py",
         "business_value.py",
         "eda.py",
+        "model_evidence.py",
         "methodology.py",
         "action_playbook.py",
         "data_settings.py",
@@ -51,19 +54,22 @@ def test_dashboard_renders_without_streamlit_errors(monkeypatch):
     assert not detail.exception
     chosen = next(widget for widget in detail.selectbox if widget.label == "Building")
     assert chosen.value == "Tags 3"
-    assert any("Day 35 milestone: Upcoming" in info.value for info in detail.info)
+    # The refreshed 2026-3 workbook now contains observed Day 35 weights.  The
+    # milestone can therefore be Achieved or Missed at the default as-of date;
+    # it must no longer be forced to the pre-refresh "Upcoming" state.
+    assert any("Day 35 milestone:" in info.value for info in detail.info)
     assert [subheader.value for subheader in detail.subheader][:5] == [
         "1 · Decision summary and next check",
         "2 · Risk score breakdown",
         "3 · Forecast deep dive",
-        "4 · Additional operational checks",
+        "4 · What influenced the outlook",
         "5 · How the outlook changed",
     ]
     expander_labels = [expander.label for expander in detail.expander]
-    assert "See raw forecast inputs and calculation trace" in expander_labels
-    assert "What Canary adopted from the teammate model—and what it rejected" in expander_labels
     assert "See why this action was selected" in expander_labels
-    assert "Technical audit details" in expander_labels
+    assert "Data availability for this review" in expander_labels
+    assert "See raw forecast inputs and calculation trace" not in expander_labels
+    assert "Technical audit details" not in expander_labels
     detail_visible = " ".join(
         item.value
         for item in [*detail.markdown, *detail.caption]
@@ -72,14 +78,9 @@ def test_dashboard_renders_without_streamlit_errors(monkeypatch):
     assert "Why this building needs attention" in detail_visible
     assert "Possible contributing conditions" in detail_visible
     assert "What management should check next" in detail_visible
-    assert "A. Harvest Recovery Model" in detail_visible
-    assert "A. Day 35 Average Weight Model" in detail_visible
-    assert "B. Executive Summary" in detail_visible
-    assert "C. Input and Output Variables" in detail_visible
-    assert "D. Pre-processing Steps" in detail_visible
-    assert "E. Model Selection and Comparison" in detail_visible
-    assert "F. Interpretation" in detail_visible
-    assert "How this building’s projection was calculated" in detail_visible
+    assert "These explanations describe how recorded inputs shaped the estimate" in detail_visible
+    assert "Canary supports prioritization and investigation" in detail_visible
+    assert "Model Selection and Comparison" not in detail_visible
 
     cycle = next(widget for widget in detail.selectbox if widget.label == "Harvest cycle")
     cycle.set_value("2025-5").run()
@@ -188,7 +189,7 @@ def test_model_proof_exposes_targets_features_and_validation(monkeypatch):
     assert "last recorded daily date ÷ beginning population" in visible_text
     assert "Ridge regression" in visible_text
     assert "leave" in visible_text.lower()
-    assert "age-band remaining-loss baseline" in visible_text
+    assert "Extra Trees" in visible_text
     assert "last-recorded recovery" in visible_text
     assert "Executive summary" in visible_text
     assert "1.8 kg on Day 35" in visible_text
@@ -216,12 +217,17 @@ def test_home_explains_scope_denominators_and_business_question(monkeypatch):
         item.value for item in [*app.markdown, *app.caption] if isinstance(item.value, str)
     )
     assert "The management problem" in visible
-    assert "What Canary does" in visible
-    assert "Which buildings are at risk" in visible
+    assert "The management gap" in visible
+    assert "Production outcomes are inconsistent" in visible
+    assert "How can the farm make production outcomes more consistent" in visible
+    assert "Earlier visibility" in visible
+    assert "1,800 g" in visible
+    assert "95%" in visible
     assert "Canary Command Center" in visible
     assert "Buildings needing attention" in visible
     assert "Projected harvest recovery" in visible
-    assert "Estimated gross revenue at risk" in visible
+    assert "Review first" in visible
+    assert "Estimated gross revenue at risk" not in visible
     assert "Day 35 weight outlooks" not in visible
     assert not app.segmented_control
 
@@ -234,7 +240,7 @@ def test_evidence_page_states_findings_and_limits(monkeypatch):
     assert not app.exception
     visible = " ".join(item.value for item in [*app.markdown, *app.info, *app.warning, *app.success] if isinstance(item.value, str))
     assert "association is not proof" in visible
-    assert "Exploratory Data Analysis" in visible
+    assert "Farm Insights" in visible
     assert len(app.tabs) == 7
     assert [tab.label for tab in app.tabs] == [
         "1 · Data coverage",
@@ -242,9 +248,35 @@ def test_evidence_page_states_findings_and_limits(monkeypatch):
         "3 · Day 14 → Recovery",
         "4 · Environment",
         "5 · Survival paths",
-        "6 · Model accuracy",
+        "6 · Forecast limits",
         "7 · Target attainment",
     ]
+
+
+def test_model_evidence_uses_frozen_logo_predictions_and_shadow_status(monkeypatch):
+    monkeypatch.setenv("CANARY_DEFAULT_WORKBOOK", str(SOURCE))
+    monkeypatch.setenv("CANARY_TEST_VIEW", "Model Evidence")
+    app = AppTest.from_file(Path(__file__).parents[1] / "app.py", default_timeout=45)
+    app.run()
+
+    assert not app.exception
+    visible = " ".join(
+        item.value
+        for item in [*app.markdown, *app.caption, *app.info, *app.warning, *app.success]
+        if isinstance(item.value, str)
+    )
+    assert "Transparent forecasts, tested against learned challengers" in visible
+    assert "Capstone decision" in visible
+    assert "Leave One Group Out" in visible
+    assert "one-standard-error rule" in visible
+    assert "Recovery 0 of 3 cycles" in visible
+    assert "predictive association, not causation" in visible
+    assert [tab.label for tab in app.tabs] == ["Harvest recovery", "Day 35 bodyweight"]
+    metric_labels = [metric.label for metric in app.metric]
+    assert metric_labels.count("Selected capstone forecast") == 2
+    assert metric_labels.count("Cycle-macro RMSE") == 2
+    assert len(app.dataframe) >= 8
+    assert len(app.get("vega_lite_chart")) >= 8
 
 
 def test_business_value_page_exposes_editable_assumptions_and_estimates(monkeypatch):
@@ -318,7 +350,7 @@ def test_harvest_analysis_is_all_cycle_and_target_specific(monkeypatch):
         if isinstance(item.value, str)
     )
     assert "Harvest Analysis" in visible
-    assert "25 independent outcomes" in visible
+    assert "31 historical building outcomes" in visible
     assert "31 observed Day 35 outcomes" in visible
     assert "Model release" in visible
     assert any(

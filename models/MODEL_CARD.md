@@ -1,99 +1,50 @@
-# Project Canary Model Card
+# Project Canary Model Card — Final Capstone Baselines
+
+> **Superseded for the 2026-3 dashboard:** the operational outlook now uses the Trish v18 prospective deployment described in `docs/TRISH_V18_INTEGRATION.md`. The transparent methods below remain documented fallbacks and comparison baselines.
 
 ## Decision use
 
-Canary forecasts harvest recovery and projects average liveweight on Day 35. These outputs do not set or change the independent rules-based risk rating, diagnose disease, or prescribe treatment.
+Canary forecasts final harvest recovery and average Day 35 bodyweight for each building. Forecasts do not change the independent 0–12 observed-condition risk score, diagnose disease, or prescribe treatment.
 
-Day 35 is the farm-approved 1.8 kg weight milestone. The primary weight output is a Day 35 projection, not final liveweight at an unknown harvest date.
+| Outcome | Version | Selected method | Development cycles | Building outcomes | Held-out MAE | Held-out R² | Status |
+|---|---|---|---:|---:|---:|---:|---|
+| Harvest recovery | recovery-capstone-4.1.0 | age-band remaining loss | 6 | 31 | 2.45 pp | 0.056 | Capstone operational; not production-approved |
+| Day 35 bodyweight | day35-weight-capstone-3.1.0 | historical remaining gain | 6 | 31 | 127.1 g | 0.310 | Capstone operational; not production-approved |
 
-## Selected methods
+## Validation
 
-| Outcome | Version | Selected method | Cycles | Distinct building outcomes | Validation MAE | Status |
-|---|---|---:|---:|---:|---:|---|
-| Predicted harvest recovery | recovery-2.0.0 | age_band_remaining_loss | 5 | 25 | 1.39 points | Prototype; trained on last-recorded recovery proxy |
-| Projected Day 35 weight | day35-weight-2.0.0 | historical_remaining_gain | 6 | 31 | 0.178 kg | Prototype; 5 historical 1.8 kg hits |
+Primary evaluation uses nested leave-one-complete-harvest-cycle-out cross-validation. Each outer fold represents a future unseen cycle; cleaning, feature engineering, expected paths, feature selection and tuning use only the remaining cycles. Days 7, 14, 21 and 28 are the principal validated checkpoints. Daily estimates between checkpoints are available and explicitly labeled.
 
-Validation is nested: the outer loop holds out one complete recorded cycle, while the inner loop tunes only within the remaining cycles. Repeated snapshots receive equal building-cycle weight. Recovery uses Days 7, 14, 21, 28, and the latest eligible checkpoint; Day 35 weight uses checkpoints at Days 7, 14, 21, and 28.
+The authoritative source contains 1,624 unique building-days and 34 building-cycles. Thirty-one outcomes across six cycles are development evidence. The three 2026-3 buildings remain a locked later-cycle audit, and their recovery endpoint is provisional.
 
-Recovery learned challenger: remaining_loss_huber; operational method: age_band_remaining_loss. Continuous-estimate gate passed: True; 95% classification gate passed: False.
-Weight learned challenger: checkpoint_linear_remaining_gain; operational method: historical_remaining_gain. Learned-model regression gate passed: False; target-classification gate passed: True.
+## Recovery formula
 
-## Day 14 recovery backtest
+`projected final recovery = current recorded survival − expected remaining loss for flock age`
 
-For every eligible building-cycle, Canary recreated the forecast using only information available on Day 14, then compared it with last-recorded recovery.
+Expected remaining loss from the full development data is approximately 7.52 pp at Day 7, 6.50 pp at Day 14, 5.62 pp at Day 21 and 4.03 pp at Day 28. Daily application values are linearly interpolated between validated checkpoints. Final recovery is constrained not to exceed current survival.
 
-- Building-cycles evaluated: 25
-- Day 14 MAE: 1.40 percentage points
-- Day 14 RMSE: 1.89 percentage points
-- Actual at/above 95%: 4; correctly recognized: 0.0%
-- Actual below 95%: 21; warned below target: 100.0%
-- Target-side accuracy: 84.0%; always-below majority baseline: 84.0%
-- Interpretation: target-side accuracy does not beat the majority baseline and must not be presented as discrimination proof.
+Performance: 3.09 pp cycle-macro RMSE, 3.12 pp pooled RMSE, 2.45 pp MAE, R² 0.056 and -0.04 pp bias. Residual LightGBM and XGBoost tied the baseline exactly because their learned corrections collapsed to zero; the simpler baseline was retained.
 
-## Recovery candidate comparison
+## Bodyweight formula
 
-| Candidate | MAE | Cycle-balanced MAE | RMSE | R² |
-|---|---:|---:|---:|---:|
-| age_band_remaining_loss | 1.39 pts | 1.50 pts | 1.80 pts | 0.222 |
-| remaining_loss_linear | 1.29 pts | 1.40 pts | 1.80 pts | 0.224 |
-| remaining_loss_ridge | 1.31 pts | 1.43 pts | 1.82 pts | 0.207 |
-| remaining_loss_huber | 1.24 pts | 1.33 pts | 1.75 pts | 0.260 |
-| remaining_loss_gradient_boosting | 1.25 pts | 1.37 pts | 1.77 pts | 0.243 |
+`projected Day 35 weight = latest actually observed weight + expected remaining gain for measurement age`
 
-## Recovery model reliance
+Expected remaining gain from the full development data is approximately 1.373 kg at Day 7, 1.226 kg at Day 14, 0.943 kg at Day 21 and 0.513 kg at Day 28. Target/interpolated weights are never substituted for measurements.
 
-Held-out permutation importance describes predictive reliance on unseen cycles; it does not prove causality.
+Performance: 149.9 g cycle-macro RMSE, 163.9 g pooled RMSE, 127.1 g MAE, R² 0.310, -0.6 g bias, 50.8% within 100 g and 75.8% within 200 g. This transparent baseline outperformed all learned challengers in the latest balanced refresh.
 
-| Model input | Relative reliance | Held-out MAE increase |
-|---|---:|---:|
-| humidity_deviation_from_band_pp | 31.6% | 0.843 recovery points |
-| cycle_day | 12.6% | 0.337 recovery points |
-| mortality_recent_3d_per_1000 | 9.8% | 0.261 recovery points |
-| temperature_deviation_from_band_c | 8.3% | 0.221 recovery points |
-| environment_out_of_band_days_7d | 7.8% | 0.207 recovery points |
-| environment_staleness_days | 7.4% | 0.199 recovery points |
-| percentage_alive | 7.1% | 0.190 recovery points |
-| weight_gap_pct | 7.0% | 0.188 recovery points |
-| mortality_trend_delta_per_1000 | 5.4% | 0.145 recovery points |
-| weight_staleness_days | 3.1% | 0.082 recovery points |
+Checkpoint cycle-macro RMSE is 163.7 g at Day 7, 141.7 g at Day 14, 124.0 g at Day 21 and 129.3 g at Day 28. Day 28 R² is 0.585; this is checkpoint-specific and must not be presented as the overall R².
 
-## Day 35 candidate comparison
+## Explainability
 
-| Candidate | MAE | Cycle-balanced MAE | RMSE | R² | Within 200 g |
-|---|---:|---:|---:|---:|---:|
-| historical_remaining_gain | 0.178 kg | 0.182 kg | 0.242 kg | 0.126 | 65.3% |
-| checkpoint_linear_remaining_gain | 0.216 kg | 0.208 kg | 0.273 kg | -0.118 | 56.5% |
-| ridge_remaining_gain | 0.207 kg | 0.200 kg | 0.264 kg | -0.045 | 56.5% |
-| huber_remaining_gain | 0.226 kg | 0.223 kg | 0.276 kg | -0.144 | 51.6% |
-| gradient_boosting_remaining_gain | 0.203 kg | 0.207 kg | 0.262 kg | -0.026 | 52.4% |
+The selected baselines are explained by their explicit formulas. SHAP is generated only for compatible learned shadow models and represents predictive association, not causation. Many SHAP directions are unstable across held-out cycles and must not drive management recommendations.
 
-## Day 14 to Day 35 weight backtest
+## Limitations and promotion
 
-- Building-cycles evaluated: 31
-- MAE: 181 g
-- RMSE: 237 g
-- Bias: +2 g
-- Within 200 g: 58.1%
-- Correct side of the 1.8 kg target: 83.9%
-- Historical Day 35 results at/above 1.8 kg: 5; below: 26
+- Six independent development cycles are insufficient for production approval.
+- Recovery uses a last-recorded endpoint proxy; the later audit endpoint is provisional.
+- Environmental history is incomplete, feed units remain unresolved, and important flock metadata are absent.
+- Only one of 31 development building-cycles reached 1,800 g.
+- Empirical 80% interval coverage is 75.0% for recovery and 72.6% for bodyweight.
 
-## Important limitations
-
-- Recovery is trained on five recorded cycle histories and 25 building outcomes. The label is last-recorded population divided by beginning population, not confirmed actual-harvest recovery.
-- Day 35 weight uses 31 building outcomes across 6 cycles. The current cycle is excluded from training.
-- Both comparisons use nested whole-cycle validation and cycle-balanced MAE as the primary metric. RMSE and R² are secondary checks; target-side metrics describe decision usefulness.
-- Uncertainty ranges use the 80th percentile of held-out absolute errors. They are empirical prototype ranges, not formal clinical or statistical guarantees.
-- Risk thresholds remain provisional until farm experts approve them. Recommendations remain pending Doc Raymond's action table.
-
-## Day 35 weight improvement plan
-
-The best learned challenger is checkpoint_linear_remaining_gain. The operational method is historical_remaining_gain because no learned challenger cleared every approved gate.
-
-1. Standardize weights near Days 7, 14, 21, 28, and 35, including sample size and zone.
-2. Continue comparing historical remaining gain, checkpoint-calibrated linear regression, Ridge, robust Huber regression, and constrained Gradient Boosting.
-3. Keep one building record per checkpoint and hold out complete unseen cycles.
-4. Report MAE in grams, bias, within-100 g / within-200 g rates, and target-hit usefulness once target hits exist.
-
-## Retraining
-
-Run `uv run python -m scripts.train_models <workbook.xlsx> --performance-summary <summary.xlsx> --output models`. Daily dashboard use performs inference only and never retrains a model.
+Any learned challenger requires at least three new complete prospective cycles and must retain the prespecified RMSE, bias, worst-cycle, checkpoint and coverage gates before production promotion.

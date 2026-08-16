@@ -4,12 +4,19 @@ version = "0.4.0"
 description = "Project Canary continuous-cycle broiler decision-support prototype"
 requires-python = ">=3.11"
 dependencies = [
+  "arviz>=0.22,<0.23",
+  "catboost>=1.2.10",
   "joblib>=1.4,<2",
+  "lightgbm>=4.7",
+  "matplotlib>=3.9,<4",
   "openpyxl>=3.1,<4",
   "pandas>=2.2,<3",
+  "pymc>=5.25,<6",
   "scikit-learn>=1.6,<2",
+  "shap>=0.48,<0.52",
+  "statsmodels>=0.14,<0.15",
   "streamlit>=1.42,<2",
-  "xgboost>=3.2.0",
+  "xgboost>=3.2",
 ]
 
 [dependency-groups]

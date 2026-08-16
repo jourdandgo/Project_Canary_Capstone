@@ -4,19 +4,19 @@ Status: **PASS**
 
 ## Executive verdict
 
-- Recovery: Ordinary linear regression is a validated prototype for a continuous estimate. Nested whole-cycle MAE is 1.37 points overall and 1.65 points at Day 14. Target-side discrimination is not established.
+- Recovery: Ordinary linear regression is the refreshed continuous estimator. Whole-cycle MAE is 1.74 points, cycle-balanced MAE is 1.76 points, RMSE is 2.57 points, and R² is 0.054. Day 14 MAE is 1.95 points. It improves cycle-balanced MAE by 16.1% over the refreshed age-band baseline, but recall of actual outcomes at or above 95% is only 21.1%.
 - Day 35 weight: No learned model cleared the champion gates. Historical remaining gain is the transparent operational fallback at about 178 g overall MAE and 181 g from Day 14; uncertainty remains material.
 - Risk: retain as a transparent operational-priority score, not as a probability model. Thresholds still require farm validation.
 
 ## Data foundation
 
-The source contained 1,785 rows. Canary consolidated 119 repeated rows into 1,666 unique building-day records with 0 blocking conflicts.
+The refreshed source is already consolidated to 1,666 unique building-day records with 0 blocking conflicts. The prior source had 1,785 rows and 119 repeated Zone A/B rows; those duplicates were aggregated before the refreshed workbook was issued.
 
 ## Recovery model
 
-The selected continuous-estimate method is ordinary linear regression trained/evaluated across 5 cycles and 25 distinct building outcomes. The 122 checkpoint rows are repeated time snapshots, not independent flock outcomes, and each building-cycle receives equal total weight. Current survival remains a valid input because it is known on the review date and constrains possible final recovery; raw beginning inventory and building identity are excluded.
+The selected continuous-estimate method is ordinary linear regression trained/evaluated across 6 cycles and 31 distinct building outcomes. The 151 retained training snapshots are repeated decision points, not independent flock outcomes, and each building-cycle receives equal total weight. They comprise Days 7, 14, 21 and 28 plus one separately labelled latest pre-outcome snapshot per building-cycle. Current survival remains valid because it is known on the review date and constrains possible final recovery. Raw beginning inventory and exact building identity are excluded; a compact Tags/Lags group indicator is retained.
 
-At Day 14, target-side accuracy is 80.0%, below the 84.0% majority baseline; at/above-target recall is 0.0%.
+Across all retained snapshots, below-target recall is 100%, at/above-target recall is 21.1%, and balanced accuracy is 60.5%. At Day 14, MAE is 1.95 points and R² is 0.025; target-side accuracy remains equal to the majority baseline and at/above-target recall is 0%. Linear coefficients and out-of-fold permutation importance describe the live champion. Held-out SHAP is shown only for the constrained Extra Trees challenger and is interpreted as association, not causation.
 
 ## Day 35 weight model
 

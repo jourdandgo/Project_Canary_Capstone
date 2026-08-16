@@ -28,12 +28,15 @@ def code(text: str):
 
 SETUP = r"""
 from pathlib import Path
+import sys
 import numpy as np
 import pandas as pd
 
 ROOT = Path.cwd()
 if not (ROOT / "canary").exists():
     ROOT = ROOT.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 DATA_PATH = ROOT / "data" / "FARM HARVEST DATA.xlsx"
 MODEL_READY_DIR = ROOT / "outputs" / "model_ready"
 
@@ -100,11 +103,11 @@ coverage
 """),
         code(r"""
 exported = pd.read_csv(MODEL_READY_DIR / "recovery_training.csv")
-assert len(exported) == len(training_snapshots) == 122
+assert len(exported) == len(training_snapshots)
 expected_keys = set(zip(training_snapshots.cycle_id.astype(str), training_snapshots.building_id, training_snapshots.as_of_date.astype(str)))
 exported_keys = set(zip(exported.cycle_id.astype(str), exported.building_id, exported.as_of_date.astype(str)))
 assert exported_keys == expected_keys
-print("Export reconciliation passed: the CSV contains the exact 122 balanced recovery snapshots.")
+print(f"Export reconciliation passed: the CSV contains the exact {len(exported)} balanced recovery snapshots.")
 """),
         md("""
 ## 2. Preprocessing and validation
@@ -113,8 +116,8 @@ print("Export reconciliation passed: the CSV contains the exact 122 balanced rec
 2. Construct every snapshot with records dated on or before its review date; later records are excluded.
 3. Give each building-cycle equal total weight despite repeated checkpoints.
 4. Use **nested leave-one-complete-cycle-out cross-validation**: the outer loop tests a completely unseen cycle; the inner loop tunes only within the remaining cycles. Imputation and scaling stay inside those folds.
-5. Compare exactly five candidates: age-band remaining-loss baseline, linear regression, Ridge regression, robust Huber regression, and constrained Gradient Boosting.
-6. A learned recovery model must beat the baseline by at least 10% in cycle-macro MAE, keep positive whole-cycle R², remain stable, and improve 95% target-side usefulness before deployment.
+5. Compare exactly five candidates: age-band remaining-loss baseline, linear regression, Ridge regression, constrained Gradient Boosting, and constrained Extra Trees.
+6. A learned recovery model must beat the baseline by at least 10% in cycle-macro MAE, keep positive whole-cycle R², and remain stable. A separate balanced target-side gate controls whether Canary may describe it as a 95% hit/miss classifier.
 
 No random row split is used because rows from the same flock history are related and would leak information across train and test sets.
 """),
@@ -164,11 +167,11 @@ print(f"Target-side accuracy: {selected['target_side_accuracy']:.1%}")
 print(f"Majority baseline accuracy: {selected['majority_side_accuracy']:.1%}")
 """),
         md("""
-**Interpretation:** the research challenger improves continuous error, but does not clear every stability and target-side gate. The age-band remaining-loss baseline therefore remains operational. Present the result as an experimental estimate with uncertainty—not a guarantee of 95% target attainment.
+**Interpretation:** the operational method is read directly from the versioned manifest. Selection prioritizes cycle-balanced MAE, positive R², stability across held-out cycles, and simplicity. The current release uses ordinary linear remaining-loss regression because it improves cycle-balanced MAE over the age-band baseline and is as accurate as Ridge while remaining easier to explain. Its R² is still low and its at/above-95% recall is weak, so present it as an experimental continuous estimate with uncertainty—not a probability or guarantee of target attainment.
 """),
         md("## 4. What the selected model relies on"),
         code(r"""
-importance = pd.DataFrame(manifest["research_champion_permutation_importance"])
+importance = pd.DataFrame(manifest["held_out_permutation_importance"])
 importance.head(10).rename(columns={
     "feature": "Input",
     "mean_mae_increase": "Held-out MAE increase",
@@ -177,6 +180,19 @@ importance.head(10).rename(columns={
 """),
         md("""
 These are out-of-fold permutation importances from complete unseen cycles. They show predictive reliance and are **associations, not causal effects**.
+"""),
+        md("## 4B. Held-out SHAP — direction and magnitude"),
+        code(r"""
+shap_summary = pd.DataFrame(manifest["held_out_shap_importance"])
+shap_summary.head(10).rename(columns={
+    "feature": "Input",
+    "mean_abs_shap_recovery": "Mean absolute SHAP effect",
+    "relative_mean_abs_shap_pct": "Relative SHAP reliance (%)",
+    "direction_when_value_increases": "General direction when higher",
+})[["Input", "Mean absolute SHAP effect", "Relative SHAP reliance (%)", "General direction when higher"]].round(4)
+"""),
+        md("""
+SHAP was calculated on each complete outer held-out cycle for the strongest tree challenger—not on its training fit. It is shown as a non-linear sensitivity analysis and does **not** explain the operational linear model. Because the tree predicts **additional loss**, SHAP signs are negated so positive values mean the feature raised final recovery and negative values mean it lowered final recovery. This explains model behavior; it does not prove that intervening on the feature will cause the predicted change.
 """),
         md("## 5. Day 14 held-out proof and one complete example"),
         code(BOOTSTRAP),
@@ -210,7 +226,7 @@ day14.head(8)[["cycle_id", "building_id", "predicted", "actual", "error_points"]
         md("""
 ## 7. Defense takeaway
 
-Canary's recovery output is a **nested whole-cycle-validated estimate of the agreed last-recorded recovery proxy**. Its held-out error is roughly 1–2 percentage points, but it is not yet strong at recognizing the small number of outcomes at or above 95%. Use it to size likely gaps and guide attention, not to claim certainty.
+Canary's recovery output is a **nested whole-cycle-validated estimate of the agreed last-recorded recovery proxy**. The refreshed model uses 31 independent outcomes across six completed cycles. Its held-out error is roughly 1–2 percentage points, but its low R² and weak recall of the small number of outcomes at or above 95% require cautious use. Use it to size likely gaps and guide attention, not to claim certainty.
 """),
     ]
     return {"cells": cells, "metadata": {"kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"}, "language_info": {"name": "python", "version": "3"}}, "nbformat": 4, "nbformat_minor": 5}
@@ -320,6 +336,22 @@ print(f"Historical target hits: {manifest['actual_target_hits']} of {manifest['t
 """),
         md("""
 **Interpretation:** no learned challenger cleared all approved gates, so historical remaining gain stays operational. The high target-side percentage partly reflects that 26 of 31 historical outcomes are below 1,800 g; it is not proof of balanced target classification.
+"""),
+        md("## 3B. Prospective audit on the newly completed 2026-3 cycle"),
+        code(r"""
+audit = manifest.get("prospective_latest_cycle_audit", {})
+audit_metrics = audit.get("metrics", {})
+print("Cycle:", audit.get("cycle_id"))
+print("This cycle was excluded from training and champion selection.")
+print(f"Independent outcomes: {audit.get('independent_outcomes', 0)}")
+print(f"Checkpoint forecasts: {audit_metrics.get('rows', 0)}")
+print(f"MAE: {audit_metrics.get('mae_kg', np.nan)*1000:.0f} g")
+print(f"RMSE: {audit_metrics.get('rmse_kg', np.nan)*1000:.0f} g")
+print(f"Within 200 g: {audit_metrics.get('within_200g_rate', np.nan):.1%}")
+pd.DataFrame(audit.get("predictions", [])).head(12)
+"""),
+        md("""
+The 2026-3 prospective audit is encouraging but contains only three building outcomes. Its negative R² is caused by the very narrow spread of their actual Day 35 weights, so MAE and the actual-versus-predicted plot are more informative here. This small audit does not replace the six-cycle historical validation.
 """),
         md("## 4. What the selected model relies on"),
         code(r"""

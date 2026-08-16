@@ -37,10 +37,14 @@ function normalizeValue(column, value) {
 
 function titleFor(sheetName) {
   const titles = {
+    "How to Read": "How to Read the Model-Ready Data",
     "Data Dictionary": "Data Dictionary",
     "Building Outcomes": "One Row per Building Outcome",
     "Recovery Training": "Exact Recovery Training Snapshots",
+    "Recovery Schedule": "Why Recovery Uses Standard and Latest Snapshots",
     "Weight Training": "Exact Day 35 Weight Training Checkpoints",
+    "Latest Cycle Weight Audit": "Latest-Cycle Day 35 Prospective Audit",
+    "Latest Recovery Audit": "Latest-Cycle Recovery Prospective Audit",
     "Recovery Daily Audit": "All Leakage-Safe Recovery Candidate Snapshots",
   };
   return titles[sheetName] || sheetName;
@@ -48,11 +52,15 @@ function titleFor(sheetName) {
 
 function noteFor(sheetName) {
   const notes = {
+    "How to Read": "Start here. This sheet explains what one row means, which fields are X versus Y, and why the recovery and weight tables have different snapshot schedules.",
     "Data Dictionary": "Definitions, units, X/Y roles, missing-value handling, and leakage controls for every exported field.",
-    "Building Outcomes": "Outcome-level audit view. Temperature and humidity are intentionally excluded here because they change by review date and belong in the as-of snapshots.",
-    "Recovery Training": "The 122 balanced rows actually used for recovery model comparison: Days 7, 14, 21, 28, plus the latest eligible pre-outcome snapshot.",
-    "Weight Training": "The 124 engineered checkpoint rows used for Day 35 model comparison. Future checkpoint weights remain blank by construction.",
-    "Recovery Daily Audit": "All 1,122 candidate daily snapshots before balancing. Each row uses only records available by its as-of date.",
+    "Building Outcomes": `Outcome-level audit view: ${payload.summary.recovery_building_outcomes} historical fitting outcomes plus ${payload.summary.latest_cycle_recovery_audit_candidates} later 2026-3 audit candidates. Temperature and humidity change by review date and belong in the as-of snapshots.`,
+    "Recovery Training": `The ${payload.summary.recovery_training_rows.toLocaleString()} balanced rows used for recovery model comparison: standard Days 7, 14, 21, and 28 plus a separately labelled latest pre-outcome snapshot. A Day 48 row is a near-end snapshot, not an extra standard checkpoint.`,
+    "Recovery Schedule": "This table counts the exact days retained. Standard checkpoints answer how forecasting changes with age; the fifth training snapshot tests near-end forecasting and can vary from Day 23 to Day 48.",
+    "Weight Training": `The ${payload.summary.weight_training_rows.toLocaleString()} historical X snapshots at Days 7, 14, 21, and 28. The recorded Day 35 weight is the Y target on every row; it is intentionally never an X feature.`,
+    "Latest Cycle Weight Audit": `The ${payload.summary.latest_cycle_day35_audit_rows.toLocaleString()} latest-cycle checkpoint rows are a prospective check only. They are excluded from model fitting and champion selection.`,
+    "Latest Recovery Audit": `The frozen recovery model was scored on ${payload.summary.latest_cycle_recovery_audit_rows.toLocaleString()} later 2026-3 checkpoints. Its MAE is ${payload.summary.latest_cycle_recovery_audit_mae_pp.toFixed(2)} percentage points; treat this as a provisional audit because the endpoint is still a last-recorded-population proxy.`,
+    "Recovery Daily Audit": `All ${payload.summary.recovery_daily_audit_rows.toLocaleString()} candidate daily snapshots before balancing. Each row uses only records available by its as-of date.`,
   };
   return notes[sheetName] || "Project Canary model-ready evidence.";
 }
@@ -164,6 +172,16 @@ await fs.writeFile(
 await fs.writeFile(
   path.join(outputDir, "day35_weight_training.csv"),
   csvText(payload.tables["Weight Training"]),
+  "utf8",
+);
+await fs.writeFile(
+  path.join(outputDir, "latest_cycle_day35_audit.csv"),
+  csvText(payload.tables["Latest Cycle Weight Audit"]),
+  "utf8",
+);
+await fs.writeFile(
+  path.join(outputDir, "latest_cycle_recovery_audit.csv"),
+  csvText(payload.tables["Latest Recovery Audit"]),
   "utf8",
 );
 await fs.writeFile(

@@ -51,15 +51,11 @@ def test_operational_driver_trace_keeps_unavailable_inputs_explicit():
     assert set(supporting["Effect on risk score"]) == {"None — supporting diagnostic only"}
 
 
-def test_current_cycle_surfaces_specific_feed_gap_and_action():
+def test_feed_alerts_stay_disabled_until_units_are_confirmed():
     dataset = load_workbook(SOURCE)
     alerts = evaluate_operational_alerts(dataset, "2026-3", "Tags 2", "2026-07-25")
-    feed = next(alert for alert in alerts if alert["check"] == "Feed intake")
-
-    assert "below the Day 22 target" in feed["title"]
-    assert "74 g/bird" in feed["evidence"]
-    assert "provisional target 130 g/bird" in feed["evidence"]
-    assert "feed availability" in feed["next_check"]
+    assert load_operational_alert_rules()["feed_alert_enabled"] is False
+    assert not any(alert["check"] == "Feed intake" for alert in alerts)
 
 
 def test_temperature_gap_is_measured_to_range_boundary_not_midpoint():

@@ -41,14 +41,14 @@ def test_all_cycle_grid_and_target_specific_outcome_counts(analysis_rows):
     assert len(analysis_rows) == 7 * 6
     assert len(recorded) == 34
     assert recorded["cycle_id"].nunique() == 7
-    assert analysis_rows["recovery_training_eligible"].sum() == 25
+    assert analysis_rows["recovery_training_eligible"].sum() == 31
     assert analysis_rows["weight_training_eligible"].sum() == 31
 
     by_cycle = analysis_rows.groupby("cycle_id")[[
         "recovery_training_eligible",
         "weight_training_eligible",
     ]].sum()
-    assert by_cycle.loc["2026-2"].tolist() == [0, 6]
+    assert by_cycle.loc["2026-2"].tolist() == [6, 6]
     assert by_cycle.loc["2026-3"].tolist() == [0, 0]
 
 
@@ -65,16 +65,16 @@ def test_historical_actuals_and_current_projections_do_not_mix(analysis_rows):
     assert current["projected_recovery"].notna().all()
 
 
-def test_2026_2_recovery_proxy_is_flagged_and_excluded(analysis_rows):
+def test_2026_2_recovery_proxy_is_now_eligible_after_endpoint_refresh(analysis_rows):
     cycle = analysis_rows.loc[
         analysis_rows["cycle_id"].eq("2026-2")
         & analysis_rows["start_date"].notna()
     ]
     assert len(cycle) == 6
     assert cycle["historical_recovery_proxy"].notna().all()
-    assert not cycle["recovery_training_eligible"].any()
+    assert cycle["recovery_training_eligible"].all()
     assert cycle["weight_training_eligible"].all()
-    assert cycle["data_quality_note"].str.contains("excluded from recovery training").all()
+    assert not cycle["data_quality_note"].str.contains("excluded from recovery training").any()
 
 
 def test_historical_recovery_kpi_reconciles_to_population_totals(analysis_rows):

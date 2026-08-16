@@ -1,0 +1,15 @@
+pandas>=2.2,<3
+numpy>=2.0,<3
+openpyxl>=3.1,<4
+matplotlib>=3.9,<4
+scikit-learn>=1.6,<2
+joblib>=1.4,<2
+shap>=0.48,<0.52
+xgboost>=3.2
+lightgbm>=4.7
+catboost>=1.2.10
+statsmodels>=0.14,<0.15
+pymc>=5.25,<6
+arviz>=0.22,<0.23
+nbformat>=5,<6
+nbclient>=0.10,<1

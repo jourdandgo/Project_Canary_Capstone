@@ -179,7 +179,7 @@
     ]
   },
   "training_source": "FARM HARVEST DATA.xlsx + Farm Performance Summary.xlsx (final average weight only)",
-  "source_complete_date": "2026-07-25",
+  "source_complete_date": "2026-08-07",
   "training_cycles": [
     "2025-2",
     "2025-3",

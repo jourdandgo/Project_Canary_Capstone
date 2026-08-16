@@ -2,6 +2,7 @@
   "version": "operational-alerts-0.3.0-tropical-bands",
   "approval_status": "Tropical bands supplied; severity distances pending Doc Raymond validation",
   "risk_score_effect": "Temperature and humidity feed the formal environmental dimension; feed remains supporting diagnostic only.",
+  "feed_alert_enabled": false,
   "maximum_current_reading_age_days": 2,
   "mortality_daily_pct": {"watch": 0.1, "warning": 0.2, "critical": 0.3},
   "temperature_deviation_from_range_c": {"warning": 1, "critical": 2},
@@ -32,7 +33,7 @@
   "deferred": [
     "Record the exact literature source, sensor position, and housing context for the supplied tropical ranges.",
     "The Day 28-35 ranges are provisionally carried after Day 35 so continuous-cycle monitoring does not stop; confirm this with Doc Raymond.",
-    "Feed-intake targets and the Daily FI/bird unit require farm-owner confirmation.",
+    "Feed-intake targets and the Daily FI/bird unit require farm-owner confirmation; automated feed alerts remain disabled until then.",
     "Water-intake alerts require a reliable building-day water field and an approved baseline.",
     "THI requires an approved poultry-specific formula and action bands."
   ]

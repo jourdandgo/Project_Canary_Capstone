@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import hashlib
 from io import BytesIO
 from pathlib import Path
 from typing import BinaryIO, Iterable
@@ -111,6 +112,23 @@ class CanaryDataset:
     targets: pd.DataFrame
     quality: DataQualityReport
     source_name: str
+    source_sha256: str | None = None
+
+
+def _source_bytes(source: str | Path | bytes | bytearray | BinaryIO) -> bytes:
+    """Return workbook bytes while preserving a caller-owned stream position."""
+
+    if isinstance(source, (bytes, bytearray)):
+        return bytes(source)
+    if isinstance(source, (str, Path)):
+        return Path(source).read_bytes()
+    if hasattr(source, "getvalue"):
+        return bytes(source.getvalue())
+    position = source.tell() if hasattr(source, "tell") else None
+    payload = source.read()
+    if position is not None and hasattr(source, "seek"):
+        source.seek(position)
+    return bytes(payload)
 
 
 def _normalize_building(value: object) -> object:
@@ -556,11 +574,10 @@ def load_workbook(
 ) -> CanaryDataset:
     """Read and validate the farm workbook without changing the source file."""
 
+    payload = _source_bytes(source)
+    source_sha256 = hashlib.sha256(payload).hexdigest()
     read_source: object
-    if isinstance(source, (bytes, bytearray)):
-        read_source = BytesIO(source)
-    else:
-        read_source = source
+    read_source = BytesIO(payload)
 
     try:
         book = pd.read_excel(read_source, sheet_name=None, engine="openpyxl")
@@ -581,4 +598,5 @@ def load_workbook(
         targets=targets,
         quality=quality,
         source_name=source_name,
+        source_sha256=source_sha256,
     )

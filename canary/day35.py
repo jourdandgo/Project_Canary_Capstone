@@ -63,12 +63,24 @@ def load_day35_manifest(
     return manifest
 
 
-def build_day35_training_rows(dataset: CanaryDataset) -> pd.DataFrame:
-    """Return one leakage-safe checkpoint row for each observed Day 35 weight."""
+def build_day35_training_rows(
+    dataset: CanaryDataset,
+    *,
+    include_latest_cycle: bool = False,
+) -> pd.DataFrame:
+    """Return leakage-safe checkpoint rows for observed Day 35 weights.
+
+    The latest placement cycle is excluded by default because it is the live
+    decision cycle.  ``include_latest_cycle=True`` is reserved for an explicit
+    prospective audit after Day 35 weights have been recorded; those rows must
+    never be mixed into the training set used to forecast that same cycle.
+    """
 
     cycle_starts = dataset.cycles.groupby("cycle_id")["start_date"].min()
     latest_cycle = str(cycle_starts.idxmax())
-    completed = set(cycle_starts.index.astype(str)) - {latest_cycle}
+    completed = set(cycle_starts.index.astype(str))
+    if not include_latest_cycle:
+        completed.discard(latest_cycle)
     weights = dataset.daily.loc[
         dataset.daily["cycle_id"].isin(completed)
         & dataset.daily["weight_measured"]
@@ -205,10 +217,17 @@ def _ridge_feature_frame(
     return features[list(RIDGE_FEATURES)]
 
 
-def build_day35_feature_rows(dataset: CanaryDataset) -> pd.DataFrame:
-    """Return the exact raw engineered X rows and observed Day 35 Y used in validation."""
+def build_day35_feature_rows(
+    dataset: CanaryDataset,
+    *,
+    include_latest_cycle: bool = False,
+) -> pd.DataFrame:
+    """Return engineered Day 35 X rows and observed Y for audit or training."""
 
-    rows = build_day35_training_rows(dataset)
+    rows = build_day35_training_rows(
+        dataset,
+        include_latest_cycle=include_latest_cycle,
+    )
     if rows.empty:
         return rows
     target_by_age = dataset.targets.set_index("age_day")["target_weight_kg"]
@@ -382,7 +401,7 @@ def _bootstrap_cycle_mae(
 def train_day35_weight_baseline(dataset: CanaryDataset) -> dict[str, Any]:
     """Compare simple projections using leave-one-complete-cycle-out validation."""
 
-    from .strengthened_models import train_weight_remaining_gain
+    from .strengthened_models import add_checkpoint_indicators, train_weight_remaining_gain
 
     rows = build_day35_training_rows(dataset)
     if rows.empty or rows["cycle_id"].nunique() < 3:
@@ -391,6 +410,79 @@ def train_day35_weight_baseline(dataset: CanaryDataset) -> dict[str, Any]:
     features = _ridge_feature_frame(rows, target_by_age)
     strengthened = train_weight_remaining_gain(rows, features)
     manifest = strengthened.manifest | {"training_source": dataset.source_name}
+
+    # If the live/latest cycle has subsequently recorded Day 35 weights, use
+    # it as a true out-of-time audit.  It remains excluded from fitting and
+    # champion selection, so this check answers how the frozen historical
+    # method performed on genuinely later data.
+    all_rows = build_day35_training_rows(dataset, include_latest_cycle=True)
+    latest_cycle = str(dataset.cycles.groupby("cycle_id")["start_date"].min().idxmax())
+    latest_rows = all_rows.loc[all_rows["cycle_id"].eq(latest_cycle)].reset_index(drop=True)
+    if not latest_rows.empty:
+        latest_features = _ridge_feature_frame(latest_rows, target_by_age)
+        if manifest["selected_model"] == "historical_remaining_gain":
+            gain_by_day = manifest["remaining_gain_by_measurement_day_kg"]
+            prospective_prediction = np.asarray(
+                [
+                    float(current) + float(gain_by_day[str(int(day))])
+                    for current, day in zip(
+                        latest_rows["current_weight_kg"],
+                        latest_rows["measurement_day"],
+                    )
+                ]
+            )
+        else:
+            model_features = add_checkpoint_indicators(
+                latest_features,
+                latest_rows["measurement_day"],
+            )
+            prospective_prediction = (
+                latest_rows["current_weight_kg"].to_numpy(float)
+                + strengthened.model.predict(model_features)
+            )
+        prospective_prediction = np.clip(prospective_prediction, 0.1, 3.5)
+        prospective_actual = latest_rows["actual_day35_weight_kg"].to_numpy(float)
+        prospective = latest_rows[
+            [
+                "cycle_id",
+                "building_id",
+                "measurement_day",
+                "current_weight_kg",
+                "actual_day35_weight_kg",
+            ]
+        ].copy()
+        prospective["predicted_day35_weight_kg"] = prospective_prediction
+        prospective["error_kg"] = prospective_prediction - prospective_actual
+        prospective["absolute_error_kg"] = np.abs(prospective["error_kg"])
+        manifest["prospective_latest_cycle_audit"] = {
+            "cycle_id": latest_cycle,
+            "training_exclusion": "The latest cycle was excluded from model fitting and champion selection.",
+            "independent_outcomes": int(
+                latest_rows[["cycle_id", "building_id"]].drop_duplicates().shape[0]
+            ),
+            "checkpoint_rows": int(len(latest_rows)),
+            "metrics": _metrics(prospective_actual, prospective_prediction),
+            "checkpoint_metrics": {
+                str(day): _metrics(
+                    prospective_actual[latest_rows["measurement_day"].eq(day).to_numpy()],
+                    prospective_prediction[latest_rows["measurement_day"].eq(day).to_numpy()],
+                )
+                for day in CHECKPOINT_DAYS
+                if latest_rows["measurement_day"].eq(day).any()
+            },
+            "predictions": [
+                {
+                    **record,
+                    "measurement_day": int(record["measurement_day"]),
+                    "current_weight_kg": float(record["current_weight_kg"]),
+                    "actual_day35_weight_kg": float(record["actual_day35_weight_kg"]),
+                    "predicted_day35_weight_kg": float(record["predicted_day35_weight_kg"]),
+                    "error_kg": float(record["error_kg"]),
+                    "absolute_error_kg": float(record["absolute_error_kg"]),
+                }
+                for record in prospective.to_dict(orient="records")
+            ],
+        }
     if strengthened.model is not None:
         manifest["_fitted_model"] = strengthened.model
     return manifest

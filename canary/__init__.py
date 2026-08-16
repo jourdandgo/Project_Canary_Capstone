@@ -83,6 +83,27 @@ from .business_value import (
     attach_business_value,
     estimate_recovery_value,
 )
+from .contracts import PredictionResult
+from .farmwide_features import (
+    CHECKPOINT_DAYS,
+    PRIMARY_IDENTITY_FEATURES,
+    assert_primary_schema_has_no_identity,
+    build_asof_features,
+    checkpoint_status,
+)
+from .priority import (
+    PRIORITY_ORDER,
+    attach_management_priority,
+    rank_management_priorities,
+)
+from .research_evidence import (
+    DEFAULT_RESEARCH_ROOT,
+    OutcomeResearchEvidence,
+    display_name,
+    feature_display_name,
+    load_outcome_research_evidence,
+    load_prospective_shadow_status,
+)
 
 __all__ = [
     "CANONICAL_BUILDINGS",
@@ -151,4 +172,19 @@ __all__ = [
     "ValueAssumptions",
     "attach_business_value",
     "estimate_recovery_value",
+    "PredictionResult",
+    "CHECKPOINT_DAYS",
+    "PRIMARY_IDENTITY_FEATURES",
+    "assert_primary_schema_has_no_identity",
+    "build_asof_features",
+    "checkpoint_status",
+    "PRIORITY_ORDER",
+    "attach_management_priority",
+    "rank_management_priorities",
+    "DEFAULT_RESEARCH_ROOT",
+    "OutcomeResearchEvidence",
+    "display_name",
+    "feature_display_name",
+    "load_outcome_research_evidence",
+    "load_prospective_shadow_status",
 ]

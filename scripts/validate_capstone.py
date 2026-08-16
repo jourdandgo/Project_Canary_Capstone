@@ -61,8 +61,8 @@ SCENARIOS = (
     {
         "id": "missing_daily_entry",
         "label": "Missing current-day observations",
-        "cycle_id": "2026-3",
-        "as_of": "2026-07-26",
+        "cycle_id": "2026-1",
+        "as_of": "2026-04-28",
         "purpose": "Confirm delayed data is explicit while calculations use only the latest known observations.",
     },
 )
@@ -195,15 +195,15 @@ def _scenario_checks(
             "The Day 48 building remains evaluated and its Day 35 weight is visibly stale.",
         )
     elif scenario_id == "missing_daily_entry":
+        incomplete = eligible.loc[eligible["state"].eq("Incomplete")]
         _check(
             checks,
             "Missing-day continuity",
-            not eligible.empty
-            and eligible["state"].eq("Incomplete").all()
-            and eligible["recovery_forecast_status"].eq(
+            not incomplete.empty
+            and incomplete["recovery_forecast_status"].eq(
                 "Forecast available — latest recorded data used"
             ).all(),
-            "Incomplete buildings use the latest known data and are not mistaken for unplaced flocks.",
+            f"{len(incomplete)} incomplete building(s) use the latest known data and are not mistaken for unplaced flocks; buildings with a current row remain Active.",
         )
 
     return view, checks
