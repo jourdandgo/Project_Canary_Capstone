@@ -28,7 +28,10 @@ def main() -> None:
     for cycle in cycles:
         meta = dataset.cycles.loc[dataset.cycles["cycle_id"] == cycle]
         cycle_start = pd.Timestamp(meta["start_date"].min()).normalize()
-        timings = [(label, cycle_start + pd.DateOffset(days=day - 1)) for label, day in checkpoints.items()]
+        timings = [
+            (label, cycle_start + pd.DateOffset(days=day - 1))
+            for label, day in checkpoints.items()
+        ]
         timings.append(("Last recorded", pd.Timestamp(meta["end_date"].max())))
         for timing, as_of in timings:
             scored = score_cycle_snapshot(dataset, cycle, as_of)
@@ -67,13 +70,19 @@ def main() -> None:
         subset = frame.loc[frame["timing"] == timing]
         checkpoint_audit[timing] = {
             "scored_snapshots": int(len(subset)),
-            "priority_distribution": {str(label): int(count) for label, count in subset["risk_rating"].value_counts().sort_index().items()},
-            "evidence_distribution": {str(label): int(count) for label, count in subset["evidence_status"].value_counts().sort_index().items()},
+            "priority_distribution": {
+                str(label): int(count)
+                for label, count in subset["risk_rating"].value_counts().sort_index().items()
+            },
+            "evidence_distribution": {
+                str(label): int(count)
+                for label, count in subset["evidence_status"].value_counts().sort_index().items()
+            },
             "environment_scored": int(subset["environment_score"].notna().sum()),
-            "priority_overrides": int(subset["priority_rule_id"].astype(str).str.startswith("PRIORITY-OVERRIDE").sum()),
+            "score_label_mismatches": int((subset["risk_rating"] != subset["base_risk_rating"]).sum()),
         }
     payload = {
-        "audit_date": "2026-08-19",
+        "audit_date": "2026-08-24",
         "purpose": "Audit the revised direct-evidence risk score for traceability and historical association without treating it as an outcome probability.",
         "design": {
             "dimensions": ["Weight gap", "Population loss", "Daily mortality", "Environmental conditions"],
@@ -100,7 +109,7 @@ def main() -> None:
             "score_vs_final_recovery_correlation": correlation(last, "risk_score", "final_recovery"),
             "score_vs_day35_weight_correlation": correlation(last, "risk_score", "day35_weight_kg"),
         },
-        "decision": "Use the score for transparent prioritization. Do not claim calibrated probability or causal environmental effects. Test the proposed labels and overrides in a one-to-two-cycle shadow pilot; revise only with documented farm approval.",
+        "decision": "Use the score for transparent prioritization and map every total directly to the published score band. Keep severe patterns and evidence coverage visible but separate from the label. Do not claim calibrated probability or causal environmental effects. Test the proposed thresholds and labels in a one-to-two-cycle shadow pilot; revise only with documented farm approval.",
     }
     OUTPUT.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(payload, indent=2))

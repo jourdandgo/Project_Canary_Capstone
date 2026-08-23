@@ -18,7 +18,7 @@ Product definition: **Day 35 is the primary 1.8 kg management milestone.** Model
 - Show latest observed population, percentage alive, bodyweight measurement, target, and freshness.
 - Show an inspectable data-quality report.
 - Calculate four separate rules-based dimensions: weight gap, cumulative population loss, latest daily mortality, and combined environmental conditions.
-- Map the available-dimension total to Low, Medium, High, or Critical using the agreed 0–12 structure.
+- Map the available-dimension total directly to Low (0–2), Medium (3–5), High (6–8), or Critical (9–12), with no automatic label overrides.
 - Generate deterministic primary and supporting explanations plus problem-pattern classifications.
 - Preserve missing dimensions as not scored and disclose reduced evidence.
 - Show risk priority, dimension evidence, daily score history, rule version, and provisional-threshold status.

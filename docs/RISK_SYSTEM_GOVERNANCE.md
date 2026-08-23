@@ -1,6 +1,6 @@
 # Project Canary observed-risk governance
 
-**Rule version:** `risk-rules-0.5.0-banded-hybrid`
+**Rule version:** `risk-rules-0.6.0-score-bands-only`
 **Status:** Proposed for farm validation — not approved for routine use
 
 ## What the score is for
@@ -16,41 +16,34 @@ Canary's 0–12 observed-concern score ranks buildings for inspection using four
 | Daily mortality | Is there an urgent current loss event? | A spike can require review before cumulative loss becomes large. |
 | Environmental conditions | Is a fresh temperature or humidity observation outside its age band? | It gives management a concrete condition to inspect, not proof of cause. |
 
-Population loss and daily mortality share a **survivability** domain for override logic. They are shown separately because they answer different timing questions, but they cannot be counted as two independent severe domains.
+Population loss and daily mortality are shown separately because they answer different timing questions. Their points contribute to the same transparent total without any special label override.
 
 ## Calculation and labels
 
 Each available dimension receives 0–3 points. The sum is the observed-concern total; the maximum is 12 when all four dimensions are available.
 
-| Base total | Base label |
+| Total | Label |
 |---:|---|
 | 0–2 | Low |
 | 3–5 | Medium |
 | 6–8 | High |
 | 9–12 | Critical |
 
-The previous `Critical 6–12` band was retired because it made the critical label too broad. The base bands are even three-point intervals, which makes the total easy to explain and leaves **Critical** for substantially accumulated concern.
+The label follows this table exactly. The same total always produces the same label, regardless of which dimensions contributed the points. This leaves **Critical** for totals of 9–12 and makes every card directly reconcilable.
 
-## Safeguard overrides
+## Severe conditions and problem patterns
 
-The base label can be elevated only when a documented rule applies:
-
-1. **Critical:** daily mortality is 3/3.
-2. **Critical:** population loss is 3/3.
-3. **Critical:** two distinct domains each reach 3/3. The domains are growth, survivability, and environment; two survivability components alone do not satisfy this rule.
-4. **High floor:** any other single dimension reaches 3/3 but the total would otherwise be Low or Medium.
-
-These overrides ensure an acute, independently serious condition is not hidden by a low total while avoiding accidental double counting.
+Canary continues to show every 3/3 dimension, detected problem pattern, persistent watch, and matched inspection guide. These signals help management decide what to inspect first, but they do not override the score-band label.
 
 ## Evidence coverage
 
 - **Four dimensions scored:** Complete evidence.
-- **Three dimensions scored:** normal label with a Reduced evidence flag.
-- **Fewer than three:** Insufficient evidence, unless an acute population-loss or daily-mortality override applies.
+- **Three dimensions scored:** score-band label with a Reduced evidence flag.
+- **Fewer than three:** score-band label with an Insufficient evidence warning.
 - Missing or stale environmental readings never receive zero points silently.
 
 ## Threshold provenance and control
 
-Weight, population-loss, and daily-mortality candidate thresholds originate in the Farm Validation Workbook. Temperature and humidity use the supplied age-specific tropical reference bands. The severity distances, label bands, and overrides are still proposals. Before routine adoption, Doc Raymond should approve the rule version after the team reviews a one-to-two-cycle shadow-pilot log containing score, evidence coverage, inspection taken, outcome, and any threshold exception.
+Weight, population-loss, and daily-mortality candidate thresholds originate in the Farm Validation Workbook. Temperature and humidity use the supplied age-specific tropical reference bands. The severity distances and label bands are still proposals. Before routine adoption, Doc Raymond should approve the rule version after the team reviews a one-to-two-cycle shadow-pilot log containing score, evidence coverage, inspection taken, outcome, and any threshold exception.
 
-Every active-building view must display the raw observation and date, target or reference band, calculation, points, threshold source, total, evidence status, priority-rule identifier, rule version, and approval status.
+Every active-building view must display the raw observation and date, target or reference band, calculation, points, threshold source, total, score-band label, evidence status, rule version, and approval status.

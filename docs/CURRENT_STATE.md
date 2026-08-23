@@ -1,7 +1,14 @@
 # Project Canary — Current State and Next Actions
 
-**Last updated:** 23 August 2026
+**Last updated:** 24 August 2026
 **Update owner:** the agent or teammate completing the most recent meaningful change.
+
+## 2026-08-24 — Score-band-only operational priority
+
+- **Changed:** `canary/risk.py`, `config/risk_rules.json`, app explanations, governance documentation, risk audit, and tests.
+- **What changed:** removed automatic Critical and High label overrides. Every calculated total now maps directly to Low 0–2, Medium 3–5, High 6–8, or Critical 9–12. Severe dimensions, multiple problem patterns, persistent watches, and evidence-coverage warnings remain visible but do not change the label.
+- **Verified:** the Day 7 Tags 1 and Tags 2 case now maps both 7/12 totals to High; all checkpoint audit score-label mismatches equal zero; capstone validation passed 45/45; full canonical tests passed.
+- **Open item:** retain the provisional-status disclosure until the thresholds and labels receive farm approval after the shadow pilot.
 
 ## 2026-08-23 — Trish v19 two-model integration and calculation trace
 
@@ -34,7 +41,7 @@ The canonical Canary prototype uses the final Trish v19 two-model handoff, curre
 - Replaced non-reproducible local-SHAP claims with exact held-out input rows, model/run identity, error-band construction, and global LOFO association evidence.
 - Added 2026-3 replay checkpoint data: Day 7, 14, 15, 21, 28, and 35 CSVs for Tags 1–3; reset returns to historical baseline through 2026-2.
 - Corrected completed-cycle presentation: completed cycles show actual outcomes rather than current critical-risk cards.
-- Implemented observed-risk governance version `risk-rules-0.5.0-banded-hybrid`: base bands 0–2/3–5/6–8/9–12 plus documented acute/evidence overrides.
+- Implemented observed-risk governance version `risk-rules-0.6.0-score-bands-only`: labels follow 0–2 Low, 3–5 Medium, 6–8 High, and 9–12 Critical exactly; severe patterns and evidence coverage remain separate signals.
 - Added traceable management decisions and Action History: accept, modify, defer, or override the suggested next check while preserving original evidence/recommendation.
 - Simplified Home to a compact “What needs attention today?” operational header.
 - Added **About Canary** under Farm owner; retained detailed **How Canary Works** under Defense tools.

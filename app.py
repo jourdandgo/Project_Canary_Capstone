@@ -3539,7 +3539,7 @@ if selected_view == VIEW_DETAILS:
     )
     st.dataframe(pd.concat([risk_table, risk_total], ignore_index=True), hide_index=True, width="stretch")
     st.caption(
-        "The 0–12 observed-concern total ranks recorded conditions. The operational-priority label adds explicit emergency overrides and an evidence-coverage rule; neither is a probability of missing the 95% or 1.8 kg goals."
+        "The 0–12 observed-concern total determines the operational-priority label directly: 0–2 Low, 3–5 Medium, 6–8 High, and 9–12 Critical. Evidence coverage is reported separately. This is not a probability of missing the 95% or 1.8 kg goals."
     )
     with st.expander("View risk calculation · input → rule → score → label"):
         st.markdown("**1. Inputs and dimension rules**")
@@ -5631,7 +5631,7 @@ if selected_view == VIEW_HOW_CANARY_WORKS:
     st.dataframe(pd.DataFrame([
         {"Step": "1 · Read", "What happens": "Validate the uploaded records and freeze the selected review date."},
         {"Step": "2 · Observe", "What happens": "Build one as-of record per building; later records are excluded."},
-        {"Step": "3 · Prioritize", "What happens": "Apply four transparent observed-condition rules and assign 0–12 points plus explicit overrides."},
+        {"Step": "3 · Prioritize", "What happens": "Apply four transparent observed-condition rules and map the 0–12 total directly to the published score band."},
         {"Step": "4 · Forecast", "What happens": "Model 1 estimates the end-of-cycle recovery proxy; Model 3 estimates Day 35 bodyweight at validated checkpoints."},
         {"Step": "5 · Explain", "What happens": "Show the exact feature row, artifact identity, held-out error reference, and output lineage."},
         {"Step": "6 · Guide", "What happens": "Offer preliminary inspection and documentation guidance based on observed conditions."},
@@ -5870,7 +5870,7 @@ if selected_view == VIEW_METHODS:
                 {
                     "Component": "1 · Rules-based risk",
                     "Input": "Current weight gap, population loss, daily mortality, and age-specific temperature/humidity evidence",
-                    "Process": "Four transparent 0–3 checks; observed-concern total plus documented priority overrides",
+                    "Process": "Four transparent 0–3 checks; the observed-concern total maps directly to the published score band",
                     "Output": "Operational priority, with the exact evidence, point, and rule",
                     "Business use": "Choose where to inspect first",
                 },
@@ -6449,14 +6449,14 @@ if selected_view == VIEW_METHODS:
         st.subheader("What the risk score means")
         st.markdown(
             """
-            Canary gives 0–3 points to four directly observed building-level checks. The observed-concern total starts the operational-priority label; documented acute and evidence-coverage rules can override it. It is not a probability of missing either target.
+            Canary gives 0–3 points to four directly observed building-level checks. Their sum determines the operational-priority label directly. It is not a probability of missing either target.
 
             - **Low:** 0–2
             - **Medium:** 3–5
             - **High:** 6–8
             - **Critical:** 9–12
 
-            Acute daily mortality or population loss can make a building Critical. Two distinct severe domains can also make it Critical; the two survivability checks are deliberately one domain. With fewer than three scored dimensions, Canary shows Insufficient evidence unless an acute survivability override applies. Missing evidence is never silently scored as zero.
+            There are no automatic label overrides. A 7/12 score is always High, regardless of which dimensions produced the seven points. Severe dimensions and multiple problem patterns remain visible for inspection. Evidence coverage is shown separately, and missing evidence is never silently scored as zero.
             """
         )
         st.dataframe(

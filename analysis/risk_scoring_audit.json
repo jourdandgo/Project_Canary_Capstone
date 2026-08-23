@@ -1,5 +1,5 @@
 {
-  "audit_date": "2026-08-19",
+  "audit_date": "2026-08-24",
   "purpose": "Audit the revised direct-evidence risk score for traceability and historical association without treating it as an outcome probability.",
   "design": {
     "dimensions": [
@@ -31,61 +31,60 @@
     "Day 7": {
       "scored_snapshots": 18,
       "priority_distribution": {
-        "Critical": 5,
+        "Critical": 1,
         "High": 4,
         "Low": 1,
-        "Medium": 8
+        "Medium": 12
       },
       "evidence_distribution": {
         "Complete": 8,
         "Reduced evidence": 10
       },
       "environment_scored": 8,
-      "priority_overrides": 9
+      "score_label_mismatches": 0
     },
     "Day 14": {
       "scored_snapshots": 18,
       "priority_distribution": {
-        "Critical": 5,
-        "High": 4,
+        "High": 5,
         "Low": 5,
-        "Medium": 4
+        "Medium": 8
       },
       "evidence_distribution": {
         "Complete": 7,
         "Reduced evidence": 11
       },
       "environment_scored": 7,
-      "priority_overrides": 9
+      "score_label_mismatches": 0
     },
     "Day 21": {
       "scored_snapshots": 18,
       "priority_distribution": {
-        "Critical": 2,
-        "High": 5,
+        "Critical": 1,
+        "High": 1,
         "Low": 3,
-        "Medium": 8
+        "Medium": 13
       },
       "evidence_distribution": {
         "Complete": 6,
         "Reduced evidence": 12
       },
       "environment_scored": 6,
-      "priority_overrides": 7
+      "score_label_mismatches": 0
     },
     "Day 28": {
       "scored_snapshots": 19,
       "priority_distribution": {
-        "High": 4,
+        "High": 2,
         "Low": 8,
-        "Medium": 7
+        "Medium": 9
       },
       "evidence_distribution": {
         "Complete": 4,
         "Reduced evidence": 15
       },
       "environment_scored": 5,
-      "priority_overrides": 2
+      "score_label_mismatches": 0
     }
   },
   "last_recorded_audit": {
@@ -94,5 +93,5 @@
     "score_vs_final_recovery_correlation": -0.286,
     "score_vs_day35_weight_correlation": -0.47
   },
-  "decision": "Use the score for transparent prioritization. Do not claim calibrated probability or causal environmental effects. Test the proposed labels and overrides in a one-to-two-cycle shadow pilot; revise only with documented farm approval."
+  "decision": "Use the score for transparent prioritization and map every total directly to the published score band. Keep severe patterns and evidence coverage visible but separate from the label. Do not claim calibrated probability or causal environmental effects. Test the proposed thresholds and labels in a one-to-two-cycle shadow pilot; revise only with documented farm approval."
 }

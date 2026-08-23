@@ -90,7 +90,7 @@ The app displays saved leave-one-building-flock-out predictions from Trish's fin
 
 ## 8. Observed-risk system
 
-Current authority: `config/risk_rules.json`, version `risk-rules-0.5.0-banded-hybrid`, **proposed for farm validation—not approved for routine use**.
+Current authority: `config/risk_rules.json`, version `risk-rules-0.6.0-score-bands-only`, **proposed for farm validation—not approved for routine use**.
 
 Four 0–3 point dimensions:
 
@@ -99,14 +99,14 @@ Four 0–3 point dimensions:
 3. Latest daily mortality.
 4. Environmental deviation: the worse of temperature or humidity versus an age-specific reference band, to avoid double counting.
 
-Base labels: Low 0–2; Medium 3–5; High 6–8; Critical 9–12. Acute daily mortality, acute population loss, or two distinct severe domains can elevate the label under documented safeguards. With fewer than three scored dimensions, display **Insufficient evidence** unless an acute survivability override applies. Show raw value, target/band, calculation, points, rule ID/version, evidence freshness, total, label, and override rationale on the Building View.
+Labels follow the total exactly: Low 0–2; Medium 3–5; High 6–8; Critical 9–12. There are no automatic label overrides. Severe dimensions and multiple problem patterns remain visible, while evidence coverage is reported separately. Show raw value, target/band, calculation, points, rule ID/version, evidence freshness, total, and score-band label on the Building View.
 
-Threshold provenance: farm-validation candidate bands for growth/population/mortality; supplied tropical age reference bands for temperature/humidity; severity distances and overrides remain shadow-pilot proposals pending Doc Raymond approval.
+Threshold provenance: farm-validation candidate bands for growth/population/mortality; supplied tropical age reference bands for temperature/humidity; severity distances and score bands remain shadow-pilot proposals pending Doc Raymond approval.
 
 ## 9. Panel and mentor feedback to address
 
 1. **Deck looked AI-generated.** Use fewer generic claims, more source-backed visuals, varied but simple compositions, concise human wording, and real charts/tables. Do not use decorative fake data or repetitive large-card layouts.
-2. **Risk score must be defensible.** Explain why four dimensions, why those thresholds, why labels and overrides, why environmental factors are combined, what is missing, and what governs change control.
+2. **Risk score must be defensible.** Explain why four dimensions, why those thresholds, why labels follow the total, why environmental factors are combined, what is missing, and what governs change control.
 3. **Make traceability visible.** Every displayed score, label, model outlook, pattern, and recommendation should be reconstructable from source values, rules, model artifact/feature window, and version.
 4. **Keep the human in the loop.** Support accept/modify/defer/override decisions with reasons, follow-up timing, original recommendation preserved, and append-only action history.
 5. **Model evidence should be honest.** Show selected metrics and representative actual-versus-predicted/SHAP evidence in defense material; state small-sample and prospective-replay limits.

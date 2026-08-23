@@ -1,5 +1,5 @@
 {
-  "version": "risk-rules-0.5.0-banded-hybrid",
+  "version": "risk-rules-0.6.0-score-bands-only",
   "approval_status": "Proposed for farm validation — not approved for routine use",
   "rating_bands": [
     {"label": "Low", "minimum": 0, "maximum": 2},
@@ -39,11 +39,7 @@
       "population_loss": "survivability",
       "daily_mortality": "survivability",
       "environment": "environment"
-    },
-    "critical_single_dimension": ["population_loss", "daily_mortality"],
-    "critical_concurrent_domain_score": 3,
-    "critical_concurrent_domain_count": 2,
-    "minimum_high_single_dimension_score": 3
+    }
   },
   "threshold_provenance": {
     "weight_gap_pct": "Farm Validation Workbook candidate bands; proposed for shadow-pilot review.",
@@ -58,8 +54,8 @@
     "Humidity risk uses the same distance-outside-band method: within band 0, up to 5 percentage points outside 1, over 5 to 10 points outside 2, and over 10 points outside 3.",
     "The environmental dimension takes the higher temperature or humidity score, preventing the same environmental event from being counted twice.",
     "Daily temperature swing remains a supplemental diagnostic but no longer adds formal risk points because the supplied table defines absolute acceptable bands, not swing thresholds.",
-    "The 0–12 total is an observed-concern score for prioritization, not a probability. The base label uses 0–2 Low, 3–5 Medium, 6–8 High, and 9–12 Critical.",
-    "Critical overrides are reserved for acute mortality, acute cumulative population loss, or two distinct domains at 3 points. Population loss and daily mortality are one survivability domain so the same underlying loss event is not double-counted.",
-    "With three scored dimensions, Canary shows the normal label with a Reduced evidence flag. With fewer than three, it shows Insufficient evidence unless an acute mortality or population-loss override applies."
+    "The 0–12 total is an observed-concern score for prioritization, not a probability. The label always uses 0–2 Low, 3–5 Medium, 6–8 High, and 9–12 Critical.",
+    "Individual 3/3 dimensions and concurrent problem patterns remain visible inspection signals, but they do not override the score-band label.",
+    "Evidence coverage is reported separately as Complete, Reduced evidence, or Insufficient evidence. Missing evidence is never scored as zero."
   ]
 }

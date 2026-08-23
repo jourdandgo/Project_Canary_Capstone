@@ -110,10 +110,6 @@ def validate_risk_rules(rules: dict[str, Any]) -> None:
     required_policy = {
         "minimum_scored_dimensions",
         "domains",
-        "critical_single_dimension",
-        "critical_concurrent_domain_score",
-        "critical_concurrent_domain_count",
-        "minimum_high_single_dimension_score",
     }
     missing_policy = sorted(required_policy - set(priority_policy))
     if missing_policy:
@@ -125,17 +121,6 @@ def validate_risk_rules(rules: dict[str, Any]) -> None:
     domains = priority_policy["domains"]
     if set(domains) != set(DIMENSION_ORDER) or not all(str(value).strip() for value in domains.values()):
         raise RiskConfigurationError("Priority-policy domains must map every risk dimension.")
-    critical_single = set(priority_policy["critical_single_dimension"])
-    if not critical_single <= set(DIMENSION_ORDER):
-        raise RiskConfigurationError("Critical single-dimension overrides must name risk dimensions.")
-    for key in (
-        "critical_concurrent_domain_score",
-        "minimum_high_single_dimension_score",
-    ):
-        if not 1 <= int(priority_policy[key]) <= 3:
-            raise RiskConfigurationError(f"{key} must be between 1 and 3.")
-    if int(priority_policy["critical_concurrent_domain_count"]) < 2:
-        raise RiskConfigurationError("Critical concurrent-domain count must be at least 2.")
     if set(rules["threshold_provenance"]) != required_dimensions:
         raise RiskConfigurationError("Threshold provenance must cover every configured cutoff.")
 
@@ -190,56 +175,10 @@ def _rating_rule(total: int, rules: dict[str, Any]) -> str:
 def _priority_decision(
     available: dict[str, int], rules: dict[str, Any]
 ) -> tuple[str, str, str, bool]:
-    """Return operational label, rationale, rule id, and override status.
-
-    The total remains transparent, while acute or independent severe domains can
-    elevate a building for immediate review.  Population loss and daily mortality
-    intentionally share one survivability domain to avoid double counting a single
-    underlying loss event.
-    """
-    policy = rules["priority_policy"]
+    """Return the published score-band label without automatic overrides."""
     total = sum(available.values())
     base_label = _rating(total, rules)
     base_rule = _rating_rule(total, rules)
-    acute = [
-        dimension
-        for dimension in policy["critical_single_dimension"]
-        if available.get(dimension) == 3
-    ]
-    if acute:
-        readable = " and ".join(DIMENSION_LABELS[dimension].lower() for dimension in acute)
-        return (
-            "Critical",
-            f"Critical override: {readable} reached 3/3.",
-            "PRIORITY-OVERRIDE-ACUTE-SURVIVABILITY",
-            True,
-        )
-
-    domains: dict[str, int] = {}
-    for dimension, score in available.items():
-        domain = str(policy["domains"][dimension])
-        domains[domain] = max(domains.get(domain, 0), score)
-    severe_domains = [
-        domain
-        for domain, score in domains.items()
-        if score >= int(policy["critical_concurrent_domain_score"])
-    ]
-    if len(severe_domains) >= int(policy["critical_concurrent_domain_count"]):
-        readable = " and ".join(sorted(severe_domains))
-        return (
-            "Critical",
-            f"Critical override: {readable} each reached {int(policy['critical_concurrent_domain_score'])}/3.",
-            "PRIORITY-OVERRIDE-CONCURRENT-DOMAINS",
-            True,
-        )
-
-    if max(available.values()) >= int(policy["minimum_high_single_dimension_score"]) and base_label in {"Low", "Medium"}:
-        return (
-            "High",
-            "High floor: at least one observed dimension reached 3/3.",
-            "PRIORITY-OVERRIDE-SINGLE-DIMENSION-HIGH",
-            True,
-        )
     return base_label, f"Base band: {base_rule}.", f"PRIORITY-BASE-{base_label.upper()}", False
 
 
@@ -791,18 +730,10 @@ def score_cycle_snapshot(
         scored_dimensions = len(available)
         minimum_scored = int(rules["priority_policy"]["minimum_scored_dimensions"])
         base_rating = _rating(total, rules)
+        priority_rating, priority_reason, priority_rule_id, override_applied = _priority_decision(available, rules)
         if scored_dimensions < minimum_scored:
-            priority_rating, priority_reason, priority_rule_id, override_applied = _priority_decision(available, rules)
-            if not override_applied:
-                priority_rating = "Insufficient evidence"
-                priority_reason = (
-                    f"Only {scored_dimensions} of {len(DIMENSION_ORDER)} dimensions were scored; "
-                    f"at least {minimum_scored} are required for a normal priority label."
-                )
-                priority_rule_id = "PRIORITY-INSUFFICIENT-EVIDENCE"
             evidence_status = "Insufficient evidence"
         else:
-            priority_rating, priority_reason, priority_rule_id, override_applied = _priority_decision(available, rules)
             evidence_status = "Complete" if scored_dimensions == len(DIMENSION_ORDER) else "Reduced evidence"
         detected_patterns = _detected_patterns(
             row,
