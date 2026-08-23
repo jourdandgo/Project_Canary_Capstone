@@ -1516,28 +1516,63 @@ def _reset_demo_state() -> None:
     st.session_state["_canary_view"] = VIEW_PRIORITIES
 
 
-def _card_driver(row: pd.Series) -> str:
-    """Return the clearest single reason for a building's rating."""
-    scores = {
-        "weight": row.get("weight_score", pd.NA),
-        "population_loss": row.get("population_loss_score", pd.NA),
-        "daily_mortality": row.get("daily_mortality_score", pd.NA),
-        "environment": row.get("environment_score", pd.NA),
-    }
-    available = {name: float(value) for name, value in scores.items() if pd.notna(value)}
-    if not available or max(available.values()) <= 0:
-        return "No material warning signal is above the current rule thresholds."
-    leading = max(available, key=available.get)
-    if leading == "weight" and pd.notna(row.get("weight_gap_pct")):
-        return f"Weight is {abs(float(row['weight_gap_pct'])):.1f}% below its age-specific target."
-    if leading == "population_loss" and pd.notna(row.get("population_loss_pct")):
-        return f"Population loss is {float(row['population_loss_pct']):.1f}% of beginning birds."
-    if leading == "daily_mortality" and pd.notna(row.get("daily_mortality_pct")):
+def _card_driver(row: pd.Series, pattern: object | None = None) -> str:
+    """Explain the same primary pattern shown in the card headline.
+
+    The primary pattern is already selected by the risk engine.  Do not select
+    a second "leading" dimension here: tied dimension scores can otherwise
+    produce a humidity headline with weight evidence (or the reverse).
+    """
+
+    selected = str(pattern if pattern is not None else row.get("risk_pattern", ""))
+    cycle_day = row.get("cycle_day", pd.NA)
+    day_text = f"Day {int(cycle_day)} " if pd.notna(cycle_day) else ""
+
+    if selected == "Low Body Weight" and pd.notna(row.get("weight_gap_pct")):
+        return f"Weight is {abs(float(row['weight_gap_pct'])):.1f}% below its {day_text}target."
+    if selected == "Rapid Population Loss" and pd.notna(row.get("population_loss_pct")):
+        return f"Population loss is {float(row['population_loss_pct']):.2f}% of beginning birds."
+    if selected == "High Mortality" and pd.notna(row.get("daily_mortality_pct")):
         return f"Latest daily mortality is {float(row['daily_mortality_pct']):.2f}% of beginning birds."
-    if leading == "environment":
-        driver = str(row.get("environment_driver", "Environmental condition"))
-        return f"{driver} is outside the current provisional rule."
-    return str(row.get("risk_pattern", "Recorded warning signal"))
+    if selected == "High Temperature" and pd.notna(row.get("temperature_avg_c")):
+        upper = row.get("temperature_maximum_c", pd.NA)
+        if pd.notna(upper):
+            return (
+                f"Average temperature was {float(row['temperature_avg_c']):.1f}°C, "
+                f"above the {day_text}upper limit of {float(upper):.1f}°C."
+            )
+    if selected == "Low Temperature" and pd.notna(row.get("temperature_avg_c")):
+        lower = row.get("temperature_minimum_c", pd.NA)
+        if pd.notna(lower):
+            return (
+                f"Average temperature was {float(row['temperature_avg_c']):.1f}°C, "
+                f"below the {day_text}lower limit of {float(lower):.1f}°C."
+            )
+    if selected == "High Humidity" and pd.notna(row.get("humidity_avg_pct")):
+        upper = row.get("humidity_maximum_pct", pd.NA)
+        if pd.notna(upper):
+            return (
+                f"Average humidity was {float(row['humidity_avg_pct']):.1f}%, "
+                f"above the {day_text}upper limit of {float(upper):.1f}%."
+            )
+    if selected == "Low Humidity" and pd.notna(row.get("humidity_avg_pct")):
+        lower = row.get("humidity_minimum_pct", pd.NA)
+        if pd.notna(lower):
+            return (
+                f"Average humidity was {float(row['humidity_avg_pct']):.1f}%, "
+                f"below the {day_text}lower limit of {float(lower):.1f}%."
+            )
+    if selected == "Abnormal Temperature Fluctuation":
+        return "The recorded daily temperature range exceeds the current provisional limit."
+    if selected == "Missing or Stale Evidence":
+        scored = row.get("scored_dimensions", pd.NA)
+        if pd.notna(scored):
+            return f"Only {int(scored)}/4 risk dimensions have current evidence."
+        return "One or more required risk measurements is missing or stale."
+    if selected == "No Material Concern":
+        return "No scored warning signal is above the current rule thresholds."
+
+    return _pattern_display(selected)[1]
 
 
 PATTERN_DISPLAY = {
@@ -1597,9 +1632,15 @@ def _attach_owner_action_context(
             output.at[index, "persistent_signal_summary"] = str(persistent_signals[0]["title"])
         risk_score = row.get("risk_score", pd.NA)
         if pd.notna(risk_score) and float(risk_score) > 0:
-            display_title, _ = _pattern_display(row.get("risk_pattern"))
+            recommendation_pattern = row.get("recommendation_pattern", pd.NA)
+            selected_pattern = (
+                recommendation_pattern
+                if pd.notna(recommendation_pattern) and str(recommendation_pattern) != "Not applicable"
+                else row.get("risk_pattern")
+            )
+            display_title, _ = _pattern_display(selected_pattern)
             output.at[index, "owner_reason_title"] = display_title
-            output.at[index, "owner_reason_detail"] = _card_driver(row)
+            output.at[index, "owner_reason_detail"] = _card_driver(row, selected_pattern)
             output.at[index, "owner_action"] = str(row.get("recommended_action", "Inspect the leading warning signal."))
             output.at[index, "owner_action_basis"] = (
                 f"Risk rule {row.get('risk_rule_version', 'unknown')} · action rule {row.get('recommendation_rule_id', 'unknown')}"

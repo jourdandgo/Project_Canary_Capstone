@@ -170,6 +170,41 @@ def test_incomplete_day_counts_placed_buildings_and_keeps_a_priority(monkeypatch
     assert not any("No placed building" in info.value for info in app.info)
 
 
+def test_review_first_card_keeps_pattern_evidence_and_action_aligned(monkeypatch):
+    """A tied score must not mix a humidity headline with weight evidence."""
+
+    monkeypatch.setenv("CANARY_DEFAULT_WORKBOOK", str(SOURCE))
+    app = AppTest.from_file(Path(__file__).parents[1] / "app.py", default_timeout=30)
+    app.run()
+
+    as_of = next(widget for widget in app.date_input if widget.label == "Review date")
+    as_of.set_value(date(2026, 7, 10)).run()
+
+    assert not app.exception
+    signal_card = next(
+        item.value
+        for item in app.markdown
+        if isinstance(item.value, str) and "Most actionable recorded signal" in item.value
+    )
+    action_card = next(
+        item.value
+        for item in app.markdown
+        if isinstance(item.value, str) and "What management should do" in item.value
+    )
+    priority_card = next(
+        item.value
+        for item in app.markdown
+        if isinstance(item.value, str) and "Review first ·" in item.value
+    )
+
+    assert "Humidity above range" in signal_card
+    assert "Average humidity was 82.1%" in signal_card
+    assert "Day 7 upper limit of 70.0%" in signal_card
+    assert "Weight is 32.5%" not in signal_card
+    assert "check ventilation and water-pump timing" in action_card
+    assert "High operational priority · 7/12" in priority_card
+
+
 def test_action_history_exposes_calculations_overrides_and_actions(monkeypatch):
     monkeypatch.setenv("CANARY_DEFAULT_WORKBOOK", str(SOURCE))
     monkeypatch.setenv("CANARY_TEST_VIEW", "Action History")
