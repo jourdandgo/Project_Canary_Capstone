@@ -80,11 +80,37 @@ def test_dashboard_renders_without_streamlit_errors(monkeypatch):
     assert not detail.exception
     chosen = next(widget for widget in detail.selectbox if widget.label == "Building")
     assert chosen.value == "Tags 3"
+    visible_simple = " ".join(
+        item.value
+        for item in [*detail.markdown, *detail.caption, *detail.info]
+        if isinstance(item.value, str)
+    )
+    assert "Decision summary · what Canary calculated and why" in [
+        item.value for item in detail.subheader
+    ]
+    assert "Risk score ·" in visible_simple
+    assert "Risk label ·" in visible_simple
+    assert "Primary problem ·" in visible_simple
+    assert "Suggested action ·" in visible_simple
+    assert "Projected recovery proxy ·" in visible_simple
+    assert (
+        "Projected Day 35 weight ·" in visible_simple
+        or "Recorded Day 35 weight ·" in visible_simple
+    )
+    assert "Forecasts contribute zero points" in visible_simple
+    audit_toggle = next(
+        widget
+        for widget in detail.toggle
+        if widget.label == "Show technical audit and management controls"
+    )
+    audit_toggle.set_value(True).run()
+    assert not detail.exception
     # The refreshed 2026-3 workbook now contains observed Day 35 weights.  The
     # milestone can therefore be Achieved or Missed at the default as-of date;
     # it must no longer be forced to the pre-refresh "Upcoming" state.
     assert any("Day 35 milestone:" in info.value for info in detail.info)
-    assert [subheader.value for subheader in detail.subheader][:5] == [
+    assert [subheader.value for subheader in detail.subheader][:6] == [
+        "Decision summary · what Canary calculated and why",
         "1 · Decision summary and next check",
         "2 · Traceable observed-risk breakdown",
         "3 · Forecast provenance",

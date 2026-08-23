@@ -1938,7 +1938,7 @@ def _building_card(row: pd.Series) -> str:
     return f"""
     <div class="card-body">
       <div class="head"><div class="name">{building_id}</div><span class="pill {rating_class}">{html.escape(rating_text)}</span></div>
-      <div class="card-summary"><div class="meta">{day} · Observed concern {'—' if pd.isna(row['risk_score']) else str(int(row['risk_score'])) + '/' + str(int(row.get('available_score_max', 12)))}</div><div>{override_badge} {persistent_badge} {evidence_note} {freshness_badge}</div></div>
+      <div class="card-summary"><div class="meta">{day} · Observed concern {'—' if pd.isna(row['risk_score']) else str(int(row['risk_score'])) + '/12'}</div><div>{override_badge} {persistent_badge} {evidence_note} {freshness_badge}</div></div>
       {evidence_detail}
       <div class="driver"><span class="pattern-title">{html.escape(pattern_title)}</span><span class="pattern-subtitle">{html.escape(pattern_subtitle)}<br><strong>Why now:</strong> {html.escape(driver)}</span></div>
       {pattern_tags}
@@ -2422,7 +2422,7 @@ if selected_view == VIEW_PRIORITIES:
             first = priority.iloc[0]
             priority_name = html.escape(str(first["building_id"]))
             priority_risk_text = (
-                f"{first['risk_rating']} operational priority · {int(first['risk_score'])}/{int(first.get('available_score_max', 12))} observed-concern points"
+                f"{first['risk_rating']} operational priority · {int(first['risk_score'])}/12 observed-concern points"
                 if pd.notna(first.get("risk_score"))
                 else "Observed risk not assessable"
             )
@@ -3253,18 +3253,145 @@ if selected_view == VIEW_DETAILS:
             )
         st.stop()
 
-    dcols = st.columns(4)
-    dcols[0].metric("Operational priority", building["risk_rating"])
-    dcols[1].metric("Observed concern", "—" if pd.isna(building["risk_score"]) else f"{int(building['risk_score'])}/{int(building.get('available_score_max', 12))}")
-    dcols[2].metric(
-        "Projected recovery proxy",
-        _percent(building["predicted_final_recovery"]),
-    )
     detail_weight = "No projection" if pd.isna(building["projected_day35_weight_kg"]) else _weight(building["projected_day35_weight_kg"])
-    dcols[3].metric(
-        "Projected Day 35 weight",
-        detail_weight,
-        help="Estimated average liveweight on production Day 35, compared with the 1.8 kg milestone.",
+    owner_score = (
+        "Not rated"
+        if pd.isna(building["risk_score"])
+        else f"{int(building['risk_score'])}/12"
+    )
+    score_parts = []
+    for label, column in (
+        ("Weight", "weight_score"),
+        ("Population loss", "population_loss_score"),
+        ("Daily mortality", "daily_mortality_score"),
+        ("Environment", "environment_score"),
+    ):
+        value = building.get(column, pd.NA)
+        score_parts.append(f"{label} {'not scored' if pd.isna(value) else f'{int(value)}/3'}")
+    score_explanation = " + ".join(score_parts)
+
+    matching_band = next(
+        (
+            band
+            for band in rules["rating_bands"]
+            if pd.notna(building["risk_score"])
+            and int(band["minimum"]) <= int(building["risk_score"]) <= int(band["maximum"])
+        ),
+        None,
+    )
+    label_explanation = (
+        f"The total is between {int(matching_band['minimum'])} and {int(matching_band['maximum'])}, "
+        f"so the score-band table assigns {matching_band['label']}."
+        if matching_band is not None
+        else "A priority label cannot be assigned until at least one risk dimension can be scored."
+    )
+
+    recommendation_pattern = building.get("recommendation_pattern", pd.NA)
+    primary_pattern = (
+        recommendation_pattern
+        if pd.notna(recommendation_pattern) and str(recommendation_pattern) != "Not applicable"
+        else building.get("risk_pattern", "Not available")
+    )
+    primary_pattern_title, _ = _pattern_display(primary_pattern)
+    primary_pattern_evidence = _card_driver(building, primary_pattern)
+    detected_patterns = str(
+        building.get("risk_pattern_details", building.get("risk_pattern", "Not available"))
+    ).replace(" | ", " · ")
+
+    uses_trish = str(building.get("trish_bundle_version", "Not available")) != "Not available"
+    recovery_detail = (
+        v19_outlook("model_1", selected_cycle, chosen, int(building["cycle_day"]))
+        if uses_trish
+        else None
+    )
+    weight_detail = (
+        v19_outlook("model_3", selected_cycle, chosen, int(building["cycle_day"]))
+        if uses_trish
+        else None
+    )
+    if recovery_detail is not None:
+        recovery_raw = float(recovery_detail["prediction"])
+        current_survival = building.get("percentage_alive", pd.NA)
+        recovery_cap_text = (
+            f" The accounting cap changed the raw {_percent(recovery_raw)} estimate to "
+            f"{_percent(building['predicted_final_recovery'])} because an end-of-cycle recovery outlook cannot exceed "
+            f"the {_percent(current_survival)} currently recorded alive."
+            if pd.notna(current_survival) and recovery_raw > float(current_survival)
+            else " The current-survival accounting cap did not change the model output."
+        )
+        recovery_explanation = (
+            f"Records available through Day {int(recovery_detail['evidence_day'])} were converted into "
+            f"{int(recovery_detail['feature_count'])} model-ready fields. Model 1 ({recovery_detail['algorithm']}) "
+            f"estimated {_percent(recovery_raw)}.{recovery_cap_text}"
+        )
+    else:
+        recovery_explanation = str(building.get("recovery_forecast_status", "No eligible recovery forecast is available."))
+
+    if str(building.get("day35_weight_scope")) == "Recorded Day 35 result":
+        weight_explanation = (
+            f"The farm recorded {_weight(building['projected_day35_weight_kg'])} on Day 35, so the observed result "
+            "replaced the earlier planning forecast."
+        )
+    elif weight_detail is not None:
+        latest_weight_text = (
+            f"the latest {_grams(building['latest_weight_kg'])} measurement from Day {int(building['weight_measurement_day'])}"
+            if pd.notna(building.get("latest_weight_kg")) and pd.notna(building.get("weight_measurement_day"))
+            else "the available weight history"
+        )
+        weight_explanation = (
+            f"Model 3 ({weight_detail['algorithm']}) used {latest_weight_text} and the other records available through "
+            f"Day {int(weight_detail['evidence_day'])}, converted into {int(weight_detail['feature_count'])} model-ready fields, "
+            f"to estimate Day 35 weight directly."
+        )
+    else:
+        weight_explanation = str(building.get("day35_weight_status", "No eligible Day 35 weight forecast is available."))
+
+    st.subheader("Decision summary · what Canary calculated and why")
+    st.caption(
+        "Each card shows one owner-facing result and the shortest defensible explanation of how Canary produced it."
+    )
+    simple_rows = [st.columns(2), st.columns(2), st.columns(2)]
+    with simple_rows[0][0]:
+        with st.container(border=True):
+            st.markdown(f"**Risk score · {owner_score}**")
+            st.write(score_explanation)
+            st.caption("Four observed-condition checks contribute 0–3 points each. Forecasts contribute zero points.")
+    with simple_rows[0][1]:
+        with st.container(border=True):
+            st.markdown(f"**Risk label · {building['risk_rating']} priority**")
+            st.write(label_explanation)
+            st.caption("Score bands: 0–2 Low · 3–5 Medium · 6–8 High · 9–12 Critical.")
+    with simple_rows[1][0]:
+        with st.container(border=True):
+            st.markdown(f"**Primary problem · {primary_pattern_title}**")
+            st.write(primary_pattern_evidence)
+            st.caption(f"All detected problems: {detected_patterns}")
+    with simple_rows[1][1]:
+        with st.container(border=True):
+            st.markdown(f"**Suggested action · {building['recommendation_urgency']}**")
+            st.write(building.get("owner_action", _next_step(building)))
+            st.caption(f"{primary_pattern_title} → inspection rule {building['recommendation_rule_id']}. Management or veterinary judgment remains in control.")
+    with simple_rows[2][0]:
+        with st.container(border=True):
+            st.markdown(f"**Projected recovery proxy · {_percent(building['predicted_final_recovery'])}**")
+            st.write(recovery_explanation)
+            st.caption(f"Compared with the 95% goal · {building.get('recovery_interval_label', 'Uncertainty interval')} available in the audit view.")
+    weight_result_is_recorded = str(building.get("day35_weight_scope")) == "Recorded Day 35 result"
+    simple_weight_title = "Recorded Day 35 weight" if weight_result_is_recorded else "Projected Day 35 weight"
+    simple_weight_caption = (
+        "Compared with the 1.8 kg milestone · observed measurement, so no forecast interval applies."
+        if weight_result_is_recorded
+        else f"Compared with the 1.8 kg milestone · {building.get('day35_weight_interval_label', 'Uncertainty interval')} available in the audit view."
+    )
+    with simple_rows[2][1]:
+        with st.container(border=True):
+            st.markdown(f"**{simple_weight_title} · {detail_weight}**")
+            st.write(weight_explanation)
+            st.caption(simple_weight_caption)
+
+    st.info(
+        "The risk score describes observed conditions. The two model forecasts are planning outlooks. "
+        "They are intentionally calculated and displayed separately."
     )
     if int(building.get("management_override_count", 0) or 0):
         st.info(
@@ -3272,6 +3399,17 @@ if selected_view == VIEW_DETAILS:
             f"**Management disposition:** {building.get('effective_priority', building['risk_rating'])}. "
             f"{str(building.get('management_override_summary', '')).replace(' | ', ' · ')}"
         )
+    show_technical_audit = st.toggle(
+        "Show technical audit and management controls",
+        value=False,
+        help="Opens the full risk tables, model input traces, validation evidence, histories, and management-decision forms.",
+    )
+    if not show_technical_audit:
+        st.caption(
+            "Open the technical audit only when you need the raw input-to-rule-to-output trail or want to record a management decision."
+        )
+        st.stop()
+
     st.subheader("1 · Decision summary and next check")
     dimension_trace = build_dimension_trace(building, rules)
     operational_alerts = evaluate_operational_alerts(
@@ -3496,7 +3634,7 @@ if selected_view == VIEW_DETAILS:
                     st.markdown(
                         f"- **{reason['Dimension']} · {int(reason['Score'])}/3:** {reason['Raw observations']}"
                     )
-            owner_total = "—" if pd.isna(building["risk_score"]) else f"{int(building['risk_score'])}/{int(building.get('available_score_max', 12))}"
+            owner_total = "—" if pd.isna(building["risk_score"]) else f"{int(building['risk_score'])}/12"
             st.caption(
                 f"Observed-concern total: {owner_total} → {building['risk_rating']} operational priority. {building['risk_label_rule']} This is not a probability."
             )
@@ -3571,7 +3709,7 @@ if selected_view == VIEW_DETAILS:
                 "Dimension": "TOTAL / OPERATIONAL PRIORITY",
                 "Domain": "—",
                 "What Canary observed": building["score_equation"],
-                "Points": "—" if pd.isna(building["risk_score"]) else f"{int(building['risk_score'])}/{int(building.get('available_score_max', 12))}",
+                "Points": "—" if pd.isna(building["risk_score"]) else f"{int(building['risk_score'])}/12",
                 "Rule applied": f"{building['risk_rating']} · {building['risk_label_rule']} · {building['priority_rule_id']}",
                 "Threshold source": f"{building['risk_rule_version']} · {building['risk_approval_status']}",
                 "Data status": building["evidence_status"],
