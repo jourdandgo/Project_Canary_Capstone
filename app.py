@@ -237,6 +237,15 @@ st.markdown(
       .scan-outlook-gap { display:block; margin-top:.28rem; font-size:.68rem; font-weight:800; line-height:1.3; }
       .scan-action { background:#f3f6f4; border-radius:10px; padding:.68rem .72rem; color:#3f5149; font-size:.75rem; line-height:1.45; }
       .scan-action-label { display:block; color:#718078; font-size:.62rem; font-weight:850; letter-spacing:.055em; text-transform:uppercase; margin-bottom:.18rem; }
+      .comparison-chart { background:#fff; border:1px solid var(--line); border-radius:14px; padding:.9rem 1rem .75rem; margin:.25rem 0 .45rem; }
+      .comparison-legend { display:flex; justify-content:space-between; align-items:center; gap:.5rem; color:#6a7971; font-size:.68rem; margin:0 0 .65rem 7rem; }
+      .comparison-legend .goal { color:#43584d; font-weight:800; }
+      .comparison-row { display:grid; grid-template-columns:6.3rem minmax(160px,1fr) 4.8rem; gap:.65rem; align-items:center; margin:.62rem 0; }
+      .comparison-building { color:#244a35; font-size:.79rem; font-weight:850; text-align:right; }
+      .comparison-track { position:relative; height:18px; border-radius:999px; background:#edf2ef; overflow:visible; }
+      .comparison-fill { height:100%; min-width:3px; border-radius:999px; background:linear-gradient(90deg,#315f49,#6f9b43); }
+      .comparison-target { position:absolute; top:-5px; bottom:-5px; width:2px; background:#53645b; border-radius:2px; z-index:2; }
+      .comparison-value { color:#173f31; font-size:.78rem; font-weight:900; white-space:nowrap; }
       [data-testid="stSidebarNav"] { padding-top:.25rem; }
       [data-testid="stSidebarNav"] a { border-radius:10px; margin:.08rem .35rem; }
       [data-testid="stSidebarNav"] a[aria-current="page"] { background:#dcece2; color:var(--green); font-weight:800; }
@@ -256,7 +265,13 @@ st.markdown(
         [data-testid="stHorizontalBlock"]:has(.card-body) { flex-direction:column !important; gap:.75rem !important; }
         [data-testid="stHorizontalBlock"]:has(.card-body) > div { width:100% !important; flex:1 1 100% !important; }
       }
-      @media (max-width: 620px) { .executive-grid, .about-flow, .scan-outlooks { grid-template-columns:1fr; } }
+      @media (max-width: 620px) {
+        .executive-grid, .about-flow, .scan-outlooks { grid-template-columns:1fr; }
+        .comparison-chart { padding:.8rem .7rem .65rem; }
+        .comparison-legend { margin-left:4.5rem; }
+        .comparison-row { grid-template-columns:4rem minmax(100px,1fr) 4.3rem; gap:.45rem; }
+        .comparison-building, .comparison-value { font-size:.7rem; }
+      }
     </style>
     """,
     unsafe_allow_html=True,
@@ -1619,6 +1634,49 @@ def _pattern_display(pattern: object) -> tuple[str, str]:
     )
 
 
+def _comparison_bars_html(
+    frame: pd.DataFrame,
+    *,
+    value_column: str,
+    minimum: float,
+    maximum: float,
+    target: float,
+    value_formatter,
+    scale_formatter,
+) -> str:
+    """Render a small, renderer-independent building comparison chart."""
+
+    chart = frame.copy()
+    chart[value_column] = pd.to_numeric(chart[value_column], errors="coerce")
+    chart = chart.loc[chart[value_column].notna()].copy()
+    order = {building: index for index, building in enumerate(CANONICAL_BUILDINGS)}
+    chart["_order"] = chart["building_id"].map(order).fillna(len(order))
+    chart = chart.sort_values(["_order", "building_id"])
+    span = max(float(maximum) - float(minimum), 1e-9)
+    target_position = min(100.0, max(0.0, (float(target) - float(minimum)) / span * 100))
+    rows: list[str] = []
+    for _, row in chart.iterrows():
+        value = float(row[value_column])
+        width = min(100.0, max(0.0, (value - float(minimum)) / span * 100))
+        building = html.escape(str(row["building_id"]))
+        displayed_value = html.escape(value_formatter(value))
+        rows.append(
+            f'<div class="comparison-row">'
+            f'<div class="comparison-building">{building}</div>'
+            f'<div class="comparison-track" aria-label="{building}: {displayed_value}">'
+            f'<div class="comparison-fill" style="width:{width:.2f}%"></div>'
+            f'<div class="comparison-target" style="left:{target_position:.2f}%"></div>'
+            f'</div><div class="comparison-value">{displayed_value}</div></div>'
+        )
+    return (
+        '<div class="comparison-chart"><div class="comparison-legend">'
+        f'<span>{html.escape(scale_formatter(float(minimum)))}</span>'
+        f'<span class="goal">Goal {html.escape(value_formatter(float(target)))}</span>'
+        f'<span>{html.escape(scale_formatter(float(maximum)))}</span>'
+        f'</div>{"".join(rows)}</div>'
+    )
+
+
 def _attach_owner_action_context(
     snapshot: pd.DataFrame,
     dataset: object,
@@ -2677,32 +2735,21 @@ if selected_view == VIEW_HARVEST:
                 recovery_building["ending_population"]
                 / recovery_building["beginning_population"]
             )
-            building_chart = (
-                alt.Chart(recovery_building)
-                .mark_bar(color="#286245", cornerRadiusEnd=5)
-                .encode(
-                    y=alt.Y("building_id:N", title=None, sort=list(CANONICAL_BUILDINGS)),
-                    x=alt.X(
-                        "recovery:Q",
-                        title="Inventory-weighted historical recovery",
-                        axis=alt.Axis(format=".0%"),
-                        scale=alt.Scale(zero=False, domainMin=0.84, domainMax=1.0),
-                    ),
-                    tooltip=[
-                        alt.Tooltip("building_id:N", title="Building"),
-                        alt.Tooltip("recovery:Q", title="Recovery", format=".1%"),
-                        alt.Tooltip("cycles:Q", title="Cycles"),
-                        alt.Tooltip("beginning_population:Q", title="Beginning birds", format=","),
-                    ],
-                )
-                .properties(height=300)
+            st.markdown(
+                _comparison_bars_html(
+                    recovery_building,
+                    value_column="recovery",
+                    minimum=0.84,
+                    maximum=1.0,
+                    target=0.95,
+                    value_formatter=lambda value: f"{value:.1%}",
+                    scale_formatter=lambda value: f"{value:.0%}",
+                ),
+                unsafe_allow_html=True,
             )
-            building_target = (
-                alt.Chart(pd.DataFrame({"target": [0.95]}))
-                .mark_rule(color="#52645b", strokeDash=[4, 4], strokeWidth=2)
-                .encode(x="target:Q")
+            st.caption(
+                "Each bar is total recorded ending birds ÷ total beginning birds for that building across historical cycles. The management goal is 95%."
             )
-            st.altair_chart(building_chart + building_target, width="stretch")
 
     with weight_tab:
         st.subheader("Average bodyweight on Day 35 across cycles")
@@ -2787,31 +2834,29 @@ if selected_view == VIEW_HARVEST:
                 weight_building["weighted_weight"]
                 / weight_building["weighting_population"]
             )
-            building_weight_chart = (
-                alt.Chart(weight_building)
-                .mark_bar(color="#286245", cornerRadiusEnd=5)
-                .encode(
-                    y=alt.Y("building_id:N", title=None, sort=list(CANONICAL_BUILDINGS)),
-                    x=alt.X(
-                        "weight_kg:Q",
-                        title="Bird-count-weighted recorded Day 35 weight (kg)",
-                        scale=alt.Scale(zero=False),
-                    ),
-                    tooltip=[
-                        alt.Tooltip("building_id:N", title="Building"),
-                        alt.Tooltip("weight_kg:Q", title="Average weight", format=".3f"),
-                        alt.Tooltip("cycles:Q", title="Cycles"),
-                    ],
-                )
-                .properties(height=300)
+            weight_values = pd.to_numeric(weight_building["weight_kg"], errors="coerce")
+            weight_min = max(
+                0.0,
+                np.floor((float(weight_values.min()) - 0.1) * 10) / 10,
             )
-            building_weight_target = (
-                alt.Chart(pd.DataFrame({"target": [DAY35_TARGET_KG]}))
-                .mark_rule(color="#52645b", strokeDash=[4, 4], strokeWidth=2)
-                .encode(x="target:Q")
+            weight_max = max(
+                DAY35_TARGET_KG,
+                np.ceil((float(weight_values.max()) + 0.1) * 10) / 10,
             )
-            st.altair_chart(
-                building_weight_chart + building_weight_target, width="stretch"
+            st.markdown(
+                _comparison_bars_html(
+                    weight_building,
+                    value_column="weight_kg",
+                    minimum=weight_min,
+                    maximum=weight_max,
+                    target=DAY35_TARGET_KG,
+                    value_formatter=lambda value: f"{value * 1000:,.0f} g",
+                    scale_formatter=lambda value: f"{value:.1f} kg",
+                ),
+                unsafe_allow_html=True,
+            )
+            st.caption(
+                "Each bar is the bird-count-weighted recorded Day 35 bodyweight for that building across historical cycles. The management milestone is 1.8 kg."
             )
 
     with history_tab:

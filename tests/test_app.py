@@ -461,3 +461,14 @@ def test_harvest_analysis_is_all_cycle_and_target_specific(monkeypatch):
         button.label == "Download filtered harvest history (CSV)"
         for button in app.download_button
     )
+    charts = app.get("vega_lite_chart")
+    assert len(charts) == 2
+    comparison_html = " ".join(
+        item.value
+        for item in app.markdown
+        if isinstance(item.value, str) and '<div class="comparison-chart">' in item.value
+    )
+    assert comparison_html.count('<div class="comparison-chart">') == 2
+    assert "Tags 1" in comparison_html
+    assert "92.3%" in comparison_html
+    assert "Goal 95.0%" in comparison_html
