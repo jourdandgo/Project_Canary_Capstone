@@ -1,0 +1,17 @@
+evidence_set,sample,outcome,checkpoint_day,model,forecast_status,mean_absolute_error,unit
+Historical cycle-grouped LOGO-CV,34 building-cycles,Harvest recovery,7,M1,Recalculated,1.6262221169875068,percentage points
+Historical cycle-grouped LOGO-CV,34 building-cycles,Harvest recovery,14,M1,Recalculated,1.5465840278506677,percentage points
+Historical cycle-grouped LOGO-CV,34 building-cycles,Harvest recovery,21,M1,Held from Day 14,,percentage points
+Historical cycle-grouped LOGO-CV,34 building-cycles,Harvest recovery,28,M1,Held from Day 14,,percentage points
+Prospective 2026-3 holdout,3 buildings,Harvest recovery,7,M1,Recalculated,4.269069712101573,percentage points
+Prospective 2026-3 holdout,3 buildings,Harvest recovery,14,M1,Recalculated,4.304853833182431,percentage points
+Prospective 2026-3 holdout,3 buildings,Harvest recovery,21,M1,Held from Day 14,,percentage points
+Prospective 2026-3 holdout,3 buildings,Harvest recovery,28,M1,Held from Day 14,,percentage points
+Historical cycle-grouped LOGO-CV,34 building-cycles,Day 35 bodyweight,7,M2,Recalculated,126.31553837410287,grams
+Historical cycle-grouped LOGO-CV,34 building-cycles,Day 35 bodyweight,14,M2,Recalculated,116.23220590869404,grams
+Historical cycle-grouped LOGO-CV,34 building-cycles,Day 35 bodyweight,21,M3,Recalculated,107.66310000000017,grams
+Historical cycle-grouped LOGO-CV,34 building-cycles,Day 35 bodyweight,28,M3,Held from Day 21,,grams
+Prospective 2026-3 holdout,3 buildings,Day 35 bodyweight,7,M2,Recalculated,187.46742646909607,grams
+Prospective 2026-3 holdout,3 buildings,Day 35 bodyweight,14,M2,Recalculated,181.0986034492433,grams
+Prospective 2026-3 holdout,3 buildings,Day 35 bodyweight,21,M3,Recalculated,124.41337076822917,grams
+Prospective 2026-3 holdout,3 buildings,Day 35 bodyweight,28,M3,Held from Day 21,,grams

@@ -1,0 +1,8 @@
+check,failed_rows,severity
+Canonical building-day key uniqueness,0,critical
+Positive beginning inventory,0,critical
+Population does not exceed beginning inventory,0,high
+Non-negative daily mortality,0,high
+Observed bodyweight within 30-5000 g,0,high
+Snapshot uses no future source day,0,critical
+Development and audit cycle separation,0,critical

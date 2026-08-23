@@ -1,0 +1,6 @@
+model_id,evidence_day,buildings,mean_absolute_error,unit,source
+model_1,7,3,4.269069712101573,percentage points,Deployed Canary v18 bundle
+model_1,14,3,4.304853833182431,percentage points,Deployed Canary v18 bundle
+model_2,7,3,187.46742646909607,grams,Deployed Canary v18 bundle
+model_2,14,3,181.0986034492433,grams,Deployed Canary v18 bundle
+model_3,21,3,124.41337076822917,grams,Deployed Canary v18 bundle

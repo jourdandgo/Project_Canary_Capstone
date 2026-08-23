@@ -1,0 +1,32 @@
+name,family,target_form,feature_set,complexity,description
+historical_remaining_gain,baseline,remaining,current,0,Naive projection: current weight plus fold-local expected remaining growth
+target_gap_preserving,target_gain,direct,current,0,Naive projection: add the farm target curve's remaining gain while preserving today's target deficit
+historical_growth_ratio,historical_ratio,direct,current,0,Naive projection: current weight multiplied by the fold-local historical checkpoint-to-Day-35 ratio
+recent_adg_projection,recent_adg,direct,compact,1,Naive projection: blend recent observed ADG with fold-local expected remaining daily gain
+target_curve_pace,pace,direct,current,1,Current target-relative pace projected to Day 35
+direct_current_weight_ols,ols,direct,current,1,Checkpoint-specific direct regression on current observed weight
+direct_trajectory_pls,pls,direct,trajectory,2,One-component partial least squares growth-trajectory model
+blend_baseline_pls,blend,direct,trajectory,3,Fold-tuned blend of remaining-gain baseline and trajectory PLS
+direct_trajectory_ridge,ridge,direct,trajectory,3,Regularized direct regression on the observed weight trajectory
+remaining_trajectory_ridge,ridge,remaining,trajectory,3,Regularized remaining-gain regression on the observed trajectory
+direct_linear_svr,svr,direct,trajectory,4,Linear support-vector regression on the observed trajectory
+direct_huber_compact,huber,direct,compact,4,Robust regression using compact growth and flock-state features
+direct_elastic_net_compact,elastic_net,direct,compact,4,Sparse regularized compact model
+direct_extra_trees,extra_trees,direct,extended,5,"Constrained Extra Trees using growth, flock-state, and environment history"
+direct_random_forest,random_forest,direct,extended,6,Constrained random forest using extended features
+direct_gradient_boosting,gradient_boosting,direct,extended,6,Constrained Huber gradient boosting using extended features
+direct_extra_trees_growth,extra_trees,direct,compact,5,Extra Trees restricted to growth and flock-state features
+direct_extra_trees_poultry,extra_trees,direct,poultry,6,Extra Trees with poultry-specific target-deficit and environmental exposure features
+remaining_extra_trees_poultry,extra_trees,remaining,poultry,6,Extra Trees for remaining gain with poultry-specific features
+direct_random_forest_poultry,random_forest,direct,poultry,7,Random forest with poultry-specific target-deficit and environmental exposure features
+direct_gradient_boosting_poultry,gradient_boosting,direct,poultry,7,Gradient boosting with poultry-specific target-deficit and environmental exposure features
+direct_hist_gradient_boosting_poultry,hist_gradient_boosting,direct,poultry,7,Histogram gradient boosting with poultry-specific features and native small-sample regularization
+direct_poultry_core_ridge,ridge,direct,poultry_core,4,Regularized direct model using a compact biologically selected environmental feature set
+remaining_poultry_core_ridge,ridge,remaining,poultry_core,4,Regularized remaining-gain model using compact poultry features
+direct_poultry_core_pls,pls_multi,direct,poultry_core,4,Low-rank partial least squares model using compact poultry features
+direct_xgboost_growth,xgboost,direct,compact,7,Regularized XGBoost using observed growth and flock-state features
+direct_xgboost_poultry,xgboost,direct,poultry_core,8,Regularized XGBoost using compact poultry-environment features
+direct_lightgbm_growth,lightgbm,direct,compact,7,Regularized LightGBM using observed growth and flock-state features
+direct_lightgbm_poultry,lightgbm,direct,poultry_core,8,Regularized LightGBM using compact poultry-environment features
+direct_catboost_growth,catboost,direct,compact,7,Regularized CatBoost using observed growth and flock-state features
+direct_catboost_poultry,catboost,direct,poultry_core,8,Regularized CatBoost using compact poultry-environment features

@@ -1,0 +1,7 @@
+file,cutoff_day,row_count,buildings,continuous_days,matches_daily_source
+Project_Canary_2026-3_Day_07.csv,7,21,"Tags 1, Tags 2, Tags 3",True,True
+Project_Canary_2026-3_Day_14.csv,14,42,"Tags 1, Tags 2, Tags 3",True,True
+Project_Canary_2026-3_Day_15.csv,15,45,"Tags 1, Tags 2, Tags 3",True,True
+Project_Canary_2026-3_Day_21.csv,21,63,"Tags 1, Tags 2, Tags 3",True,True
+Project_Canary_2026-3_Day_28.csv,28,84,"Tags 1, Tags 2, Tags 3",True,True
+Project_Canary_2026-3_Day_35.csv,35,105,"Tags 1, Tags 2, Tags 3",True,True

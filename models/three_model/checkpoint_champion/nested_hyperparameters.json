@@ -1,0 +1,6184 @@
+{
+  "historical_remaining_gain": [
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 28,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 28,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 28,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 28,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 28,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 28,
+      "parameters": {}
+    }
+  ],
+  "target_gap_preserving": [
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 28,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 28,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 28,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 28,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 28,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 28,
+      "parameters": {}
+    }
+  ],
+  "historical_growth_ratio": [
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 28,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 28,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 28,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 28,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 28,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 28,
+      "parameters": {}
+    }
+  ],
+  "recent_adg_projection": [
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 7,
+      "parameters": {
+        "recent_weight": 0.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 14,
+      "parameters": {
+        "recent_weight": 0.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 21,
+      "parameters": {
+        "recent_weight": 0.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 28,
+      "parameters": {
+        "recent_weight": 0.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 7,
+      "parameters": {
+        "recent_weight": 0.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 14,
+      "parameters": {
+        "recent_weight": 0.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 21,
+      "parameters": {
+        "recent_weight": 0.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 28,
+      "parameters": {
+        "recent_weight": 0.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 7,
+      "parameters": {
+        "recent_weight": 0.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 14,
+      "parameters": {
+        "recent_weight": 0.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 21,
+      "parameters": {
+        "recent_weight": 0.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 28,
+      "parameters": {
+        "recent_weight": 0.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 7,
+      "parameters": {
+        "recent_weight": 0.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 14,
+      "parameters": {
+        "recent_weight": 0.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 21,
+      "parameters": {
+        "recent_weight": 0.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 28,
+      "parameters": {
+        "recent_weight": 0.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 7,
+      "parameters": {
+        "recent_weight": 0.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 14,
+      "parameters": {
+        "recent_weight": 0.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 21,
+      "parameters": {
+        "recent_weight": 0.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 28,
+      "parameters": {
+        "recent_weight": 0.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 7,
+      "parameters": {
+        "recent_weight": 0.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 14,
+      "parameters": {
+        "recent_weight": 0.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 21,
+      "parameters": {
+        "recent_weight": 0.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 28,
+      "parameters": {
+        "recent_weight": 0.0
+      }
+    }
+  ],
+  "target_curve_pace": [
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 28,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 28,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 28,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 28,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 28,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 28,
+      "parameters": {}
+    }
+  ],
+  "direct_current_weight_ols": [
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 28,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 28,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 28,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 28,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 28,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 28,
+      "parameters": {}
+    }
+  ],
+  "direct_trajectory_pls": [
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 28,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 28,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 28,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 28,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 28,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 7,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 14,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 21,
+      "parameters": {}
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 28,
+      "parameters": {}
+    }
+  ],
+  "blend_baseline_pls": [
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 7,
+      "parameters": {
+        "blend_weight": 0.25
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 14,
+      "parameters": {
+        "blend_weight": 0.25
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 21,
+      "parameters": {
+        "blend_weight": 0.25
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 28,
+      "parameters": {
+        "blend_weight": 0.25
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 7,
+      "parameters": {
+        "blend_weight": 0.25
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 14,
+      "parameters": {
+        "blend_weight": 0.25
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 21,
+      "parameters": {
+        "blend_weight": 0.25
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 28,
+      "parameters": {
+        "blend_weight": 0.25
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 7,
+      "parameters": {
+        "blend_weight": 0.25
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 14,
+      "parameters": {
+        "blend_weight": 0.25
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 21,
+      "parameters": {
+        "blend_weight": 0.25
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 28,
+      "parameters": {
+        "blend_weight": 0.25
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 7,
+      "parameters": {
+        "blend_weight": 0.25
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 14,
+      "parameters": {
+        "blend_weight": 0.25
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 21,
+      "parameters": {
+        "blend_weight": 0.25
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 28,
+      "parameters": {
+        "blend_weight": 0.5
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 7,
+      "parameters": {
+        "blend_weight": 0.25
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 14,
+      "parameters": {
+        "blend_weight": 0.25
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 21,
+      "parameters": {
+        "blend_weight": 0.25
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 28,
+      "parameters": {
+        "blend_weight": 0.25
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 7,
+      "parameters": {
+        "blend_weight": 0.25
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 14,
+      "parameters": {
+        "blend_weight": 0.25
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 21,
+      "parameters": {
+        "blend_weight": 0.25
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 28,
+      "parameters": {
+        "blend_weight": 0.5
+      }
+    }
+  ],
+  "direct_trajectory_ridge": [
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 7,
+      "parameters": {
+        "alpha": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 14,
+      "parameters": {
+        "alpha": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 21,
+      "parameters": {
+        "alpha": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 28,
+      "parameters": {
+        "alpha": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 7,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 14,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 21,
+      "parameters": {
+        "alpha": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 28,
+      "parameters": {
+        "alpha": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 7,
+      "parameters": {
+        "alpha": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 14,
+      "parameters": {
+        "alpha": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 21,
+      "parameters": {
+        "alpha": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 28,
+      "parameters": {
+        "alpha": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 7,
+      "parameters": {
+        "alpha": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 14,
+      "parameters": {
+        "alpha": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 21,
+      "parameters": {
+        "alpha": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 28,
+      "parameters": {
+        "alpha": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 7,
+      "parameters": {
+        "alpha": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 14,
+      "parameters": {
+        "alpha": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 21,
+      "parameters": {
+        "alpha": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 28,
+      "parameters": {
+        "alpha": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 7,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 14,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 21,
+      "parameters": {
+        "alpha": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 28,
+      "parameters": {
+        "alpha": 10.0
+      }
+    }
+  ],
+  "remaining_trajectory_ridge": [
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 7,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 14,
+      "parameters": {
+        "alpha": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 21,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 28,
+      "parameters": {
+        "alpha": 10.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 7,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 14,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 21,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 28,
+      "parameters": {
+        "alpha": 10.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 7,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 14,
+      "parameters": {
+        "alpha": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 21,
+      "parameters": {
+        "alpha": 10.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 28,
+      "parameters": {
+        "alpha": 10.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 7,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 14,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 21,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 28,
+      "parameters": {
+        "alpha": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 7,
+      "parameters": {
+        "alpha": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 14,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 21,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 28,
+      "parameters": {
+        "alpha": 10.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 7,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 14,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 21,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 28,
+      "parameters": {
+        "alpha": 10.0
+      }
+    }
+  ],
+  "direct_linear_svr": [
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 7,
+      "parameters": {
+        "C": 1.0,
+        "epsilon": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 14,
+      "parameters": {
+        "C": 1.0,
+        "epsilon": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 21,
+      "parameters": {
+        "C": 1.0,
+        "epsilon": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 28,
+      "parameters": {
+        "C": 1.0,
+        "epsilon": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 7,
+      "parameters": {
+        "C": 1.0,
+        "epsilon": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 14,
+      "parameters": {
+        "C": 1.0,
+        "epsilon": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 21,
+      "parameters": {
+        "C": 1.0,
+        "epsilon": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 28,
+      "parameters": {
+        "C": 1.0,
+        "epsilon": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 7,
+      "parameters": {
+        "C": 1.0,
+        "epsilon": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 14,
+      "parameters": {
+        "C": 1.0,
+        "epsilon": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 21,
+      "parameters": {
+        "C": 1.0,
+        "epsilon": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 28,
+      "parameters": {
+        "C": 1.0,
+        "epsilon": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 7,
+      "parameters": {
+        "C": 1.0,
+        "epsilon": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 14,
+      "parameters": {
+        "C": 1.0,
+        "epsilon": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 21,
+      "parameters": {
+        "C": 1.0,
+        "epsilon": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 28,
+      "parameters": {
+        "C": 1.0,
+        "epsilon": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 7,
+      "parameters": {
+        "C": 1.0,
+        "epsilon": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 14,
+      "parameters": {
+        "C": 1.0,
+        "epsilon": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 21,
+      "parameters": {
+        "C": 1.0,
+        "epsilon": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 28,
+      "parameters": {
+        "C": 1.0,
+        "epsilon": 25.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 7,
+      "parameters": {
+        "C": 1.0,
+        "epsilon": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 14,
+      "parameters": {
+        "C": 1.0,
+        "epsilon": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 21,
+      "parameters": {
+        "C": 1.0,
+        "epsilon": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 28,
+      "parameters": {
+        "C": 1.0,
+        "epsilon": 50.0
+      }
+    }
+  ],
+  "direct_huber_compact": [
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 7,
+      "parameters": {
+        "epsilon": 1.5,
+        "alpha": 0.01
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 14,
+      "parameters": {
+        "epsilon": 1.2,
+        "alpha": 0.01
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 21,
+      "parameters": {
+        "epsilon": 1.35,
+        "alpha": 0.01
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 28,
+      "parameters": {
+        "epsilon": 1.35,
+        "alpha": 0.01
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 7,
+      "parameters": {
+        "epsilon": 1.5,
+        "alpha": 0.01
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 14,
+      "parameters": {
+        "epsilon": 1.35,
+        "alpha": 0.01
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 21,
+      "parameters": {
+        "epsilon": 1.5,
+        "alpha": 0.01
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 28,
+      "parameters": {
+        "epsilon": 1.5,
+        "alpha": 0.01
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 7,
+      "parameters": {
+        "epsilon": 1.5,
+        "alpha": 0.01
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 14,
+      "parameters": {
+        "epsilon": 1.2,
+        "alpha": 0.01
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 21,
+      "parameters": {
+        "epsilon": 1.2,
+        "alpha": 0.01
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 28,
+      "parameters": {
+        "epsilon": 1.5,
+        "alpha": 0.01
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 7,
+      "parameters": {
+        "epsilon": 1.2,
+        "alpha": 0.01
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 14,
+      "parameters": {
+        "epsilon": 1.2,
+        "alpha": 0.01
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 21,
+      "parameters": {
+        "epsilon": 1.35,
+        "alpha": 0.01
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 28,
+      "parameters": {
+        "epsilon": 1.2,
+        "alpha": 0.01
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 7,
+      "parameters": {
+        "epsilon": 1.5,
+        "alpha": 0.01
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 14,
+      "parameters": {
+        "epsilon": 1.2,
+        "alpha": 0.01
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 21,
+      "parameters": {
+        "epsilon": 1.5,
+        "alpha": 0.01
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 28,
+      "parameters": {
+        "epsilon": 1.5,
+        "alpha": 0.01
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 7,
+      "parameters": {
+        "epsilon": 1.2,
+        "alpha": 0.01
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 14,
+      "parameters": {
+        "epsilon": 1.35,
+        "alpha": 0.01
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 21,
+      "parameters": {
+        "epsilon": 1.35,
+        "alpha": 0.01
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 28,
+      "parameters": {
+        "epsilon": 1.5,
+        "alpha": 0.01
+      }
+    }
+  ],
+  "direct_elastic_net_compact": [
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 7,
+      "parameters": {
+        "alpha": 10.0,
+        "l1_ratio": 0.1
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 14,
+      "parameters": {
+        "alpha": 10.0,
+        "l1_ratio": 0.9
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 21,
+      "parameters": {
+        "alpha": 10.0,
+        "l1_ratio": 0.9
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 28,
+      "parameters": {
+        "alpha": 1.0,
+        "l1_ratio": 0.1
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 7,
+      "parameters": {
+        "alpha": 25.0,
+        "l1_ratio": 0.5
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 14,
+      "parameters": {
+        "alpha": 25.0,
+        "l1_ratio": 0.5
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 21,
+      "parameters": {
+        "alpha": 10.0,
+        "l1_ratio": 0.9
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 28,
+      "parameters": {
+        "alpha": 25.0,
+        "l1_ratio": 0.9
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 7,
+      "parameters": {
+        "alpha": 10.0,
+        "l1_ratio": 0.1
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 14,
+      "parameters": {
+        "alpha": 25.0,
+        "l1_ratio": 0.9
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 21,
+      "parameters": {
+        "alpha": 1.0,
+        "l1_ratio": 0.5
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 28,
+      "parameters": {
+        "alpha": 1.0,
+        "l1_ratio": 0.9
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 7,
+      "parameters": {
+        "alpha": 10.0,
+        "l1_ratio": 0.1
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 14,
+      "parameters": {
+        "alpha": 10.0,
+        "l1_ratio": 0.1
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 21,
+      "parameters": {
+        "alpha": 1.0,
+        "l1_ratio": 0.1
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 28,
+      "parameters": {
+        "alpha": 10.0,
+        "l1_ratio": 0.1
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 7,
+      "parameters": {
+        "alpha": 10.0,
+        "l1_ratio": 0.5
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 14,
+      "parameters": {
+        "alpha": 10.0,
+        "l1_ratio": 0.1
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 21,
+      "parameters": {
+        "alpha": 10.0,
+        "l1_ratio": 0.1
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 28,
+      "parameters": {
+        "alpha": 10.0,
+        "l1_ratio": 0.1
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 7,
+      "parameters": {
+        "alpha": 25.0,
+        "l1_ratio": 0.1
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 14,
+      "parameters": {
+        "alpha": 25.0,
+        "l1_ratio": 0.1
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 21,
+      "parameters": {
+        "alpha": 25.0,
+        "l1_ratio": 0.9
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 28,
+      "parameters": {
+        "alpha": 25.0,
+        "l1_ratio": 0.5
+      }
+    }
+  ],
+  "direct_extra_trees": [
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 7,
+      "parameters": {
+        "depth": 4,
+        "leaf": 3,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 14,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 21,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 28,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 7,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 14,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 21,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 28,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 7,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 14,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 21,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 28,
+      "parameters": {
+        "depth": 4,
+        "leaf": 3,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 7,
+      "parameters": {
+        "depth": 4,
+        "leaf": 3,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 14,
+      "parameters": {
+        "depth": 4,
+        "leaf": 3,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 21,
+      "parameters": {
+        "depth": 4,
+        "leaf": 3,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 28,
+      "parameters": {
+        "depth": 4,
+        "leaf": 3,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 7,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 14,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 21,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 28,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 7,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 14,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 21,
+      "parameters": {
+        "depth": 4,
+        "leaf": 3,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 28,
+      "parameters": {
+        "depth": null,
+        "leaf": 4,
+        "max_features": 1.0
+      }
+    }
+  ],
+  "direct_random_forest": [
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 7,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 14,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 21,
+      "parameters": {
+        "depth": 3,
+        "leaf": 2,
+        "max_features": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 28,
+      "parameters": {
+        "depth": 3,
+        "leaf": 2,
+        "max_features": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 7,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 14,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 21,
+      "parameters": {
+        "depth": null,
+        "leaf": 4,
+        "max_features": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 28,
+      "parameters": {
+        "depth": null,
+        "leaf": 4,
+        "max_features": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 7,
+      "parameters": {
+        "depth": null,
+        "leaf": 4,
+        "max_features": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 14,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 21,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 28,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 7,
+      "parameters": {
+        "depth": 3,
+        "leaf": 2,
+        "max_features": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 14,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 21,
+      "parameters": {
+        "depth": null,
+        "leaf": 4,
+        "max_features": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 28,
+      "parameters": {
+        "depth": null,
+        "leaf": 4,
+        "max_features": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 7,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 14,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 21,
+      "parameters": {
+        "depth": 3,
+        "leaf": 2,
+        "max_features": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 28,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 7,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 14,
+      "parameters": {
+        "depth": 4,
+        "leaf": 3,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 21,
+      "parameters": {
+        "depth": null,
+        "leaf": 4,
+        "max_features": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 28,
+      "parameters": {
+        "depth": null,
+        "leaf": 4,
+        "max_features": 1.0
+      }
+    }
+  ],
+  "direct_gradient_boosting": [
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 7,
+      "parameters": {
+        "trees": 50,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 3,
+        "loss": "squared_error"
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 14,
+      "parameters": {
+        "trees": 50,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 3,
+        "loss": "squared_error"
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 21,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 4,
+        "loss": "huber"
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 28,
+      "parameters": {
+        "trees": 50,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 3,
+        "loss": "squared_error"
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 7,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 4,
+        "loss": "huber"
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 14,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 4,
+        "loss": "huber"
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 21,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 4,
+        "loss": "huber"
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 28,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 4,
+        "loss": "huber"
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 7,
+      "parameters": {
+        "trees": 50,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 3,
+        "loss": "squared_error"
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 14,
+      "parameters": {
+        "trees": 50,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 3,
+        "loss": "squared_error"
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 21,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 4,
+        "loss": "huber"
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 28,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 2,
+        "leaf": 4,
+        "loss": "huber"
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 7,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 4,
+        "loss": "huber"
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 14,
+      "parameters": {
+        "trees": 50,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 3,
+        "loss": "squared_error"
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 21,
+      "parameters": {
+        "trees": 50,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 3,
+        "loss": "squared_error"
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 28,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 2,
+        "leaf": 4,
+        "loss": "huber"
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 7,
+      "parameters": {
+        "trees": 50,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 3,
+        "loss": "squared_error"
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 14,
+      "parameters": {
+        "trees": 50,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 3,
+        "loss": "squared_error"
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 21,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 4,
+        "loss": "huber"
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 28,
+      "parameters": {
+        "trees": 50,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 3,
+        "loss": "squared_error"
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 7,
+      "parameters": {
+        "trees": 50,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 3,
+        "loss": "squared_error"
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 14,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 4,
+        "loss": "huber"
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 21,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 4,
+        "loss": "huber"
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 28,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 2,
+        "leaf": 4,
+        "loss": "huber"
+      }
+    }
+  ],
+  "direct_extra_trees_growth": [
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 7,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 14,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 21,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 28,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 7,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 14,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 21,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 28,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 7,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 14,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 21,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 28,
+      "parameters": {
+        "depth": 4,
+        "leaf": 3,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 7,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 14,
+      "parameters": {
+        "depth": 3,
+        "leaf": 2,
+        "max_features": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 21,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 28,
+      "parameters": {
+        "depth": 4,
+        "leaf": 3,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 7,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 14,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 21,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 28,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 7,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 14,
+      "parameters": {
+        "depth": 3,
+        "leaf": 2,
+        "max_features": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 21,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 28,
+      "parameters": {
+        "depth": null,
+        "leaf": 4,
+        "max_features": 1.0
+      }
+    }
+  ],
+  "direct_extra_trees_poultry": [
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 7,
+      "parameters": {
+        "depth": 4,
+        "leaf": 3,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 14,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 21,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 28,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 7,
+      "parameters": {
+        "depth": 4,
+        "leaf": 3,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 14,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 21,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 28,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 7,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 14,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 21,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 28,
+      "parameters": {
+        "depth": 4,
+        "leaf": 3,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 7,
+      "parameters": {
+        "depth": 4,
+        "leaf": 3,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 14,
+      "parameters": {
+        "depth": 4,
+        "leaf": 3,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 21,
+      "parameters": {
+        "depth": 4,
+        "leaf": 3,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 28,
+      "parameters": {
+        "depth": 4,
+        "leaf": 3,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 7,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 14,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 21,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 28,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 7,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 14,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 21,
+      "parameters": {
+        "depth": 4,
+        "leaf": 3,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 28,
+      "parameters": {
+        "depth": null,
+        "leaf": 4,
+        "max_features": 1.0
+      }
+    }
+  ],
+  "remaining_extra_trees_poultry": [
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 7,
+      "parameters": {
+        "depth": 4,
+        "leaf": 3,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 14,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 21,
+      "parameters": {
+        "depth": null,
+        "leaf": 4,
+        "max_features": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 28,
+      "parameters": {
+        "depth": 3,
+        "leaf": 2,
+        "max_features": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 7,
+      "parameters": {
+        "depth": 4,
+        "leaf": 3,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 14,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 21,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 28,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 7,
+      "parameters": {
+        "depth": null,
+        "leaf": 4,
+        "max_features": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 14,
+      "parameters": {
+        "depth": 3,
+        "leaf": 2,
+        "max_features": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 21,
+      "parameters": {
+        "depth": 4,
+        "leaf": 3,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 28,
+      "parameters": {
+        "depth": null,
+        "leaf": 4,
+        "max_features": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 7,
+      "parameters": {
+        "depth": 4,
+        "leaf": 3,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 14,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 21,
+      "parameters": {
+        "depth": null,
+        "leaf": 4,
+        "max_features": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 28,
+      "parameters": {
+        "depth": null,
+        "leaf": 4,
+        "max_features": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 7,
+      "parameters": {
+        "depth": null,
+        "leaf": 4,
+        "max_features": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 14,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 21,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 28,
+      "parameters": {
+        "depth": 3,
+        "leaf": 2,
+        "max_features": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 7,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 14,
+      "parameters": {
+        "depth": null,
+        "leaf": 4,
+        "max_features": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 21,
+      "parameters": {
+        "depth": 4,
+        "leaf": 3,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 28,
+      "parameters": {
+        "depth": 3,
+        "leaf": 2,
+        "max_features": 1.0
+      }
+    }
+  ],
+  "direct_random_forest_poultry": [
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 7,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 14,
+      "parameters": {
+        "depth": null,
+        "leaf": 4,
+        "max_features": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 21,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 28,
+      "parameters": {
+        "depth": 3,
+        "leaf": 2,
+        "max_features": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 7,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 14,
+      "parameters": {
+        "depth": null,
+        "leaf": 4,
+        "max_features": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 21,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 28,
+      "parameters": {
+        "depth": null,
+        "leaf": 4,
+        "max_features": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 7,
+      "parameters": {
+        "depth": null,
+        "leaf": 4,
+        "max_features": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 14,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 21,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 28,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 7,
+      "parameters": {
+        "depth": null,
+        "leaf": 4,
+        "max_features": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 14,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 21,
+      "parameters": {
+        "depth": null,
+        "leaf": 4,
+        "max_features": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 28,
+      "parameters": {
+        "depth": null,
+        "leaf": 4,
+        "max_features": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 7,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 14,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 21,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 28,
+      "parameters": {
+        "depth": 3,
+        "leaf": 2,
+        "max_features": 1.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 7,
+      "parameters": {
+        "depth": 2,
+        "leaf": 2,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 14,
+      "parameters": {
+        "depth": 4,
+        "leaf": 3,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 21,
+      "parameters": {
+        "depth": 4,
+        "leaf": 3,
+        "max_features": 0.7
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 28,
+      "parameters": {
+        "depth": null,
+        "leaf": 4,
+        "max_features": 1.0
+      }
+    }
+  ],
+  "direct_gradient_boosting_poultry": [
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 7,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 4,
+        "loss": "huber"
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 14,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 4,
+        "loss": "huber"
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 21,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 4,
+        "loss": "huber"
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 28,
+      "parameters": {
+        "trees": 50,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 3,
+        "loss": "squared_error"
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 7,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 4,
+        "loss": "huber"
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 14,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 4,
+        "loss": "huber"
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 21,
+      "parameters": {
+        "trees": 50,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 3,
+        "loss": "squared_error"
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 28,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 4,
+        "loss": "huber"
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 7,
+      "parameters": {
+        "trees": 50,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 3,
+        "loss": "squared_error"
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 14,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 4,
+        "loss": "huber"
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 21,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 2,
+        "leaf": 4,
+        "loss": "huber"
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 28,
+      "parameters": {
+        "trees": 50,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 3,
+        "loss": "squared_error"
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 7,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 2,
+        "leaf": 4,
+        "loss": "huber"
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 14,
+      "parameters": {
+        "trees": 50,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 3,
+        "loss": "squared_error"
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 21,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 4,
+        "loss": "huber"
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 28,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 2,
+        "leaf": 4,
+        "loss": "huber"
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 7,
+      "parameters": {
+        "trees": 100,
+        "rate": 0.02,
+        "depth": 1,
+        "leaf": 4,
+        "loss": "squared_error"
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 14,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 2,
+        "leaf": 4,
+        "loss": "huber"
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 21,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 4,
+        "loss": "huber"
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 28,
+      "parameters": {
+        "trees": 50,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 3,
+        "loss": "squared_error"
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 7,
+      "parameters": {
+        "trees": 50,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 3,
+        "loss": "squared_error"
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 14,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 4,
+        "loss": "huber"
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 21,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 4,
+        "loss": "huber"
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 28,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 2,
+        "leaf": 4,
+        "loss": "huber"
+      }
+    }
+  ],
+  "direct_hist_gradient_boosting_poultry": [
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 7,
+      "parameters": {
+        "iterations": 150,
+        "rate": 0.02,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 14,
+      "parameters": {
+        "iterations": 150,
+        "rate": 0.02,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 21,
+      "parameters": {
+        "iterations": 150,
+        "rate": 0.02,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 28,
+      "parameters": {
+        "iterations": 150,
+        "rate": 0.02,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 7,
+      "parameters": {
+        "iterations": 150,
+        "rate": 0.02,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 14,
+      "parameters": {
+        "iterations": 150,
+        "rate": 0.02,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 21,
+      "parameters": {
+        "iterations": 150,
+        "rate": 0.02,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 28,
+      "parameters": {
+        "iterations": 100,
+        "rate": 0.03,
+        "leaf": 5,
+        "l2": 25.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 7,
+      "parameters": {
+        "iterations": 150,
+        "rate": 0.02,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 14,
+      "parameters": {
+        "iterations": 150,
+        "rate": 0.02,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 21,
+      "parameters": {
+        "iterations": 75,
+        "rate": 0.04,
+        "leaf": 5,
+        "l2": 10.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 28,
+      "parameters": {
+        "iterations": 75,
+        "rate": 0.04,
+        "leaf": 5,
+        "l2": 10.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 7,
+      "parameters": {
+        "iterations": 150,
+        "rate": 0.02,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 14,
+      "parameters": {
+        "iterations": 100,
+        "rate": 0.03,
+        "leaf": 5,
+        "l2": 25.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 21,
+      "parameters": {
+        "iterations": 100,
+        "rate": 0.03,
+        "leaf": 5,
+        "l2": 25.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 28,
+      "parameters": {
+        "iterations": 75,
+        "rate": 0.04,
+        "leaf": 5,
+        "l2": 10.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 7,
+      "parameters": {
+        "iterations": 150,
+        "rate": 0.02,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 14,
+      "parameters": {
+        "iterations": 150,
+        "rate": 0.02,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 21,
+      "parameters": {
+        "iterations": 150,
+        "rate": 0.02,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 28,
+      "parameters": {
+        "iterations": 150,
+        "rate": 0.02,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 7,
+      "parameters": {
+        "iterations": 150,
+        "rate": 0.02,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 14,
+      "parameters": {
+        "iterations": 100,
+        "rate": 0.03,
+        "leaf": 5,
+        "l2": 25.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 21,
+      "parameters": {
+        "iterations": 150,
+        "rate": 0.02,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 28,
+      "parameters": {
+        "iterations": 150,
+        "rate": 0.02,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    }
+  ],
+  "direct_poultry_core_ridge": [
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 7,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 14,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 21,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 28,
+      "parameters": {
+        "alpha": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 7,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 14,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 21,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 28,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 7,
+      "parameters": {
+        "alpha": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 14,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 21,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 28,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 7,
+      "parameters": {
+        "alpha": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 14,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 21,
+      "parameters": {
+        "alpha": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 28,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 7,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 14,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 21,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 28,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 7,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 14,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 21,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 28,
+      "parameters": {
+        "alpha": 100.0
+      }
+    }
+  ],
+  "remaining_poultry_core_ridge": [
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 7,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 14,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 21,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 28,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 7,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 14,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 21,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 28,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 7,
+      "parameters": {
+        "alpha": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 14,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 21,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 28,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 7,
+      "parameters": {
+        "alpha": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 14,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 21,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 28,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 7,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 14,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 21,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 28,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 7,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 14,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 21,
+      "parameters": {
+        "alpha": 100.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 28,
+      "parameters": {
+        "alpha": 100.0
+      }
+    }
+  ],
+  "direct_poultry_core_pls": [
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 7,
+      "parameters": {
+        "components": 2
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 14,
+      "parameters": {
+        "components": 1
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 21,
+      "parameters": {
+        "components": 1
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 28,
+      "parameters": {
+        "components": 1
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 7,
+      "parameters": {
+        "components": 1
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 14,
+      "parameters": {
+        "components": 1
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 21,
+      "parameters": {
+        "components": 1
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 28,
+      "parameters": {
+        "components": 1
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 7,
+      "parameters": {
+        "components": 2
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 14,
+      "parameters": {
+        "components": 1
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 21,
+      "parameters": {
+        "components": 1
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 28,
+      "parameters": {
+        "components": 1
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 7,
+      "parameters": {
+        "components": 2
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 14,
+      "parameters": {
+        "components": 2
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 21,
+      "parameters": {
+        "components": 2
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 28,
+      "parameters": {
+        "components": 2
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 7,
+      "parameters": {
+        "components": 1
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 14,
+      "parameters": {
+        "components": 1
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 21,
+      "parameters": {
+        "components": 1
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 28,
+      "parameters": {
+        "components": 1
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 7,
+      "parameters": {
+        "components": 1
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 14,
+      "parameters": {
+        "components": 1
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 21,
+      "parameters": {
+        "components": 1
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 28,
+      "parameters": {
+        "components": 1
+      }
+    }
+  ],
+  "direct_xgboost_growth": [
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 7,
+      "parameters": {
+        "trees": 120,
+        "rate": 0.025,
+        "depth": 2,
+        "leaf": 5,
+        "l2": 30.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 14,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 21,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 28,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 7,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 14,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 21,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 28,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 7,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 14,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 21,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 28,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 7,
+      "parameters": {
+        "trees": 120,
+        "rate": 0.025,
+        "depth": 2,
+        "leaf": 5,
+        "l2": 30.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 14,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 21,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 28,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 7,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 14,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 21,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 28,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 7,
+      "parameters": {
+        "trees": 120,
+        "rate": 0.025,
+        "depth": 2,
+        "leaf": 5,
+        "l2": 30.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 14,
+      "parameters": {
+        "trees": 120,
+        "rate": 0.025,
+        "depth": 2,
+        "leaf": 5,
+        "l2": 30.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 21,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 28,
+      "parameters": {
+        "trees": 120,
+        "rate": 0.025,
+        "depth": 2,
+        "leaf": 5,
+        "l2": 30.0
+      }
+    }
+  ],
+  "direct_xgboost_poultry": [
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 7,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 14,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 21,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 28,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 7,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 14,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 21,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 28,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 7,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 14,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 21,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 28,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 7,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 14,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 21,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 28,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 7,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 14,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 21,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 28,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 7,
+      "parameters": {
+        "trees": 120,
+        "rate": 0.025,
+        "depth": 2,
+        "leaf": 5,
+        "l2": 30.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 14,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 21,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 28,
+      "parameters": {
+        "trees": 120,
+        "rate": 0.025,
+        "depth": 2,
+        "leaf": 5,
+        "l2": 30.0
+      }
+    }
+  ],
+  "direct_lightgbm_growth": [
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 7,
+      "parameters": {
+        "trees": 120,
+        "rate": 0.025,
+        "depth": 2,
+        "leaf": 5,
+        "l2": 30.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 14,
+      "parameters": {
+        "trees": 120,
+        "rate": 0.025,
+        "depth": 2,
+        "leaf": 5,
+        "l2": 30.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 21,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 28,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 7,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 14,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 21,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 28,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 7,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 14,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 21,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 28,
+      "parameters": {
+        "trees": 120,
+        "rate": 0.025,
+        "depth": 2,
+        "leaf": 5,
+        "l2": 30.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 7,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 14,
+      "parameters": {
+        "trees": 120,
+        "rate": 0.025,
+        "depth": 2,
+        "leaf": 5,
+        "l2": 30.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 21,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 28,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 7,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 14,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 21,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 28,
+      "parameters": {
+        "trees": 120,
+        "rate": 0.025,
+        "depth": 2,
+        "leaf": 5,
+        "l2": 30.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 7,
+      "parameters": {
+        "trees": 120,
+        "rate": 0.025,
+        "depth": 2,
+        "leaf": 5,
+        "l2": 30.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 14,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 21,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 28,
+      "parameters": {
+        "trees": 120,
+        "rate": 0.025,
+        "depth": 2,
+        "leaf": 5,
+        "l2": 30.0
+      }
+    }
+  ],
+  "direct_lightgbm_poultry": [
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 7,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 14,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 21,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 28,
+      "parameters": {
+        "trees": 120,
+        "rate": 0.025,
+        "depth": 2,
+        "leaf": 5,
+        "l2": 30.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 7,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 14,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 21,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 28,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 7,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 14,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 21,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 28,
+      "parameters": {
+        "trees": 120,
+        "rate": 0.025,
+        "depth": 2,
+        "leaf": 5,
+        "l2": 30.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 7,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 14,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 21,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 28,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 7,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 14,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 21,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 28,
+      "parameters": {
+        "trees": 120,
+        "rate": 0.025,
+        "depth": 2,
+        "leaf": 5,
+        "l2": 30.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 7,
+      "parameters": {
+        "trees": 120,
+        "rate": 0.025,
+        "depth": 2,
+        "leaf": 5,
+        "l2": 30.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 14,
+      "parameters": {
+        "trees": 120,
+        "rate": 0.025,
+        "depth": 2,
+        "leaf": 5,
+        "l2": 30.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 21,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 28,
+      "parameters": {
+        "trees": 120,
+        "rate": 0.025,
+        "depth": 2,
+        "leaf": 5,
+        "l2": 30.0
+      }
+    }
+  ],
+  "direct_catboost_growth": [
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 7,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 14,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 21,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 28,
+      "parameters": {
+        "trees": 120,
+        "rate": 0.025,
+        "depth": 2,
+        "leaf": 5,
+        "l2": 30.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 7,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 14,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 21,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 28,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 7,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 14,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 21,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 28,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 7,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 14,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 21,
+      "parameters": {
+        "trees": 120,
+        "rate": 0.025,
+        "depth": 2,
+        "leaf": 5,
+        "l2": 30.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 28,
+      "parameters": {
+        "trees": 120,
+        "rate": 0.025,
+        "depth": 2,
+        "leaf": 5,
+        "l2": 30.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 7,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 14,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 21,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 28,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 7,
+      "parameters": {
+        "trees": 120,
+        "rate": 0.025,
+        "depth": 2,
+        "leaf": 5,
+        "l2": 30.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 14,
+      "parameters": {
+        "trees": 120,
+        "rate": 0.025,
+        "depth": 2,
+        "leaf": 5,
+        "l2": 30.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 21,
+      "parameters": {
+        "trees": 120,
+        "rate": 0.025,
+        "depth": 2,
+        "leaf": 5,
+        "l2": 30.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 28,
+      "parameters": {
+        "trees": 120,
+        "rate": 0.025,
+        "depth": 2,
+        "leaf": 5,
+        "l2": 30.0
+      }
+    }
+  ],
+  "direct_catboost_poultry": [
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 7,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 14,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 21,
+      "parameters": {
+        "trees": 150,
+        "rate": 0.02,
+        "depth": 2,
+        "leaf": 8,
+        "l2": 50.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-2",
+      "review_day": 28,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 7,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 14,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 21,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-3",
+      "review_day": 28,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 7,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 14,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 21,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-4",
+      "review_day": 28,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 7,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 14,
+      "parameters": {
+        "trees": 120,
+        "rate": 0.025,
+        "depth": 2,
+        "leaf": 5,
+        "l2": 30.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 21,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2025-5",
+      "review_day": 28,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 7,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 14,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 21,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-1",
+      "review_day": 28,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 7,
+      "parameters": {
+        "trees": 120,
+        "rate": 0.025,
+        "depth": 2,
+        "leaf": 5,
+        "l2": 30.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 14,
+      "parameters": {
+        "trees": 120,
+        "rate": 0.025,
+        "depth": 2,
+        "leaf": 5,
+        "l2": 30.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 21,
+      "parameters": {
+        "trees": 75,
+        "rate": 0.03,
+        "depth": 1,
+        "leaf": 5,
+        "l2": 20.0
+      }
+    },
+    {
+      "held_out_cycle": "2026-2",
+      "review_day": 28,
+      "parameters": {
+        "trees": 120,
+        "rate": 0.025,
+        "depth": 2,
+        "leaf": 5,
+        "l2": 30.0
+      }
+    }
+  ]
+}

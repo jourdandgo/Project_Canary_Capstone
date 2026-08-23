@@ -1,0 +1,5 @@
+{
+  "status": "active",
+  "canonical_registry": "forecast_registry.json",
+  "note": "Model 1 is the recovery engine. The app toggle selects either Model 3 or the checkpoint method for Day 35 bodyweight."
+}

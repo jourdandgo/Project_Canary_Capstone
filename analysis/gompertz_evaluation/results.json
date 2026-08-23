@@ -1,0 +1,399 @@
+{
+  "experiment_scope": "Training and comparison only; no Canary app inference or interface changes.",
+  "source": "/Users/jourdan.go/Downloads/PROJECT CANARY/Project_Canary_GitHub_Ready/data/FARM HARVEST DATA.xlsx",
+  "source_sha256": "2627cd610883180ef6b17dd2e55e3bfdcc2a4b19841a8bc68f8d773aa8a739ce",
+  "development_cycles": [
+    "2025-2",
+    "2025-3",
+    "2025-4",
+    "2025-5",
+    "2026-1",
+    "2026-2"
+  ],
+  "development_building_cycles": 31,
+  "audit_cycle": "2026-3",
+  "audit_buildings": 3,
+  "gompertz_definition": "W(t) = A * exp(-exp(-k * (t - M)))",
+  "operational_candidate": "Current measured weight + Gompertz-implied remaining gain from checkpoint to Day 35",
+  "frozen_parameters": {
+    "asymptote_kg": 6.288225410516323,
+    "growth_rate": 0.03865869269615628,
+    "inflection_day": 43.97003529219472,
+    "fit_cost": 0.9904264686419519,
+    "converged": true
+  },
+  "fold_parameters": [
+    {
+      "held_cycle": "2025-2",
+      "asymptote_kg": 7.133946508032249,
+      "growth_rate": 0.036762405745059644,
+      "inflection_day": 46.88901582577604,
+      "fit_cost": 0.8890698192616334,
+      "converged": true
+    },
+    {
+      "held_cycle": "2025-3",
+      "asymptote_kg": 5.861707900278834,
+      "growth_rate": 0.04018524062717669,
+      "inflection_day": 42.32064683606693,
+      "fit_cost": 0.9480117654805714,
+      "converged": true
+    },
+    {
+      "held_cycle": "2025-4",
+      "asymptote_kg": 6.154657022017352,
+      "growth_rate": 0.03909861156421649,
+      "inflection_day": 43.33752169774623,
+      "fit_cost": 0.8779844912615868,
+      "converged": true
+    },
+    {
+      "held_cycle": "2025-5",
+      "asymptote_kg": 5.528759591677548,
+      "growth_rate": 0.04056079158441845,
+      "inflection_day": 41.21918463664022,
+      "fit_cost": 0.7298008260079563,
+      "converged": true
+    },
+    {
+      "held_cycle": "2026-1",
+      "asymptote_kg": 7.999999999929426,
+      "growth_rate": 0.034700427074420045,
+      "inflection_day": 49.81778437601954,
+      "fit_cost": 0.7775186116700031,
+      "converged": true
+    },
+    {
+      "held_cycle": "2026-2",
+      "asymptote_kg": 5.798565663905561,
+      "growth_rate": 0.04022169964951566,
+      "inflection_day": 41.87685632222047,
+      "fit_cost": 0.6891474229913541,
+      "converged": true
+    }
+  ],
+  "development_metrics": {
+    "rows": 124,
+    "independent_building_cycles": 31,
+    "mae_g": 124.83291081001609,
+    "cycle_macro_mae_g": 119.26050525613886,
+    "rmse_g": 162.16256311744107,
+    "r2": 0.32475125335563115,
+    "bias_g": 21.34482957623649,
+    "within_100g_rate": 0.532258064516129,
+    "within_200g_rate": 0.7741935483870968,
+    "worst_cycle_mae_g": 183.25000000000003
+  },
+  "checkpoint_metrics": [
+    {
+      "review_day": 7,
+      "rows": 31,
+      "independent_building_cycles": 31,
+      "mae_g": 151.43231298867852,
+      "cycle_macro_mae_g": 136.22416436729003,
+      "rmse_g": 203.5196073117236,
+      "r2": -0.06359208924949677,
+      "bias_g": 42.53644611498282,
+      "within_100g_rate": 0.5483870967741935,
+      "within_200g_rate": 0.6451612903225806,
+      "worst_cycle_mae_g": 251.8333333333333
+    },
+    {
+      "review_day": 14,
+      "rows": 31,
+      "independent_building_cycles": 31,
+      "mae_g": 137.62988629595176,
+      "cycle_macro_mae_g": 125.9086385174393,
+      "rmse_g": 171.25541899664955,
+      "r2": 0.24690245508502184,
+      "bias_g": 23.73955143268016,
+      "within_100g_rate": 0.5161290322580645,
+      "within_200g_rate": 0.6451612903225806,
+      "worst_cycle_mae_g": 221.50000000000006
+    },
+    {
+      "review_day": 21,
+      "rows": 31,
+      "independent_building_cycles": 31,
+      "mae_g": 109.72226552012462,
+      "cycle_macro_mae_g": 104.20096433640762,
+      "rmse_g": 136.09785321713312,
+      "r2": 0.5243744941227904,
+      "bias_g": 4.263785514392957,
+      "within_100g_rate": 0.4838709677419355,
+      "within_200g_rate": 0.9032258064516129,
+      "worst_cycle_mae_g": 171.16666666666669
+    },
+    {
+      "review_day": 28,
+      "rows": 31,
+      "independent_building_cycles": 31,
+      "mae_g": 100.54717843530953,
+      "cycle_macro_mae_g": 110.7082538034184,
+      "rmse_g": 126.15669923124875,
+      "r2": 0.5913201534642087,
+      "bias_g": 14.83953524289,
+      "within_100g_rate": 0.5806451612903226,
+      "within_200g_rate": 0.9032258064516129,
+      "worst_cycle_mae_g": 221.9042079706451
+    }
+  ],
+  "audit_metrics": {
+    "rows": 12,
+    "independent_building_cycles": 3,
+    "mae_g": 84.6459159974765,
+    "cycle_macro_mae_g": 84.6459159974765,
+    "rmse_g": 110.63761649420198,
+    "r2": -9.009643798988112,
+    "bias_g": -5.846294543504179,
+    "within_100g_rate": 0.5833333333333334,
+    "within_200g_rate": 0.9166666666666666,
+    "worst_cycle_mae_g": 84.6459159974765
+  },
+  "audit_checkpoint_metrics": [
+    {
+      "review_day": 7,
+      "rows": 3,
+      "independent_building_cycles": 3,
+      "mae_g": 78.77912214606238,
+      "cycle_macro_mae_g": 78.77912214606238,
+      "rmse_g": 86.19187302172463,
+      "r2": -5.074990984457387,
+      "bias_g": 78.77912214606238,
+      "within_100g_rate": 0.3333333333333333,
+      "within_200g_rate": 1.0,
+      "worst_cycle_mae_g": 78.77912214606238
+    },
+    {
+      "review_day": 14,
+      "rows": 3,
+      "independent_building_cycles": 3,
+      "mae_g": 47.34572850959018,
+      "cycle_macro_mae_g": 47.34572850959018,
+      "rmse_g": 55.712573044663806,
+      "r2": -1.538162561994643,
+      "bias_g": 43.370518862103935,
+      "within_100g_rate": 1.0,
+      "within_200g_rate": 1.0,
+      "worst_cycle_mae_g": 47.34572850959018
+    },
+    {
+      "review_day": 21,
+      "rows": 3,
+      "independent_building_cycles": 3,
+      "mae_g": 34.07599853801754,
+      "cycle_macro_mae_g": 34.07599853801754,
+      "rmse_g": 41.16677886995164,
+      "r2": -0.3858198385196703,
+      "bias_g": 32.84799561405283,
+      "within_100g_rate": 1.0,
+      "within_200g_rate": 1.0,
+      "worst_cycle_mae_g": 34.07599853801754
+    },
+    {
+      "review_day": 28,
+      "rows": 3,
+      "independent_building_cycles": 3,
+      "mae_g": 178.38281479623586,
+      "cycle_macro_mae_g": 178.38281479623586,
+      "rmse_g": 191.66401665752198,
+      "r2": -29.03960181098075,
+      "bias_g": -178.38281479623586,
+      "within_100g_rate": 0.0,
+      "within_200g_rate": 0.6666666666666666,
+      "worst_cycle_mae_g": 178.38281479623586
+    }
+  ],
+  "paired_comparison_with_checkpoint": {
+    "point_difference_g": -1.6670990021028862,
+    "ci95_low_g": -8.870014450283835,
+    "ci95_high_g": 3.018239673841507,
+    "probability_gompertz_lower_mae": 0.6686
+  },
+  "blank_weight_fallback": {
+    "interpretation": "Generic cohort prior only; it is identical for every building in a fold and is not an individualized forecast.",
+    "gompertz_development_mae_g": 157.9853364958906,
+    "historical_mean_development_mae_g": 163.0363196029776,
+    "gompertz_audit_mae_g": 60.68188834849705,
+    "historical_mean_audit_mae_g": 43.002580645161274
+  },
+  "existing_models": {
+    "model_1_recovery": {
+      "rows": 62,
+      "mae": 0.02473520396528184,
+      "rmse": 0.03363089260530927,
+      "r2": -0.22206913689984553,
+      "bias": 0.006536704625078894,
+      "cycle_macro_mae": 0.02759158399093604,
+      "worst_cycle_mae": 0.06622363058382326,
+      "uncertainty_half_width_80": 0.035002473326464875,
+      "cycle": {
+        "2025-2": {
+          "rows": 6,
+          "mae": 0.06622363058382326,
+          "rmse": 0.07315482504006326,
+          "bias": 0.06622363058382326
+        },
+        "2025-3": {
+          "rows": 10,
+          "mae": 0.01719343417372956,
+          "rmse": 0.02070389572446947,
+          "bias": -0.014386671572977617
+        },
+        "2025-4": {
+          "rows": 10,
+          "mae": 0.010641374824761084,
+          "rmse": 0.013658586929896188,
+          "bias": -0.008246389643584085
+        },
+        "2025-5": {
+          "rows": 12,
+          "mae": 0.016057814822772742,
+          "rmse": 0.01718856117210068,
+          "bias": -0.0036526159500986735
+        },
+        "2026-1": {
+          "rows": 12,
+          "mae": 0.022909550649560833,
+          "rmse": 0.024808748027398804,
+          "bias": -0.00848676487615931
+        },
+        "2026-2": {
+          "rows": 12,
+          "mae": 0.03252369889096877,
+          "rmse": 0.041764607468162504,
+          "bias": 0.031661423777722054
+        }
+      }
+    },
+    "model_1_recovery_audit": {
+      "rows": 6,
+      "mae": 0.045477191260972626,
+      "rmse": 0.047669063720828714,
+      "r2": -94.02220921653908,
+      "bias": -0.045477191260972626,
+      "cycle_macro_mae": 0.045477191260972626,
+      "worst_cycle_mae": 0.045477191260972626,
+      "uncertainty_half_width_80": 0.05633708745808319,
+      "cycle": {
+        "2026-3": {
+          "rows": 6,
+          "mae": 0.045477191260972626,
+          "rmse": 0.047669063720828714,
+          "bias": -0.045477191260972626
+        }
+      }
+    },
+    "model_3_day21_bodyweight": {
+      "rows": 31,
+      "mae": 146.23496613533268,
+      "rmse": 187.7112175807851,
+      "r2": 0.09521990012809578,
+      "bias": 30.54338977444558,
+      "cycle_macro_mae": 131.90149080403646,
+      "worst_cycle_mae": 242.0545857747396,
+      "uncertainty_half_width_80": 248.26611328125,
+      "cycle": {
+        "2025-2": {
+          "rows": 3,
+          "mae": 20.14111328125,
+          "rmse": 24.062631339379422,
+          "bias": 20.14111328125
+        },
+        "2025-3": {
+          "rows": 5,
+          "mae": 71.92937109375002,
+          "rmse": 80.7224627946851,
+          "bias": 47.08048437500006
+        },
+        "2025-4": {
+          "rows": 5,
+          "mae": 82.81700781250007,
+          "rmse": 96.07121628755483,
+          "bias": -17.085369140625016
+        },
+        "2025-5": {
+          "rows": 6,
+          "mae": 242.0545857747396,
+          "rmse": 242.45277592139686,
+          "bias": 9.44329833984375
+        },
+        "2026-1": {
+          "rows": 6,
+          "mae": 159.42170572916655,
+          "rmse": 205.42837844765464,
+          "bias": -98.82857747395826
+        },
+        "2026-2": {
+          "rows": 6,
+          "mae": 215.04516113281252,
+          "rmse": 260.10559726124404,
+          "bias": 212.1263069661458
+        }
+      }
+    },
+    "model_3_day21_bodyweight_audit": {
+      "rows": 3,
+      "mae": 116.48982747395833,
+      "rmse": 140.65058327757734,
+      "r2": -15.176928873969146,
+      "bias": -116.48982747395833,
+      "cycle_macro_mae": 116.48982747395833,
+      "worst_cycle_mae": 116.48982747395833,
+      "uncertainty_half_width_80": 164.123486328125,
+      "cycle": {
+        "2026-3": {
+          "rows": 3,
+          "mae": 116.48982747395833,
+          "rmse": 140.65058327757734,
+          "bias": -116.48982747395833
+        }
+      }
+    },
+    "checkpoint_bodyweight": {
+      "rows": 124,
+      "independent_building_cycles": 31,
+      "rmse_g": 163.90887260176706,
+      "cycle_macro_rmse_g": 149.9082719395848,
+      "mae_g": 127.1208997429989,
+      "cycle_macro_mae_g": 120.92760425824173,
+      "r2": 0.31012959760018166,
+      "bias_g": -0.6461027915633306,
+      "within_100g_rate": 0.5080645161290323,
+      "within_200g_rate": 0.7580645161290323,
+      "worst_cycle_rmse_g": 203.1370166198503,
+      "fold_rmse_sd_g": 53.93536909361507,
+      "fold_rmse_se_g": 22.019022228005827,
+      "target_side_accuracy": 0.9596774193548387,
+      "majority_side_accuracy": 0.967741935483871,
+      "below_target_recall": 0.9833333333333333,
+      "at_or_above_target_recall": 0.25,
+      "actual_target_hits": 1,
+      "rmse_95ci_low_g": 118.33627181259028,
+      "rmse_95ci_high_g": 193.32885526310793,
+      "r2_95ci_low": -0.3901534100613022,
+      "r2_95ci_high": 0.36779025750003425
+    },
+    "checkpoint_bodyweight_audit": {
+      "rows": 12,
+      "independent_building_cycles": 3,
+      "rmse_g": 109.71840155235566,
+      "cycle_macro_rmse_g": 109.71840155235566,
+      "mae_g": 77.63776881720435,
+      "cycle_macro_mae_g": 77.63776881720435,
+      "r2": -8.844007700602912,
+      "bias_g": -28.2005107526882,
+      "within_100g_rate": 0.75,
+      "within_200g_rate": 0.9166666666666666,
+      "worst_cycle_rmse_g": 109.71840155235566,
+      "fold_rmse_sd_g": NaN,
+      "fold_rmse_se_g": NaN,
+      "target_side_accuracy": 1.0,
+      "majority_side_accuracy": 1.0,
+      "below_target_recall": 1.0,
+      "at_or_above_target_recall": NaN,
+      "actual_target_hits": 0
+    }
+  },
+  "recommendation": "Do not replace the checkpoint model. The Gompertz candidate's small historical MAE advantage is not material, its paired uncertainty includes no improvement, and it is weaker on the prospective audit. Keep it as a research comparison only."
+}

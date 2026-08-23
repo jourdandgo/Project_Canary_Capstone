@@ -1,0 +1,5 @@
+engine,outcome,forecast_points,development_mae,development_mae_unit,audit_mae,audit_mae_unit,interpretation
+Model 1 - Extra Trees,End-of-cycle recovery proxy,Days 7 and 14,2.4735203965281842,percentage points,4.547719126097262,percentage points,Different outcome; not directly comparable with bodyweight models.
+Model 3 - XGBoost,Day 35 bodyweight,Day 21,146.23496613533268,grams,116.48982747395833,grams,Shadow Day 21 benchmark.
+Checkpoint - historical remaining gain,Day 35 bodyweight,"Days 7, 14, 21, and 28",127.1208997429989,grams,77.63776881720435,grams,Provisional default.
+Gompertz - anchored remaining gain,Day 35 bodyweight,"Days 7, 14, 21, and 28",124.83291081001609,grams,84.6459159974765,grams,Research comparison; no app integration recommended.

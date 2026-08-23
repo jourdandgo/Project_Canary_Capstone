@@ -1,0 +1,158 @@
+{
+  "model_id": "model_1",
+  "outcome": "end_of_cycle_recovery_proxy",
+  "target_column": "final_harvest_recovery",
+  "algorithm": "Extra Trees",
+  "unit": "proportion",
+  "evaluation_days": [
+    7,
+    14
+  ],
+  "development_cycles": [
+    "2025-2",
+    "2025-3",
+    "2025-4",
+    "2025-5",
+    "2026-1",
+    "2026-2"
+  ],
+  "development_building_cycles": 31,
+  "audit_cycle": "2026-3",
+  "audit_buildings": 3,
+  "selected_metrics": {
+    "rows": 62,
+    "mae": 0.02473520396528184,
+    "rmse": 0.03363089260530927,
+    "r2": -0.22206913689984553,
+    "bias": 0.006536704625078894,
+    "cycle_macro_mae": 0.02759158399093604,
+    "worst_cycle_mae": 0.06622363058382326,
+    "uncertainty_half_width_80": 0.035002473326464875,
+    "cycle": {
+      "2025-2": {
+        "rows": 6,
+        "mae": 0.06622363058382326,
+        "rmse": 0.07315482504006326,
+        "bias": 0.06622363058382326
+      },
+      "2025-3": {
+        "rows": 10,
+        "mae": 0.01719343417372956,
+        "rmse": 0.02070389572446947,
+        "bias": -0.014386671572977617
+      },
+      "2025-4": {
+        "rows": 10,
+        "mae": 0.010641374824761084,
+        "rmse": 0.013658586929896188,
+        "bias": -0.008246389643584085
+      },
+      "2025-5": {
+        "rows": 12,
+        "mae": 0.016057814822772742,
+        "rmse": 0.01718856117210068,
+        "bias": -0.0036526159500986735
+      },
+      "2026-1": {
+        "rows": 12,
+        "mae": 0.022909550649560833,
+        "rmse": 0.024808748027398804,
+        "bias": -0.00848676487615931
+      },
+      "2026-2": {
+        "rows": 12,
+        "mae": 0.03252369889096877,
+        "rmse": 0.041764607468162504,
+        "bias": 0.031661423777722054
+      }
+    }
+  },
+  "baseline_metrics": {
+    "rows": 62,
+    "mae": 0.024291487890459772,
+    "rmse": 0.03103570768434935,
+    "r2": -0.04074011188235893,
+    "bias": -0.00031999227960021766,
+    "cycle_macro_mae": 0.026176583949883425,
+    "worst_cycle_mae": 0.049626900580655574,
+    "uncertainty_half_width_80": 0.030575511409477476,
+    "cycle": {
+      "2025-2": {
+        "rows": 6,
+        "mae": 0.049626900580655574,
+        "rmse": 0.05946259503634525,
+        "bias": 0.049626900580655574
+      },
+      "2025-3": {
+        "rows": 10,
+        "mae": 0.019609751355866057,
+        "rmse": 0.022576725593682744,
+        "bias": -0.018899173213430032
+      },
+      "2025-4": {
+        "rows": 10,
+        "mae": 0.02083044449371744,
+        "rmse": 0.021766474812099024,
+        "bias": -0.02083044449371744
+      },
+      "2025-5": {
+        "rows": 12,
+        "mae": 0.019052890458122584,
+        "rmse": 0.022987858348708944,
+        "bias": -0.015727597466041816
+      },
+      "2026-1": {
+        "rows": 12,
+        "mae": 0.01816169104035113,
+        "rmse": 0.020025536371341104,
+        "bias": -0.007408957283518629
+      },
+      "2026-2": {
+        "rows": 12,
+        "mae": 0.029777825770587758,
+        "rmse": 0.03820568635303393,
+        "bias": 0.029777825770587758
+      }
+    }
+  },
+  "baseline_improvement_pct": -5.405594724513003,
+  "deployment_gate_passed": false,
+  "status": "experimental",
+  "feature_count": 85,
+  "thi_features": [
+    "humidity_within_target",
+    "temperature_within_target",
+    "max_thi_cycle",
+    "max_thi_day",
+    "thi_stress_days"
+  ],
+  "feature_policy": "Locked original feature schema; 2026-3 excluded from fitting and evaluation-based selection.",
+  "target_policy": "Canonical last-recorded population divided by beginning population from Canary's farm workbook.",
+  "audit_metrics": {
+    "rows": 6,
+    "mae": 0.045477191260972626,
+    "rmse": 0.047669063720828714,
+    "r2": -94.02220921653908,
+    "bias": -0.045477191260972626,
+    "cycle_macro_mae": 0.045477191260972626,
+    "worst_cycle_mae": 0.045477191260972626,
+    "uncertainty_half_width_80": 0.05633708745808319,
+    "cycle": {
+      "2026-3": {
+        "rows": 6,
+        "mae": 0.045477191260972626,
+        "rmse": 0.047669063720828714,
+        "bias": -0.045477191260972626
+      }
+    }
+  },
+  "model_file": "model_1.joblib",
+  "model_sha256": "8fe4705f5241c0f0aafaf79a9114a592d670e763f8286424b732fa72f7e924af",
+  "features_file": "model_1_features.json",
+  "audit_features_file": "model_1_audit_features.csv.gz",
+  "limitations": [
+    "The original feature list is retained as a legacy benchmark and was not reselected inside the corrected cohort.",
+    "Repeated daily rows are not independent outcomes; all rows from a complete production cycle remain together during validation.",
+    "Environmental and THI variables are predictive candidates, not causal evidence or approved intervention thresholds."
+  ]
+}

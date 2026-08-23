@@ -1,0 +1,10 @@
+field_family,definition,timing_rule,leakage_control
+current_weight_g,Most recent actually observed building average weight by the review date,X: on/before review date,Future observations excluded
+current_ratio_to_target,Observed weight divided by the farm reference at the same measurement age,X: on/before review date,Future observations excluded
+current_gap/deficit,"Observed weight deviation from the same-age farm target and from the 1,800 g Day-35 goal",X: on/before review date,Future observations excluded
+weight_dayN_g,Actually observed checkpoint weight; future checkpoint columns remain missing,X: on/before review date,Future observations excluded
+gain/adg,Observed absolute gain or average daily gain between completed checkpoints,X: on/before review date,Future observations excluded
+survival/mortality,Population and mortality history accumulated only through the review date,X: on/before review date,Future observations excluded
+temperature/humidity,"Observed history, target deviation, extremes, trends, duration, THI, and compound stress through the review date",X: on/before review date,Future observations excluded
+cycle_checkpoint,Same-cycle checkpoint measurements already recorded by the snapshot date; no peer outcomes,X: on/before review date,Future observations excluded
+outcome_day35_weight_g,Actually observed average building weight on production Day 35,Y: available at Day 35,Future observations excluded

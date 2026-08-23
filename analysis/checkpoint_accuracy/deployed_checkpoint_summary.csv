@@ -1,0 +1,5 @@
+display_day,mean_recovery_absolute_error_pp,mean_weight_absolute_error_g,recovery_forecast_status,weight_forecast_status
+7,4.269069712101573,187.46742646909607,Recalculated,Recalculated
+14,4.304853833182432,181.0986034492433,Recalculated,Recalculated
+21,4.304853833182432,124.41337076822917,Held from Day 14,Recalculated
+28,4.304853833182432,124.41337076822917,Held from Day 14,Held from Day 21

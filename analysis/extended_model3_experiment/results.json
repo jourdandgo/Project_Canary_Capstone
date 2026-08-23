@@ -1,0 +1,170 @@
+{
+  "data_quality": {
+    "rows": 136,
+    "flocks": 34,
+    "development_flocks": 31,
+    "audit_flocks": 3,
+    "checkpoints": [
+      7,
+      14,
+      21,
+      28
+    ],
+    "duplicate_flock_checkpoint_rows": 0,
+    "missing_day35_targets": 0,
+    "development_cycles": [
+      "2025-2",
+      "2025-3",
+      "2025-4",
+      "2025-5",
+      "2026-1",
+      "2026-2"
+    ],
+    "audit_cycle": "2026-3",
+    "n_features": 94,
+    "actual_checkpoint_weight_source": "bodyweight_kgs at Days 7, 14, 21, and 28"
+  },
+  "selection_rule": "Lowest cycle-macro MAE under leave-one-production-cycle-out validation; bias, worst-cycle error, checkpoint stability, audit performance, and simplicity are secondary checks.",
+  "development_champion": "catboost_reduced_growth_context",
+  "recommended_for_shadow_use": "historical_remaining_gain",
+  "recommendation_reason": "The reduced CatBoost has the best development cycle-macro MAE, but its advantage over the transparent baseline is modest and it is materially worse on the later-cycle audit. Keep it as the experimental extended Model 3; use the checkpoint remaining-gain method as the provisional operational comparator until more cycles confirm that the learned model generalizes.",
+  "selected_development_metrics": {
+    "pooled_mae_g": 125.49203334145585,
+    "cycle_macro_mae_g": 114.42887274241257,
+    "rmse_g": 162.21997889832477,
+    "r2": 0.3242730073679564,
+    "bias_g": 0.0410342222012277,
+    "worst_cycle_mae_g": 196.07051828975113,
+    "within_100g_pct": 54.03225806451613,
+    "within_200g_pct": 81.45161290322581
+  },
+  "selected_checkpoint_metrics": [
+    {
+      "prediction_day": 7,
+      "pooled_mae_g": 129.083442026582,
+      "cycle_macro_mae_g": 117.74033249480897,
+      "rmse_g": 162.98305178923593,
+      "r2": 0.3179008983735353,
+      "bias_g": 1.197855991774671,
+      "worst_cycle_mae_g": 186.02794199913103,
+      "within_100g_pct": 51.61290322580645,
+      "within_200g_pct": 80.64516129032258
+    },
+    {
+      "prediction_day": 14,
+      "pooled_mae_g": 123.97266776000396,
+      "cycle_macro_mae_g": 113.29864141568369,
+      "rmse_g": 160.0806727635752,
+      "r2": 0.34197803898593393,
+      "bias_g": -6.289251615975519,
+      "worst_cycle_mae_g": 194.94687515138705,
+      "within_100g_pct": 54.83870967741935,
+      "within_200g_pct": 83.87096774193549
+    },
+    {
+      "prediction_day": 21,
+      "pooled_mae_g": 125.1493606828798,
+      "cycle_macro_mae_g": 114.58808889428452,
+      "rmse_g": 162.53591191566457,
+      "r2": 0.32163840766014895,
+      "bias_g": -0.5944634207881615,
+      "worst_cycle_mae_g": 201.1718534442849,
+      "within_100g_pct": 54.83870967741935,
+      "within_200g_pct": 80.64516129032258
+    },
+    {
+      "prediction_day": 28,
+      "pooled_mae_g": 123.76266289635774,
+      "cycle_macro_mae_g": 112.08842816487305,
+      "rmse_g": 163.2607319286039,
+      "r2": 0.3155746844522074,
+      "bias_g": 5.849995933793919,
+      "worst_cycle_mae_g": 202.13540256420154,
+      "within_100g_pct": 54.83870967741935,
+      "within_200g_pct": 80.64516129032258
+    }
+  ],
+  "selected_day21_metrics": {
+    "pooled_mae_g": 125.1493606828798,
+    "cycle_macro_mae_g": 114.58808889428452,
+    "rmse_g": 162.53591191566457,
+    "r2": 0.32163840766014895,
+    "bias_g": -0.5944634207881615,
+    "worst_cycle_mae_g": 201.1718534442849,
+    "within_100g_pct": 54.83870967741935,
+    "within_200g_pct": 80.64516129032258
+  },
+  "original_model3_official": {
+    "published_pooled_days1_21_mae_g": 122.09125379192025,
+    "full_window_model_scored_at_day21_mae_g": 105.69285598024133,
+    "terminal_day21_model_mae_g": 103.66139349861749,
+    "full_window_day21_bias_g": -2.0024625439055477,
+    "full_window_day21_within_100g_pct": 61.76470588235294,
+    "full_window_day21_within_200g_pct": 91.17647058823529,
+    "validation_design": "leave one building-flock out across all 34 flocks",
+    "note": "103.66 g is Trish's separately retrained terminal-Day-21 model. 105.69 g is the Day-21 slice of the full Day-1-to-21 champion."
+  },
+  "original_model3_strict_day21_reconstruction": {
+    "pooled_mae_g": 132.96469934144758,
+    "cycle_macro_mae_g": 120.44970561435014,
+    "rmse_g": 169.5614514381523,
+    "r2": 0.2617272522330957,
+    "bias_g": 22.540599737409696,
+    "worst_cycle_mae_g": 229.997219046631,
+    "within_100g_pct": 45.16129032258064,
+    "within_200g_pct": 64.51612903225806
+  },
+  "audit_summary": [
+    {
+      "model": "historical_remaining_gain",
+      "pooled_mae_g": 77.63776881720435,
+      "cycle_macro_mae_g": 77.63776881720435,
+      "rmse_g": 109.71840155235566,
+      "r2": -8.844007700602912,
+      "bias_g": -28.2005107526882,
+      "worst_cycle_mae_g": 77.63776881720435,
+      "within_100g_pct": 75.0,
+      "within_200g_pct": 91.66666666666666
+    },
+    {
+      "model": "catboost_extended",
+      "pooled_mae_g": 105.3925069622572,
+      "cycle_macro_mae_g": 105.3925069622572,
+      "rmse_g": 128.99729647260688,
+      "r2": -12.607370750061301,
+      "bias_g": -105.3925069622572,
+      "worst_cycle_mae_g": 105.3925069622572,
+      "within_100g_pct": 58.333333333333336,
+      "within_200g_pct": 75.0
+    },
+    {
+      "model": "catboost_reduced_growth_context",
+      "pooled_mae_g": 121.44968006591694,
+      "cycle_macro_mae_g": 121.44968006591694,
+      "rmse_g": 136.75899097253398,
+      "r2": -14.29412997514362,
+      "bias_g": -73.36324190856162,
+      "worst_cycle_mae_g": 121.44968006591694,
+      "within_100g_pct": 33.33333333333333,
+      "within_200g_pct": 83.33333333333334
+    },
+    {
+      "model": "trish_model3_day21_strict_reconstruction",
+      "pooled_mae_g": 50.96728207573938,
+      "cycle_macro_mae_g": 50.96728207573938,
+      "rmse_g": 51.89427775213664,
+      "r2": -1.2021755924716637,
+      "bias_g": 12.823117212941648,
+      "worst_cycle_mae_g": 50.96728207573938,
+      "within_100g_pct": 100.0,
+      "within_200g_pct": 100.0
+    }
+  ],
+  "limitations": [
+    "Only 31 independent building-flocks are available for development.",
+    "Cycle 2026-3 contains only three buildings from one production cycle.",
+    "Checkpoint bodyweights are observed weekly; daily bodyweight forecasts are not validated.",
+    "Historical between-checkpoint bodyweights in V18 are curve-shaped interpolations, not measurements; official scoring rows use actual checkpoint weights.",
+    "Environmental, feed, mortality, THI, and housing features are predictive context, not causal effect estimates."
+  ]
+}

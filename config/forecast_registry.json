@@ -1,0 +1,56 @@
+{
+  "registry_version": "three-model-evaluation-1.0.0",
+  "development_cohort": {
+    "cycles": ["2025-2", "2025-3", "2025-4", "2025-5", "2026-1", "2026-2"],
+    "building_cycles": 31,
+    "validation": "Leave one complete production cycle out at a time"
+  },
+  "later_cycle_audit": {
+    "cycle": "2026-3",
+    "building_outcomes": 3,
+    "interpretation": "One later production-cycle audit with three building outcomes"
+  },
+  "business_outcomes": [
+    "End-of-cycle recovery proxy",
+    "Day 35 bodyweight"
+  ],
+  "model_engines": [
+    {
+      "model_id": "M1",
+      "label": "Model 1 · Extra Trees",
+      "outcome": "End-of-cycle recovery proxy",
+      "valid_forecast_points": [7, 14],
+      "refresh_policy": "Recalculate at Day 7 and Day 14; hold the Day 14 outlook afterward",
+      "status": "experimental",
+      "manifest": "../models/three_model/legacy/model_1_manifest.json",
+      "live_scope": "Prepared 2026-3 audit replay; arbitrary future-cycle scoring requires the legacy feature transformer"
+    },
+    {
+      "model_id": "M3",
+      "label": "Model 3 · XGBoost",
+      "outcome": "Day 35 bodyweight",
+      "valid_forecast_points": [21],
+      "refresh_policy": "Recalculate at Day 21 and hold afterward",
+      "status": "shadow benchmark",
+      "manifest": "../models/three_model/legacy/model_3_manifest.json",
+      "live_scope": "Prepared 2026-3 audit replay; arbitrary future-cycle scoring requires the legacy feature transformer"
+    },
+    {
+      "model_id": "Day35-Checkpoint",
+      "label": "Checkpoint model · Historical remaining gain",
+      "outcome": "Day 35 bodyweight",
+      "valid_forecast_points": [7, 14, 21, 28],
+      "refresh_policy": "Recalculate only after an actual checkpoint weight and hold between weigh-ins",
+      "status": "pilot-stage comparison",
+      "manifest": "../models/three_model/checkpoint_champion/manifest.json",
+      "live_scope": "Operational inference from standardized checkpoint bodyweight records"
+    }
+  ],
+  "bodyweight_toggle": {
+    "default": "Day35-Checkpoint",
+    "alternatives": ["Day35-Checkpoint", "M3"],
+    "policy": "The selected engine is always displayed; Canary never silently substitutes one engine for another."
+  },
+  "risk_score_relationship": "Forecast values never add, remove, or change observed-condition risk points.",
+  "thi_policy": "THI is part of the engineered legacy feature sets and remains predictive association rather than causal evidence or an approved intervention threshold."
+}
