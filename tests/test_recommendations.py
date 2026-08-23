@@ -8,6 +8,7 @@ import pytest
 from canary import (
     RecommendationConfigurationError,
     apply_recommendations,
+    build_matched_recommendation_table,
     build_recommendation_trace,
     default_as_of_date,
     load_recommendation_playbook,
@@ -45,7 +46,7 @@ def test_pattern_and_risk_rating_map_to_action_and_urgency(dataset):
     tags2 = result.query("building_id == 'Tags 2'").iloc[0]
     assert tags2["risk_pattern"] == "Rapid Population Loss"
     assert tags2["recommendation_rule_id"] == "DOC-004"
-    assert tags2["recommendation_urgency"] == "Current shift"
+    assert tags2["recommendation_urgency"] == "Within 24 hours"
     assert "population" in tags2["recommended_action"].lower()
     assert tags2["recommendation_guidance_status"].startswith("Preliminary")
     assert tags2["recommendation_source"] == "Farmer Validation Workbook (Doc Raymond)"
@@ -53,7 +54,7 @@ def test_pattern_and_risk_rating_map_to_action_and_urgency(dataset):
 
     trace = build_recommendation_trace(tags2)
     assert trace.loc[trace["Decision element"] == "Action rule", "Applied value"].iloc[0] == "DOC-004"
-    assert trace.loc[trace["Decision element"] == "Risk-level urgency", "Applied value"].iloc[0] == "High → Current shift"
+    assert trace.loc[trace["Decision element"] == "Risk-level urgency", "Applied value"].iloc[0] == "Medium → Within 24 hours"
     assert trace.loc[trace["Decision element"] == "Source", "Applied value"].iloc[0] == "Farmer Validation Workbook (Doc Raymond)"
 
 
@@ -70,11 +71,41 @@ def test_missing_evidence_rule_is_used_when_no_material_drift_is_under_supported
     risk = score_cycle_snapshot(dataset, "2026-3", as_of)
     row = risk.query("building_id == 'Tags 1'").copy()
     row.loc[:, "risk_pattern"] = "No Material Concern"
+    row.loc[:, "risk_patterns"] = "No Material Concern"
     row.loc[:, "evidence_status"] = "Reduced evidence"
 
     result = apply_recommendations(row).iloc[0]
     assert result["recommendation_rule_id"] == "DOC-011"
     assert result["recommendation_pattern"] == "Missing or Stale Evidence"
+
+
+def test_multiple_detected_patterns_receive_multiple_matched_guides(dataset):
+    meta = dataset.cycles.loc[
+        (dataset.cycles["cycle_id"] == "2025-5")
+        & (dataset.cycles["building_id"] == "Tags 1")
+    ].iloc[0]
+    as_of = pd.Timestamp(meta["start_date"]) + pd.DateOffset(days=13)
+    risk = score_cycle_snapshot(dataset, "2025-5", as_of)
+    result = apply_recommendations(risk).query("building_id == 'Tags 1'").iloc[0]
+    matches = build_matched_recommendation_table(result)
+
+    assert result["recommendation_match_count"] >= 2
+    assert set(matches["Problem pattern"]).issuperset({"Low Body Weight", "High Humidity"})
+    assert matches.iloc[0]["Role"] == "Primary"
+    assert matches.iloc[1:]["Role"].eq("Additional").all()
+
+
+def test_missing_evidence_does_not_suppress_confirmed_acute_pattern(dataset):
+    as_of = default_as_of_date(dataset, "2026-3")
+    row = score_cycle_snapshot(dataset, "2026-3", as_of).query("building_id == 'Tags 1'").copy()
+    row.loc[:, "risk_pattern"] = "High Mortality"
+    row.loc[:, "risk_patterns"] = "High Mortality | Missing or Stale Evidence"
+    row.loc[:, "evidence_status"] = "Insufficient evidence"
+
+    result = apply_recommendations(row).iloc[0]
+
+    assert result["recommendation_rule_id"] == "DOC-003"
+    assert result["recommendation_rule_ids"] == "DOC-003 | DOC-011"
 
 
 def test_inactive_waits_while_records_ended_retains_last_record_guidance(dataset):

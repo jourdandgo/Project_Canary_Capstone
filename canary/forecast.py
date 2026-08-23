@@ -15,7 +15,7 @@ from .data import CanaryDataset
 from .day35 import load_day35_manifest, project_day35_weight
 from .farmwide_features import build_asof_features, checkpoint_status
 from .modeling import FEATURE_COLUMNS, extract_feature_row
-from .trish_models import predict_v18_outlooks
+from .trish_v19 import load_v19_manifest, v19_outlook
 
 
 DEFAULT_MODEL_DIR = Path(__file__).resolve().parent.parent / "models"
@@ -148,6 +148,7 @@ def attach_forecasts(
                 "recovery_confidence": "Not available",
                 "recovery_model_version": recovery_manifest["model_version"],
                 "recovery_model_name": recovery_manifest["selected_model"],
+                "recovery_model_id": "Not available",
                 "recovery_interval_label": "80% empirical interval",
                 "projected_day35_weight_kg": np.nan,
                 "day35_weight_target_gap_kg": np.nan,
@@ -163,12 +164,15 @@ def attach_forecasts(
                 "day35_weight_scope": "Not available",
                 "day35_weight_model_version": day35_manifest["model_version"],
                 "day35_weight_model_name": day35_manifest["selected_model"],
+                "day35_weight_model_id": "Not available",
                 "day35_weight_interval_label": "80% empirical interval",
                 "estimated_day_to_1_8kg": np.nan,
                 "estimated_day_to_2_0kg": np.nan,
                 "projected_sale_window_recovery": np.nan,
                 "trish_bundle_version": "Not available",
                 "trish_prediction_day": np.nan,
+                "trish_weight_prediction_day": np.nan,
+                "trish_lineage_status": "Not available",
                 "forecast_as_of": pd.Timestamp(source["as_of_date"]),
             }
         )
@@ -312,28 +316,44 @@ def attach_forecasts(
                     "day35_weight_deployment_status": "recorded outcome",
                     "day35_weight_model_version": "not applicable",
                     "day35_weight_model_name": "Recorded farm measurement",
+                    "day35_weight_model_id": "Observed",
                     "day35_weight_interval_label": "Not applicable",
                 }
             )
 
         cycle_day = int(source["cycle_day"]) if pd.notna(source.get("cycle_day")) else None
-        trish = (
-            predict_v18_outlooks(
+        recovery_v19 = (
+            v19_outlook(
+                "model_1",
                 str(source["cycle_id"]),
                 str(source["building_id"]),
                 cycle_day,
-                source_sha256=dataset.source_sha256,
             )
             if cycle_day is not None
             else None
         )
-        if trish is not None:
-            recovery_raw = float(trish["model_1"]["prediction"])
+        weight_v19 = (
+            v19_outlook(
+                "model_3",
+                str(source["cycle_id"]),
+                str(source["building_id"]),
+                cycle_day,
+            )
+            if cycle_day is not None
+            and feature is not None
+            and pd.notna(feature.get("latest_weight_kg"))
+            else None
+        )
+        if recovery_v19 is not None and feature is not None:
+            recovery_raw = float(recovery_v19["prediction"])
             current_survival = float(feature["percentage_alive"])
             recovery = min(recovery_raw, current_survival)
-            recovery_mae = float(trish["model_1"]["reported_logo_mae"])
-            recovery_low = max(0.0, recovery - recovery_mae)
-            recovery_high = min(current_survival, recovery + recovery_mae)
+            recovery_low = max(
+                0.0, min(current_survival, float(recovery_v19["lower_estimate"]))
+            )
+            recovery_high = min(
+                current_survival, float(recovery_v19["upper_estimate"])
+            )
             recovery_status = (
                 "Likely below"
                 if recovery_high < RECOVERY_TARGET
@@ -341,77 +361,176 @@ def attach_forecasts(
                 if recovery_low >= RECOVERY_TARGET
                 else "Uncertain"
             )
-            recovery_day = int(trish["model_1"]["prediction_day"])
+            recovery_day = int(recovery_v19["evidence_day"])
+            recovery_update = str(recovery_v19["status"])
+            recovery_forecast_status = {
+                "Incomplete": "Pilot-stage outlook — latest recorded data used",
+                "Records ended": (
+                    "Last pilot-stage outlook — based on latest recorded data; "
+                    "harvest not confirmed"
+                ),
+            }.get(state, "Pilot-stage outlook available")
             row.update(
                 {
                     "predicted_final_recovery": recovery,
                     "unconstrained_recovery_prediction": recovery_raw,
                     "recovery_constraint_applied": recovery_raw > current_survival,
-                    "recovery_live_age_policy": f"Day {recovery_day} Trish v18 outlook held after the early window",
+                    "recovery_expected_additional_loss_pp": max(
+                        0.0, (current_survival - recovery) * 100
+                    ),
+                    "recovery_live_age_policy": recovery_update,
                     "recovery_target_gap_pp": (recovery - RECOVERY_TARGET) * 100,
                     "recovery_interval_low": recovery_low,
                     "recovery_interval_high": recovery_high,
                     "recovery_interval_90_low": np.nan,
                     "recovery_interval_90_high": np.nan,
                     "recovery_target_status": recovery_status,
-                    "recovery_checkpoint_status": f"Day {recovery_day} early-warning estimate",
-                    "recovery_deployment_status": "Trish v18 prospective deployment",
-                    "recovery_forecast_status": "Forecast available",
-                    "recovery_confidence": f"{trish['model_1']['algorithm']} · reported LOGO MAE {recovery_mae * 100:.1f} points · 2026-3 excluded from fitting",
-                    "recovery_model_version": trish["bundle_version"],
+                    "recovery_checkpoint_status": recovery_update,
+                    "recovery_deployment_status": "Trish v19 held-out replay",
+                    "recovery_forecast_status": recovery_forecast_status,
+                    "recovery_confidence": (
+                        f"{recovery_v19['algorithm']} · Day {recovery_day} held-out MAE "
+                        f"{float(recovery_v19['checkpoint_mae']) * 100:.2f} percentage points"
+                    ),
+                    "recovery_model_version": recovery_v19["version"],
                     "recovery_model_name": "Trish Model 1 · Extra Trees",
-                    "recovery_interval_label": "Typical-error reference",
-                    "estimated_day_to_1_8kg": float(trish["model_4"]["prediction"]),
-                    "estimated_day_to_2_0kg": max(
-                        float(trish["model_5"]["prediction"]),
-                        float(trish["model_4"]["prediction"]),
-                    ),
-                    "projected_sale_window_recovery": min(
-                        float(trish["model_6"]["prediction"]), current_survival
-                    ),
-                    "trish_bundle_version": trish["bundle_version"],
+                    "recovery_model_id": "M1",
+                    "recovery_interval_label": "80% held-out error band",
+                    "estimated_day_to_1_8kg": np.nan,
+                    "estimated_day_to_2_0kg": np.nan,
+                    "projected_sale_window_recovery": np.nan,
+                    "trish_bundle_version": recovery_v19["version"],
                     "trish_prediction_day": recovery_day,
+                    "trish_lineage_status": recovery_v19["lineage"],
                 }
             )
 
-            # Preserve an actual Day 35 measurement once it exists. Before
-            # that point, Model 2 supplies Days 1-14 and Model 3 supplies the
-            # later Day 15-21 update.
-            if (
-                str(day35.get("scope")) != "Recorded Day 35 result"
-                and pd.notna(source.get("latest_weight_kg"))
-            ):
-                weight_model_id = str(trish["weight_model_id"])
-                weight_info = trish[weight_model_id]
-                weight_prediction = float(weight_info["prediction"]) / 1000.0
-                weight_mae = float(weight_info["reported_logo_mae"]) / 1000.0
-                weight_low = max(0.1, weight_prediction - weight_mae)
-                weight_high = min(3.5, weight_prediction + weight_mae)
-                weight_status = (
-                    "Likely below"
-                    if weight_high < WEIGHT_TARGET_KG
-                    else "Likely meets"
-                    if weight_low >= WEIGHT_TARGET_KG
-                    else "Uncertain"
-                )
-                weight_day = int(weight_info["prediction_day"])
+            # The capstone now has only two forecast outcomes. Model 3 is
+            # displayed at Days 7, 14, and 21 and held between checkpoints.
+            # Day 28 remains an observed weight-versus-target review, not a
+            # model refresh. A recorded Day 35 result always replaces the outlook.
+            if str(day35.get("scope")) != "Recorded Day 35 result":
+                if weight_v19 is None:
+                    row.update(
+                        {
+                            "projected_day35_weight_kg": np.nan,
+                            "day35_weight_target_gap_kg": np.nan,
+                            "day35_weight_interval_low_kg": np.nan,
+                            "day35_weight_interval_high_kg": np.nan,
+                            "day35_weight_interval_90_low_kg": np.nan,
+                            "day35_weight_interval_90_high_kg": np.nan,
+                            "day35_weight_target_status": "Unavailable",
+                            "day35_weight_checkpoint_status": "No eligible Day 7, 14, or 21 model row",
+                            "day35_weight_deployment_status": "Trish v19 held-out replay",
+                            "day35_weight_status": "No validated v19 forecast: a measured checkpoint weight is required",
+                            "day35_weight_confidence": "Unavailable without an eligible measured-weight checkpoint",
+                            "day35_weight_scope": "Unavailable",
+                            "day35_weight_model_version": recovery_v19["version"],
+                            "day35_weight_model_name": "Trish Model 3 · CatBoost",
+                            "day35_weight_model_id": "M3",
+                            "day35_weight_interval_label": "80% held-out error band",
+                        }
+                    )
+                else:
+                    weight_prediction = float(weight_v19["prediction"]) / 1000.0
+                    weight_low = float(weight_v19["lower_estimate"]) / 1000.0
+                    weight_high = float(weight_v19["upper_estimate"]) / 1000.0
+                    weight_day = int(weight_v19["evidence_day"])
+                    weight_update = str(weight_v19["status"])
+                    weight_status = (
+                        "Likely below"
+                        if weight_high < WEIGHT_TARGET_KG
+                        else "Likely meets"
+                        if weight_low >= WEIGHT_TARGET_KG
+                        else "Uncertain"
+                    )
+                    weight_forecast_status = {
+                        "Incomplete": (
+                            "Pilot-stage Day 35 outlook — latest recorded checkpoint used"
+                        ),
+                        "Records ended": (
+                            "Last pilot-stage Day 35 outlook — records ended; "
+                            "Day 35 result not recorded"
+                        ),
+                    }.get(state, "Pilot-stage Day 35 outlook available")
+                    row.update(
+                        {
+                            "projected_day35_weight_kg": weight_prediction,
+                            "day35_weight_target_gap_kg": weight_prediction - WEIGHT_TARGET_KG,
+                            "day35_weight_interval_low_kg": weight_low,
+                            "day35_weight_interval_high_kg": weight_high,
+                            "day35_weight_interval_90_low_kg": np.nan,
+                            "day35_weight_interval_90_high_kg": np.nan,
+                            "day35_weight_target_status": weight_status,
+                            "day35_weight_checkpoint_status": weight_update,
+                            "day35_weight_deployment_status": "Trish v19 held-out replay",
+                            "day35_weight_status": weight_forecast_status,
+                            "day35_weight_confidence": (
+                                f"{weight_v19['algorithm']} · Day {weight_day} held-out MAE "
+                                f"{float(weight_v19['checkpoint_mae']):.1f} g"
+                            ),
+                            "day35_weight_scope": "Trish Model 3 checkpoint outlook",
+                            "day35_weight_model_version": weight_v19["version"],
+                            "day35_weight_model_name": "Trish Model 3 · CatBoost",
+                            "day35_weight_model_id": "M3",
+                            "day35_weight_interval_label": "80% held-out error band",
+                            "trish_weight_prediction_day": weight_day,
+                        }
+                    )
+        else:
+            # Do not silently fall back to a different model family. The final
+            # v19 handoff does not include the raw-data-to-85-feature
+            # transformer required to score an arbitrary new building-flock.
+            # Showing "unavailable" is more defensible than presenting a
+            # locally derived estimate under the v19 product story.
+            row.update(
+                {
+                    "predicted_final_recovery": np.nan,
+                    "unconstrained_recovery_prediction": np.nan,
+                    "recovery_constraint_applied": False,
+                    "recovery_expected_additional_loss_pp": np.nan,
+                    "recovery_live_age_policy": "No v19 model-ready row",
+                    "recovery_target_gap_pp": np.nan,
+                    "recovery_interval_low": np.nan,
+                    "recovery_interval_high": np.nan,
+                    "recovery_interval_90_low": np.nan,
+                    "recovery_interval_90_high": np.nan,
+                    "recovery_target_status": "Unavailable",
+                    "recovery_checkpoint_status": "No validated v19 replay row",
+                    "recovery_deployment_status": "Unavailable outside packaged replay",
+                    "recovery_forecast_status": "No validated v19 forecast for this data lineage",
+                    "recovery_confidence": "A packaged raw-data feature transformer is required",
+                    "recovery_model_version": "Not available",
+                    "recovery_model_name": "Trish Model 1 · unavailable",
+                    "recovery_model_id": "M1",
+                    "recovery_interval_label": "Not available",
+                    "estimated_day_to_1_8kg": np.nan,
+                    "estimated_day_to_2_0kg": np.nan,
+                    "projected_sale_window_recovery": np.nan,
+                    "trish_bundle_version": "Not available",
+                    "trish_prediction_day": np.nan,
+                    "trish_lineage_status": "No matching v19 held-out replay row",
+                }
+            )
+            if str(day35.get("scope")) != "Recorded Day 35 result":
                 row.update(
                     {
-                        "projected_day35_weight_kg": weight_prediction,
-                        "day35_weight_target_gap_kg": weight_prediction - WEIGHT_TARGET_KG,
-                        "day35_weight_interval_low_kg": weight_low,
-                        "day35_weight_interval_high_kg": weight_high,
+                        "projected_day35_weight_kg": np.nan,
+                        "day35_weight_target_gap_kg": np.nan,
+                        "day35_weight_interval_low_kg": np.nan,
+                        "day35_weight_interval_high_kg": np.nan,
                         "day35_weight_interval_90_low_kg": np.nan,
                         "day35_weight_interval_90_high_kg": np.nan,
-                        "day35_weight_target_status": weight_status,
-                        "day35_weight_checkpoint_status": f"Day {weight_day} early-warning estimate",
-                        "day35_weight_deployment_status": "Trish v18 prospective deployment",
-                        "day35_weight_status": "Day 35 outlook available — Trish v18",
-                        "day35_weight_confidence": f"{weight_info['algorithm']} · reported LOGO MAE {weight_mae * 1000:.0f} g · 2026-3 excluded from fitting",
-                        "day35_weight_scope": f"Trish Model {2 if weight_model_id == 'model_2' else 3} outlook",
-                        "day35_weight_model_version": trish["bundle_version"],
-                        "day35_weight_model_name": f"Trish Model {2 if weight_model_id == 'model_2' else 3} · {weight_info['algorithm']}",
-                        "day35_weight_interval_label": "Typical-error reference",
+                        "day35_weight_target_status": "Unavailable",
+                        "day35_weight_checkpoint_status": "No validated v19 replay row",
+                        "day35_weight_deployment_status": "Unavailable outside packaged replay",
+                        "day35_weight_status": "No validated v19 forecast for this data lineage",
+                        "day35_weight_confidence": "A packaged raw-data feature transformer is required",
+                        "day35_weight_scope": "Unavailable",
+                        "day35_weight_model_version": "Not available",
+                        "day35_weight_model_name": "Trish Model 3 · unavailable",
+                        "day35_weight_model_id": "M3",
+                        "day35_weight_interval_label": "Not available",
                     }
                 )
         rows.append(row)
@@ -446,8 +565,108 @@ def build_forecast_history(
     return pd.concat(daily_frames, ignore_index=True) if daily_frames else pd.DataFrame()
 
 
+def _trace_day(value: object, fallback: int) -> int:
+    """Return a valid trace day even when optional audit fields are missing."""
+
+    return int(fallback) if pd.isna(value) else int(value)
+
+
+def _v19_forecast_trace(row: pd.Series) -> pd.DataFrame:
+    """Return one provenance row for each of the two final v19 outlooks."""
+
+    manifest = load_v19_manifest()
+    cycle_day = int(row.get("cycle_day", 0))
+    recovery_day = _trace_day(
+        row.get("trish_prediction_day"), min(max(cycle_day, 1), 14)
+    )
+    weight_day = _trace_day(
+        row.get("trish_weight_prediction_day"),
+        7 if cycle_day < 14 else 14 if cycle_day < 21 else 21,
+    )
+    lineage = str(row.get("trish_lineage_status", "Trish v19 OOF replay row"))
+    version = str(row.get("trish_bundle_version", manifest["bundle_version"]))
+
+    values = {
+        "model_1": (
+            row.get("predicted_final_recovery"),
+            "End-of-cycle recovery-proxy outlook",
+            "95% recovery-proxy target",
+            recovery_day,
+            "percentage",
+        ),
+        "model_3": (
+            row.get("projected_day35_weight_kg"),
+            "Day 35 bodyweight outlook",
+            "1.8 kg on Day 35",
+            weight_day,
+            "weight",
+        ),
+    }
+    rows: list[dict[str, object]] = []
+    for model_id, (value, outcome, target, evidence_day, unit) in values.items():
+        if pd.isna(value):
+            continue
+        metadata = manifest["models"][model_id]
+        prediction = (
+            f"{float(value):.1%}" if unit == "percentage" else
+            f"{float(value):.2f} kg"
+        )
+        mae = float(
+            metadata["validated_mae"]
+            if model_id == "model_1"
+            else metadata["validated_mae_g"]
+        )
+        mae_display = (
+            f"{mae * 100:.2f} percentage points" if unit == "percentage" else
+            f"{mae:.1f} g"
+        )
+        status = (
+            f"Recalculated from Day {evidence_day} evidence"
+            if cycle_day == int(evidence_day)
+            else f"Held from Day {evidence_day} evidence"
+        )
+        rows.append(
+            {
+                "Outcome": outcome,
+                "Prediction": prediction,
+                "Model": "M1" if model_id == "model_1" else "M3",
+                "Algorithm": metadata["algorithm"],
+                "Evidence cutoff": f"Day {evidence_day}",
+                "Model status": status,
+                "Target definition": target,
+                "Typical historical error (LOGO-CV MAE)": mae_display,
+                "R² (LOGO-CV)": f"{float(metadata['validated_r2']):.3f}",
+                "Version": version,
+                "Source lineage": lineage,
+                "Important boundary": metadata["target_definition"] + ". Planning reference; not causal proof, diagnosis, or guaranteed outcome.",
+            }
+        )
+    if str(row.get("day35_weight_scope")) == "Recorded Day 35 result":
+        rows = [item for item in rows if item["Outcome"] != "Day 35 bodyweight outlook"]
+        rows.append(
+            {
+                "Outcome": "Recorded Day 35 bodyweight",
+                "Prediction": f"{float(row['projected_day35_weight_kg']):.2f} kg",
+                "Model": "Observed",
+                "Algorithm": "Not applicable",
+                "Evidence cutoff": "Day 35 measurement",
+                "Model status": "Recorded farm result · not a forecast",
+                "Target definition": "1.8 kg on Day 35",
+                "Typical historical error (LOGO-CV MAE)": "Not applicable",
+                "R² (LOGO-CV)": "Not applicable",
+                "Version": "Not applicable",
+                "Source lineage": "Farm daily record",
+                "Important boundary": "Observed management milestone; not necessarily a final sale-weight record.",
+            }
+        )
+    return pd.DataFrame(rows)
+
+
 def forecast_trace(row: pd.Series, model_dir: str | Path = DEFAULT_MODEL_DIR) -> pd.DataFrame:
-    """Return owner-readable provenance for both displayed outcomes."""
+    """Return provenance for v19 forecasts, or the legacy fallback."""
+
+    if str(row.get("trish_bundle_version", "Not available")) != "Not available":
+        return _v19_forecast_trace(row)
 
     recovery, _ = load_model_bundle("recovery", model_dir)
     day35 = load_day35_manifest(Path(model_dir) / "day35_weight_manifest.json")

@@ -113,6 +113,10 @@ class CanaryDataset:
     quality: DataQualityReport
     source_name: str
     source_sha256: str | None = None
+    replay_validated: bool = False
+    replay_status: str = "Bundled workbook"
+    replay_cutoff_day: int | None = None
+    replay_fingerprint: str | None = None
 
 
 def _source_bytes(source: str | Path | bytes | bytearray | BinaryIO) -> bytes:

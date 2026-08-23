@@ -8,6 +8,7 @@ from pathlib import Path
 import pandas as pd
 
 from .data import CanaryDataset
+from .risk import load_risk_rules
 
 
 DEFAULT_OPERATIONAL_ALERTS_PATH = Path(__file__).resolve().parent.parent / "config" / "operational_alerts.json"
@@ -40,6 +41,213 @@ def _alert(
         "gap": gap,
         "next_check": next_check,
     }
+
+
+def _persistent_alert(
+    signal_id: str,
+    check: str,
+    title: str,
+    evidence: str,
+    next_check: str,
+    trace: list[dict[str, object]],
+    *,
+    basis: str,
+) -> dict[str, object]:
+    """Build a traceable watch signal that never changes formal risk points."""
+
+    return {
+        "signal_id": signal_id,
+        "check": check,
+        "severity": "Persistent watch",
+        "title": title,
+        "evidence": evidence,
+        "next_check": next_check,
+        "basis": basis,
+        "trace": trace,
+        "risk_score_effect": "None — this is a separate investigation cue and adds no risk points.",
+    }
+
+
+def _complete_age_window(history: pd.DataFrame, window_days: int) -> pd.DataFrame:
+    """Return the latest consecutive flock-age window, or an empty frame.
+
+    A three-day claim is made only when Days N-2, N-1 and N are all present.
+    Missing days are not treated as normal and do not get silently bridged.
+    """
+
+    if history.empty or window_days < 2:
+        return history.iloc[0:0].copy()
+    latest_age = int(pd.to_numeric(history["age_day"], errors="coerce").max())
+    expected = list(range(latest_age - window_days + 1, latest_age + 1))
+    window = (
+        history.loc[history["age_day"].isin(expected)]
+        .sort_values(["age_day", "record_date"])
+        .drop_duplicates("age_day", keep="last")
+    )
+    if window["age_day"].astype(int).tolist() != expected:
+        return history.iloc[0:0].copy()
+    return window
+
+
+def evaluate_persistent_signals(
+    dataset: CanaryDataset,
+    cycle_id: str,
+    building_id: str,
+    as_of: object,
+    rules: dict | None = None,
+    risk_rules: dict | None = None,
+) -> list[dict[str, object]]:
+    """Flag persistent recorded conditions without changing the risk score.
+
+    Temperature and humidity require three consecutive daily observations on
+    the same side of their age-specific ranges. Bodyweight is normally weekly,
+    so its wording deliberately describes an unresolved checkpoint deficit,
+    not three daily low-weight observations.
+    """
+
+    rules = rules or load_operational_alert_rules()
+    risk_rules = risk_rules or load_risk_rules()
+    window_days = int(rules.get("persistent_signal_window_days", 3))
+    history = dataset.daily.loc[
+        (dataset.daily["cycle_id"] == cycle_id)
+        & (dataset.daily["building_id"] == building_id)
+        & (dataset.daily["record_date"] <= pd.Timestamp(as_of))
+    ].sort_values(["age_day", "record_date"])
+    if history.empty:
+        return []
+
+    signals: list[dict[str, object]] = []
+    window = _complete_age_window(history, window_days)
+    environmental_specs = (
+        (
+            "temperature_avg_c",
+            "Temperature",
+            "temperature_ranges_c",
+            "°C",
+            "temperature",
+            "Verify readings at bird height, then inspect heaters, fans, inlets, curtains, cooling, airflow, and water availability.",
+        ),
+        (
+            "humidity_avg_pct",
+            "Humidity",
+            "humidity_ranges_pct",
+            "%",
+            "humidity",
+            "Verify the sensor, then inspect ventilation, litter moisture or dust, leaks, drinkers, and cooling-pad or pump timing.",
+        ),
+    )
+    for column, check, range_key, unit, signal_prefix, next_check in environmental_specs:
+        if window.empty or window[column].isna().any():
+            continue
+        trace: list[dict[str, object]] = []
+        directions: list[str] = []
+        for _, record in window.iterrows():
+            age = int(record["age_day"])
+            accepted = _age_range(rules[range_key], age)
+            if accepted is None:
+                trace = []
+                break
+            observed = float(record[column])
+            if observed < float(accepted["minimum"]):
+                direction = "Low"
+                gap = float(accepted["minimum"]) - observed
+            elif observed > float(accepted["maximum"]):
+                direction = "High"
+                gap = observed - float(accepted["maximum"])
+            else:
+                direction = "Within range"
+                gap = 0.0
+            directions.append(direction)
+            trace.append(
+                {
+                    "Recorded date": pd.Timestamp(record["record_date"]).date(),
+                    "Flock day": age,
+                    "Observed": f"{observed:.1f}{unit}",
+                    "Age-specific reference": f"{float(accepted['minimum']):g}–{float(accepted['maximum']):g}{unit}",
+                    "Result": direction,
+                    "Distance outside range": f"{gap:.1f}{unit}",
+                }
+            )
+        if trace and len(set(directions)) == 1 and directions[0] in {"High", "Low"}:
+            direction = directions[0].lower()
+            first_day = int(window.iloc[0]["age_day"])
+            last_day = int(window.iloc[-1]["age_day"])
+            latest_value = float(window.iloc[-1][column])
+            signals.append(
+                _persistent_alert(
+                    f"{signal_prefix}_{direction}_{window_days}d",
+                    check,
+                    f"{check} has been too {direction} for {window_days} consecutive recorded days",
+                    f"Daily averages were {direction} their age-specific range on Days {first_day}–{last_day}; the latest was {latest_value:.1f}{unit}.",
+                    next_check,
+                    trace,
+                    basis=f"All {window_days} consecutive daily averages must fall on the same side of the provisional age-specific range.",
+                )
+            )
+
+    measured = history.loc[
+        history["weight_measured"].fillna(False).astype(bool)
+        & history["bodyweight_kg"].notna()
+    ]
+    if not measured.empty:
+        latest_measurement = measured.iloc[-1]
+        measurement_day = int(latest_measurement["age_day"])
+        current_day = int(pd.to_numeric(history["age_day"], errors="coerce").max())
+        review_days = current_day - measurement_day + 1
+        target_match = dataset.targets.loc[dataset.targets["age_day"] == measurement_day]
+        if not target_match.empty:
+            observed_kg = float(latest_measurement["bodyweight_kg"])
+            target_kg = float(target_match.iloc[-1]["target_weight_kg"])
+            gap_pct = max(0.0, (target_kg - observed_kg) / target_kg * 100) if target_kg > 0 else 0.0
+            minimum_gap = float(
+                rules.get(
+                    "persistent_weight_gap_pct",
+                    risk_rules["dimension_cutoffs"]["weight_gap_pct"][1],
+                )
+            )
+            if gap_pct > minimum_gap and review_days >= window_days:
+                signals.append(
+                    _persistent_alert(
+                        f"weight_deficit_unresolved_{window_days}d",
+                        "Bodyweight",
+                        f"The latest measured weight deficit remains unresolved after {review_days} review days",
+                        f"The Day {measurement_day} weight was {observed_kg * 1000:.0f} g versus the {target_kg * 1000:.0f} g target, a {gap_pct:.1f}% deficit. No newer measured weight is available through Day {current_day}.",
+                        "Reweigh a representative sample, then inspect feed and water access, feeder allocation, bird condition, and house conditions.",
+                        [
+                            {
+                                "Recorded date": pd.Timestamp(latest_measurement["record_date"]).date(),
+                                "Flock day": measurement_day,
+                                "Observed": f"{observed_kg * 1000:.0f} g",
+                                "Age-specific reference": f"{target_kg * 1000:.0f} g target",
+                                "Result": f"{gap_pct:.1f}% below target",
+                                "Distance outside range": f"No newer weighing through Day {current_day}",
+                            }
+                        ],
+                        basis=(
+                            f"Latest measured deficit must exceed {minimum_gap:g}% and remain without a newer weighing for at least "
+                            f"{window_days} review days. This is one checkpoint carried as unresolved—not {window_days} separate weight measurements."
+                        ),
+                    )
+                )
+
+    return signals
+
+
+def persistent_signal_trace(signals: list[dict[str, object]]) -> pd.DataFrame:
+    """Flatten persistent-signal calculations for the dashboard audit view."""
+
+    rows: list[dict[str, object]] = []
+    for signal in signals:
+        for record in signal.get("trace", []):
+            rows.append(
+                {
+                    "Signal": signal["title"],
+                    **record,
+                    "Flag rule": signal["basis"],
+                    "Risk-score effect": signal["risk_score_effect"],
+                }
+            )
+    return pd.DataFrame(rows)
 
 
 def evaluate_operational_alerts(

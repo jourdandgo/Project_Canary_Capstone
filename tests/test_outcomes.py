@@ -65,3 +65,7 @@ def test_suspicious_and_missing_final_weights_are_not_presented_as_actuals():
     assert "excluded" in suspect["actual_final_weight_status"].lower()
     assert pd.isna(missing["actual_final_average_weight_kg"])
     assert missing["actual_final_weight_status"].startswith("Not available")
+    assert missing["recorded_day35_weight_kg"] == pytest.approx(1.36)
+    assert missing["display_recorded_weight_kg"] == pytest.approx(1.36)
+    assert missing["display_recorded_weight_label"] == "Recorded Day 35 weight (g)"
+    assert "not a final sale-weight" in missing["display_recorded_weight_status"]

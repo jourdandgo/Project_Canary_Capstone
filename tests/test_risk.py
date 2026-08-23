@@ -17,7 +17,7 @@ from canary import (
     save_risk_rules,
     validate_risk_rules,
 )
-from canary.risk import _rating
+from canary.risk import _priority_decision, _rating
 
 
 SOURCE = Path(
@@ -33,16 +33,17 @@ def dataset():
     return load_workbook(SOURCE)
 
 
-def test_rating_mapping_matches_the_approved_prd_ranges():
+def test_rating_mapping_matches_the_banded_hybrid_base_ranges():
     rules = load_risk_rules()
     expected = {
         0: "Low",
         1: "Low",
-        2: "Medium",
+        2: "Low",
         3: "Medium",
-        4: "High",
-        5: "High",
-        6: "Critical",
+        5: "Medium",
+        6: "High",
+        8: "High",
+        9: "Critical",
         12: "Critical",
     }
     assert {score: _rating(score, rules) for score in expected} == expected
@@ -59,6 +60,7 @@ def test_day_14_score_reconciles_to_the_four_dimensions(dataset):
     assert row["weight_gap_pct"] == pytest.approx((0.380 - 0.235) / 0.380 * 100)
     assert [row["weight_score"], row["population_loss_score"], row["daily_mortality_score"], row["environment_score"]] == [3, 0, 0, 3]
     assert row["risk_score"] == 6
+    assert row["base_risk_rating"] == "High"
     assert row["risk_rating"] == "Critical"
     assert row["risk_score"] == sum(
         row[column] for column in ["weight_score", "population_loss_score", "daily_mortality_score", "environment_score"]
@@ -67,8 +69,11 @@ def test_day_14_score_reconciles_to_the_four_dimensions(dataset):
     assert row["score_equation"] == (
         "Weight gap 3 + Population loss 0 + Daily mortality 0 + Environmental conditions 3 = 6"
     )
-    assert row["risk_label_rule"] == "Score 6-12 => Critical"
+    assert row["risk_label_rule"] == "Critical override: environment and growth each reached 3/3."
+    assert row["priority_rule_id"] == "PRIORITY-OVERRIDE-CONCURRENT-DOMAINS"
     assert row["identified_problem"] == row["risk_pattern"]
+    assert {"Low Body Weight", "High Humidity"}.issubset(set(row["risk_patterns"].split(" | ")))
+    assert row["risk_pattern_count"] >= 2
     assert row["recommendation_rule_id"] == "Not applicable"
 
     trace = build_dimension_trace(row)
@@ -81,6 +86,28 @@ def test_day_14_score_reconciles_to_the_four_dimensions(dataset):
     assert trace["Score"].sum() == row["risk_score"]
     assert trace["Applied thresholds"].str.len().gt(0).all()
     assert trace["Calculation"].str.len().gt(0).all()
+    assert trace["Threshold source"].str.len().gt(0).all()
+
+
+def test_acute_survivability_and_concurrent_domains_use_explicit_overrides():
+    rules = load_risk_rules()
+    rating, reason, rule_id, override = _priority_decision(
+        {"weight": 0, "population_loss": 3, "daily_mortality": 0, "environment": 0}, rules
+    )
+    assert (rating, rule_id, override) == ("Critical", "PRIORITY-OVERRIDE-ACUTE-SURVIVABILITY", True)
+    assert "population loss" in reason
+
+    rating, _reason, rule_id, override = _priority_decision(
+        {"weight": 3, "population_loss": 0, "daily_mortality": 0, "environment": 3}, rules
+    )
+    assert (rating, rule_id, override) == ("Critical", "PRIORITY-OVERRIDE-CONCURRENT-DOMAINS", True)
+
+    # Population loss and daily mortality share the survivability domain and
+    # therefore cannot create a two-domain critical override by themselves.
+    rating, _reason, rule_id, override = _priority_decision(
+        {"weight": 0, "population_loss": 3, "daily_mortality": 3, "environment": 0}, rules
+    )
+    assert (rating, rule_id, override) == ("Critical", "PRIORITY-OVERRIDE-ACUTE-SURVIVABILITY", True)
 
 
 def test_future_rows_do_not_change_an_earlier_as_of_score(dataset):
@@ -119,11 +146,12 @@ def test_missing_weight_is_not_treated_as_zero_risk(dataset):
     ).query("building_id == 'Tags 1'").iloc[0]
 
     assert pd.isna(row["weight_score"])
-    assert row["evidence_status"] == "Reduced evidence"
+    assert row["evidence_status"] == "Insufficient evidence"
     available = [row[column] for column in ["population_loss_score", "daily_mortality_score", "environment_score"]]
     assert row["risk_score"] == sum(value for value in available if pd.notna(value))
     assert row["cycle_day"] == 35
-    assert row["risk_rating"] != "Not rated"
+    assert row["risk_rating"] == "Insufficient evidence"
+    assert row["priority_rule_id"] == "PRIORITY-INSUFFICIENT-EVIDENCE"
 
 
 def test_stale_environment_is_explained_and_not_scored_as_safe(dataset):

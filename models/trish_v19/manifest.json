@@ -1,0 +1,63 @@
+{
+  "bundle_version": "trish-v19-final-2026-08-22",
+  "source_handoff": "canary v19 / HANDOVER_TO_DASHBOARD.md",
+  "prediction_source": "Saved leave-one-building-flock-out predictions for historical and 2026-3 replay",
+  "training_scope": "34 building-flocks; repeated daily rows remain grouped by building-flock",
+  "operating_principle": "Observed-condition risk is independent. Model outputs are planning outlooks and never change risk points.",
+  "bodyweight_display_checkpoints": [7, 14, 21],
+  "models": {
+    "model_1": {
+      "key": "model1_harvest_recovery",
+      "owner_label": "Projected end-of-cycle recovery proxy",
+      "algorithm": "Extra Trees",
+      "target": "final_harvest_recovery",
+      "target_definition": "Last recorded population divided by beginning population; not independently verified harvest or sales recovery",
+      "artifact_file": "model1_champion.joblib",
+      "artifact_sha256": "187a17768520a3b484a7821d71837238fd17ebb068470cd54cfb6081b2801092",
+      "mlflow_run_id": "f419915d5bdb45b5b966865f47b0d3a0",
+      "feature_dataset": "model1_harvest_recovery_dataset.csv",
+      "oof_predictions": "model1_logocv_predictions.csv",
+      "lofo_importance": "model1_lofo_importance.csv",
+      "feature_count": 85,
+      "window_end": 14,
+      "validated_mae": 0.01580001543069415,
+      "validated_r2": 0.37290776352751576,
+      "naive_mae": 0.023817804000134883,
+      "improvement_pct_vs_naive": 33.7,
+      "refresh_policy": "Recalculate daily through Day 14; hold the Day 14 outlook afterward",
+      "status": "pilot-stage held-out replay"
+    },
+    "model_3": {
+      "key": "model3_bodyweight",
+      "owner_label": "Projected Day 35 bodyweight",
+      "algorithm": "CatBoost",
+      "target": "bodyweight_at_day_35",
+      "target_definition": "Recorded average bodyweight at Day 35",
+      "artifact_file": "model3_champion.joblib",
+      "artifact_sha256": "235c839eedc8f457d7c8bc3e1973703aded35d1c46d45e6dcb496527809fa8fa",
+      "mlflow_run_id": "761749bd5046495ba7974ac9537ce0a2",
+      "feature_dataset": "model3_bodyweight_dataset.csv",
+      "oof_predictions": "model3_logocv_predictions.csv",
+      "lofo_importance": "model3_lofo_importance.csv",
+      "feature_count": 85,
+      "window_end": 21,
+      "validated_mae_g": 122.09125379192027,
+      "validated_r2": 0.24102010586622058,
+      "naive_mae_g": 149.24057040998218,
+      "improvement_pct_vs_naive": 18.2,
+      "checkpoint_mae_g": {
+        "7": 122.6379081329411,
+        "14": 105.68442049707403,
+        "21": 105.69285598024133
+      },
+      "checkpoint_error_band_half_width_g": {
+        "7": 187.20973833743372,
+        "14": 189.37565373495434,
+        "21": 158.171832320779
+      },
+      "refresh_policy": "Show official outlooks at Days 7, 14, and 21; hold the latest checkpoint outlook between and after checkpoints",
+      "status": "pilot-stage held-out replay",
+      "important_note": "The app uses the checkpoint rows of the final full-window CatBoost artifact. The separately retrained terminal-Day-21 analysis reported 103.66 g MAE but is not the packaged champion artifact."
+    }
+  }
+}

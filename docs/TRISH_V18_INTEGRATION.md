@@ -1,4 +1,6 @@
-# Trish v18 Integration — Project Canary
+# Archived Trish v18 Integration — Project Canary
+
+> Historical audit document only. These specialist routes are no longer loaded by the owner-facing application. The current release uses `config/forecast_registry.json` and is explained in `HOW_PROJECT_CANARY_FORECASTS_WORK.md`.
 
 ## Deployment decision
 

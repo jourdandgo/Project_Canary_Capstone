@@ -2,9 +2,9 @@
 
 Local Streamlit prototype for daily broiler-farm decision support.
 
-Current model release: **Trish v18 prospective deployment**. Cycle 2026-3 is excluded from fitting and scored using Trish's exact engineered feature rows. See `docs/TRISH_V18_INTEGRATION.md`.
+Current model release: **Trish v19 final handoff**. Canary uses Model 1 (Extra Trees) for the end-of-cycle recovery proxy and Model 3 (CatBoost) for Day 35 bodyweight. Historical and 2026-3 screens use Trish's saved held-out replay predictions; arbitrary future-cycle scoring remains unavailable until the 85-feature transformer is packaged.
 
-Product definition: **Day 35 is the primary 1.8 kg management milestone.** Canary uses Days 1–14 as the early-warning window, projects each building's Day 35 average weight when a measured weight exists, and separately forecasts harvest recovery against 95%.
+Product definition: **Day 35 is the primary 1.8 kg management milestone.** Model 1 refreshes daily through Day 14 and is held afterward. Model 3 refreshes at Days 7, 14, and 21 and is held between and after checkpoints. The recovery target is a last-recorded-population proxy, not independently verified harvest recovery.
 
 ## Completed capstone scope through Sprint 5
 
@@ -24,23 +24,23 @@ Product definition: **Day 35 is the primary 1.8 kg management milestone.** Canar
 - Show risk priority, dimension evidence, daily score history, rule version, and provisional-threshold status.
 - Expose an end-to-end decision trace with raw observations, calculations, applied thresholds, dimension scores, score equation, label mapping, problem pattern, action-rule status, and audit metadata.
 - Build leakage-safe daily modeling snapshots using only complete recorded cycles and information available as of each day.
-- Compare exactly five declared recovery candidates—historical mean, ordinary linear regression, Compact Ridge, constrained Gradient Boosting, and constrained XGBoost—using nested leave-one-complete-cycle-out validation. XGBoost remains visibly unavailable in the local Mac audit until its Linux/OpenMP run is reproduced.
-- Forecast harvest recovery with a point estimate, target gap, empirical uncertainty range, model version, and plain-language confidence note. The historical target is explicitly disclosed as last-recorded recovery because confirmed harvest status is not available in the source workbook.
-- Project Day 35 average weight with the leakage-safe historical remaining-gain fallback because no learned candidate passed the predeclared champion gates. Ridge remains the best learned challenger, not the operational winner.
+- Show the final Trish v19 Model 1 recovery-proxy outlook with its point estimate, held-out error band, evidence cutoff, model version, and explicit proxy limitation.
+- Show the final Trish v19 Model 3 Day 35 bodyweight outlook only when an eligible Day 7, 14, or 21 checkpoint record exists; otherwise state that no validated forecast is available.
 - Keep forecasting fully independent of the rules-based risk score.
 - Present a simple owner-first view: how many buildings need attention and which ones, the inventory-weighted projected harvest recovery and target gap, estimated gross revenue at risk, and the first building/action to review.
 - Use a multipage sidebar shell: owner pages (Home, Building View, Harvest Analysis, Business Value), capstone-evidence pages (EDA & Insights, Canary Methodology), and administration pages (Action Playbook, Data & Settings).
 - Provide an all-cycle Harvest Analysis page with recovery and Day 35 weight trends, building comparisons, target lines, target-specific model eligibility, and a downloadable cycle-building table. Historical proxies and current projections remain visibly separate.
 - Show current recovery and latest measured weight beside predicted recovery and the projected Day 35 result.
 - Constrain predicted final recovery so it never exceeds survival already recorded today under the agreed accounting rule.
-- Compare exactly five declared Day 35 candidates—historical remaining gain, ordinary linear regression, Ridge, constrained Gradient Boosting, and constrained XGBoost. Retain historical remaining gain operationally because the learned candidates did not improve cycle-balanced MAE by at least 10%, maintain at least 70% within 200 g, and improve target-side usefulness.
-- Treat each eligible building checkpoint as a separate as-of training example and pool examples across buildings; do not fit unreliable building-specific models or use later checkpoint weights in an earlier forecast.
+- Keep Trish's packaged v19 held-out replay lineage separate from arbitrary future-cycle scoring; the app does not silently substitute a local fallback model when the required 85-feature model-ready row is unavailable.
 - Provide a dedicated adjustable Business Value page and card-level estimated gross revenue at risk, clearly separated from profit or guaranteed savings.
 - Provide dedicated question-led EDA and detailed Canary Methodology pages for capstone defense, separate from the owner-facing Home dashboard.
-- Map each identified problem pattern to one deterministic recommendation rule.
+- Retain every supported observed problem pattern, keep one overall priority label, and map each detected pattern to its own deterministic inspection rule while preserving one primary action.
 - Apply a separate Low/Medium/High/Critical urgency guide without changing the risk score.
 - Show the recommended action, response timing, inspection checklist, escalation condition, rule ID, version, and approval status.
 - Provide a simple in-app action-playbook screen with explicit confirmation before local rule changes are saved.
+- Save immutable, fingerprinted building-date calculation snapshots; review six-building score and priority history over seven days, 30 days, or a complete cycle; and export the ledger.
+- Record management overrides separately from Canary calculations, including system value, management value, reason, responsible person, timestamp, follow-up date, and linked snapshot ID.
 - Provide a Data & Settings risk-rule screen that documents all four dimensions and safely edits age-based cutoffs, peer cutoffs, survival target assumptions, rating bands, version, and approval status with validation and explicit confirmation.
 - Preserve a reproducible risk-system audit in `analysis/risk_scoring_audit.json`; disclose that the provisional Day 14 rule score is operational prioritization, not a validated outcome classifier.
 - Continue forecasts on incomplete production days when enough earlier observations exist, while clearly disclosing that the latest recorded data was used.
@@ -84,6 +84,8 @@ uv run streamlit run app.py
 
 When the app lives inside the Project Canary folder, it automatically finds `../FARM HARVEST DATA.xlsx`. A different default workbook can be supplied with `CANARY_DEFAULT_WORKBOOK`.
 
+Calculation snapshots and management overrides default to `outputs/audit_ledger/`. Set `CANARY_AUDIT_DIR` to a durable writable location when one is available. Streamlit Community Cloud does not guarantee that local application files survive every restart or redeployment, so routine cloud use requires durable mounted storage or a persistent database. All history pages provide CSV exports for pilot backup.
+
 The GitHub/Streamlit capstone package may bundle an approved current daily workbook and final-weight summary under `data/` so the dashboard opens immediately. A newer daily workbook can be supplied through **Update daily farm data (optional)**, and a newer final-weight summary through **Update final-weight data (optional)**. An upload replaces the bundled file only for that session. See [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Test
@@ -100,10 +102,16 @@ uv run python -m scripts.validate_capstone
 
 The detailed building-level evidence is written to `artifacts/capstone_validation.json`.
 
-## Rebuild forecast models
+## Forecast runtime boundary
 
-```bash
-uv run python -m scripts.train_models "../FARM HARVEST DATA.xlsx" --output models
-```
+The dashboard performs inference from the versioned Trish v19 handoff artifacts. It never retrains models during a workbook upload. A generic future-flock deployment still requires the handoff's raw-record-to-85-feature transformer; until that is packaged, Canary shows an explicit unavailable state rather than changing model families.
+## Defense demo workflow
 
-The dashboard only performs inference. It never retrains models during a daily workbook upload.
+1. Start the app with `streamlit run app.py`.
+2. Click **Reset demo** to return to the historical baseline through cycle 2026-2.
+3. Upload one source-backed checkpoint from `demo_data/2026-3/`.
+4. Review **Home**, **Building View**, and **Harvest Analysis** as Doc Raymond.
+5. Open **Defense tools → Model Evidence Explorer** to replay an exact held-out prediction from input row to output.
+6. Open **Defense tools → How Canary Works** for the separation between observed risk, the two forecast models, and inspection guidance.
+
+The prepared CSVs cover Days 7, 14, 15, 21, 28, and 35 for Tags 1–3. The ZIP in the same folder contains all six files plus their lineage manifest. These are validated prospective replays of the actual 2026-3 records; they are not synthetic data and do not prove generic future-cycle feature engineering.

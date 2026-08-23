@@ -127,3 +127,25 @@ def test_current_review_date_controls_only_current_cycle_projection():
         later["cycle_id"].eq("2026-3"), "projected_recovery"
     ]
     assert not early_current.equals(later_current)
+
+
+def test_reset_style_history_has_no_current_cycle_or_projections():
+    dataset = load_workbook(SOURCE)
+    recovery, _ = load_model_bundle("recovery")
+    weight = load_day35_manifest()
+    labels = load_final_weight_labels(PERFORMANCE)
+    historical_snapshot = score_cycle_snapshot(
+        dataset, "2026-3", pd.Timestamp("2026-08-07"), load_risk_rules()
+    )
+    rows = build_harvest_analysis_rows(
+        dataset,
+        labels,
+        historical_snapshot,
+        recovery,
+        weight,
+        include_latest_as_current=False,
+    )
+    recorded = rows.loc[rows["start_date"].notna()]
+    assert recorded["reporting_status"].eq("Historical records ended").all()
+    assert recorded["projected_recovery"].isna().all()
+    assert recorded["projected_day35_weight_kg"].isna().all()

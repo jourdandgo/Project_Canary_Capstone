@@ -1,17 +1,17 @@
 {
-  "version": "risk-rules-0.4.0-tropical-bands",
-  "approval_status": "Provisional - tropical bands supplied; severity distances require farm sign-off",
+  "version": "risk-rules-0.5.0-banded-hybrid",
+  "approval_status": "Proposed for farm validation — not approved for routine use",
   "rating_bands": [
-    {"label": "Low", "minimum": 0, "maximum": 1},
-    {"label": "Medium", "minimum": 2, "maximum": 3},
-    {"label": "High", "minimum": 4, "maximum": 5},
-    {"label": "Critical", "minimum": 6, "maximum": 12}
+    {"label": "Low", "minimum": 0, "maximum": 2},
+    {"label": "Medium", "minimum": 3, "maximum": 5},
+    {"label": "High", "minimum": 6, "maximum": 8},
+    {"label": "Critical", "minimum": 9, "maximum": 12}
   ],
   "dimension_cutoffs": {
     "weight_gap_pct": [5.0, 10.0, 30.0],
     "population_loss_pct": [3.0, 5.0, 7.0],
     "daily_mortality_pct": [0.1, 0.2, 0.3],
-    "temperature_deviation_c": [0.0, 1.0, 2.0],
+    "temperature_deviation_c": [0.0, 2.0, 5.0],
     "humidity_deviation_pp": [0.0, 5.0, 10.0]
   },
   "temperature_ranges_c": [
@@ -32,11 +32,34 @@
     {"label": "Day 36 onward (carried provisionally)", "minimum_age": 36, "maximum_age": 999, "minimum": 50.0, "maximum": 65.0}
   ],
   "maximum_environment_reading_age_days": 2,
+  "priority_policy": {
+    "minimum_scored_dimensions": 3,
+    "domains": {
+      "weight": "growth",
+      "population_loss": "survivability",
+      "daily_mortality": "survivability",
+      "environment": "environment"
+    },
+    "critical_single_dimension": ["population_loss", "daily_mortality"],
+    "critical_concurrent_domain_score": 3,
+    "critical_concurrent_domain_count": 2,
+    "minimum_high_single_dimension_score": 3
+  },
+  "threshold_provenance": {
+    "weight_gap_pct": "Farm Validation Workbook candidate bands; proposed for shadow-pilot review.",
+    "population_loss_pct": "Farm Validation Workbook candidate bands; proposed for shadow-pilot review.",
+    "daily_mortality_pct": "Farm Validation Workbook candidate bands; proposed for shadow-pilot review.",
+    "temperature_deviation_c": "Tropical age reference bands supplied for the capstone; 0/2/5°C severity distances proposed for farm validation.",
+    "humidity_deviation_pp": "Tropical age reference bands supplied for the capstone; 0/5/10 percentage-point severity distances proposed for farm validation."
+  },
   "notes": [
     "Temperature and humidity bands follow the tropical-climate table supplied for the capstone; the Day 35 band is carried forward after Day 35 pending farm confirmation.",
-    "Temperature risk is the distance of the recorded daily average outside the age-specific acceptable band: within band 0, up to 1 C outside 1, over 1 to 2 C outside 2, and over 2 C outside 3.",
+    "Temperature risk is the distance of the recorded daily average outside the age-specific acceptable band: within band 0, up to 2 C outside 1, over 2 to 5 C outside 2, and over 5 C outside 3.",
     "Humidity risk uses the same distance-outside-band method: within band 0, up to 5 percentage points outside 1, over 5 to 10 points outside 2, and over 10 points outside 3.",
     "The environmental dimension takes the higher temperature or humidity score, preventing the same environmental event from being counted twice.",
-    "Daily temperature swing remains a supplemental diagnostic but no longer adds formal risk points because the supplied table defines absolute acceptable bands, not swing thresholds."
+    "Daily temperature swing remains a supplemental diagnostic but no longer adds formal risk points because the supplied table defines absolute acceptable bands, not swing thresholds.",
+    "The 0–12 total is an observed-concern score for prioritization, not a probability. The base label uses 0–2 Low, 3–5 Medium, 6–8 High, and 9–12 Critical.",
+    "Critical overrides are reserved for acute mortality, acute cumulative population loss, or two distinct domains at 3 points. Population loss and daily mortality are one survivability domain so the same underlying loss event is not double-counted.",
+    "With three scored dimensions, Canary shows the normal label with a Reduced evidence flag. With fewer than three, it shows Insufficient evidence unless an acute mortality or population-loss override applies."
   ]
 }

@@ -135,11 +135,11 @@ def _scenario_checks(
         checks,
         "Day 35 weight projection behavior",
         eligible.loc[
-            eligible["latest_weight_kg"].notna(), "projected_day35_weight_kg"
+            eligible["projected_day35_weight_kg"].notna(), "latest_weight_kg"
         ].notna().all()
         and eligible.loc[
-            eligible["latest_weight_kg"].isna(), "projected_day35_weight_kg"
-        ].isna().all(),
+            eligible["projected_day35_weight_kg"].isna(), "day35_weight_status"
+        ].astype(str).str.contains("No validated|unavailable", case=False).all(),
         f"{eligible['projected_day35_weight_kg'].notna().sum()} of {len(eligible)} reviewable building(s) have a measured-weight-based Day 35 projection; no value is invented without a weight.",
     )
 
@@ -200,8 +200,8 @@ def _scenario_checks(
             checks,
             "Missing-day continuity",
             not incomplete.empty
-            and incomplete["recovery_forecast_status"].eq(
-                "Forecast available — latest recorded data used"
+            and incomplete["recovery_forecast_status"].astype(str).str.contains(
+                "latest recorded data used", case=False
             ).all(),
             f"{len(incomplete)} incomplete building(s) use the latest known data and are not mistaken for unplaced flocks; buildings with a current row remain Active.",
         )

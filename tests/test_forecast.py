@@ -40,19 +40,45 @@ def test_active_buildings_receive_recovery_forecast_without_altering_risk(datase
     pd.testing.assert_series_equal(risk["risk_score"], forecast["risk_score"], check_dtype=False)
     active = forecast.loc[forecast["state"] == "Active"]
     assert active["predicted_final_recovery"].between(0, 1).all()
-    assert active["recovery_forecast_status"].eq("Forecast available").all()
+    assert active["recovery_forecast_status"].eq("Pilot-stage outlook available").all()
     assert np.allclose(
         active["recovery_target_gap_pp"],
         (active["predicted_final_recovery"] - 0.95) * 100,
     )
     assert (active["recovery_interval_low"] <= active["predicted_final_recovery"]).all()
     assert (active["recovery_interval_high"] >= active["predicted_final_recovery"]).all()
-    assert active["recovery_interval_label"].eq("Typical-error reference").all()
+    assert active["recovery_interval_label"].eq("80% held-out error band").all()
     assert active["recovery_model_name"].eq("Trish Model 1 · Extra Trees").all()
     assert active["recovery_target_status"].isin(["Likely below", "Uncertain", "Likely meets"]).all()
     assert active["recovery_checkpoint_status"].ne("Unavailable").all()
     assert (active["predicted_final_recovery"] <= active["percentage_alive"]).all()
     assert (active["recovery_interval_high"] <= active["percentage_alive"]).all()
+
+
+def test_v19_trace_matches_the_two_models_at_an_early_checkpoint(dataset):
+    """The UI trace must expose only the final v19 forecast models."""
+
+    as_of = pd.Timestamp("2026-07-10")  # Day 7 of the 2026-3 replay
+    forecast = attach_forecasts(dataset, score_cycle_snapshot(dataset, "2026-3", as_of))
+    active = forecast.loc[forecast["state"] == "Active"].iloc[0]
+    trace = forecast_trace(active)
+
+    assert set(trace["Model"]) == {"M1", "M3"}
+    assert set(trace["Algorithm"]) == {"Extra Trees", "CatBoost"}
+    assert trace["Evidence cutoff"].eq("Day 7").all()
+    assert trace["Source lineage"].str.contains("v19|OOF", case=False).all()
+    assert "Method" not in trace.columns
+
+
+def test_v18_trace_marks_recorded_day35_weight_as_observed(dataset):
+    as_of = default_as_of_date(dataset, "2026-3")
+    forecast = attach_forecasts(dataset, score_cycle_snapshot(dataset, "2026-3", as_of))
+    active = forecast.loc[forecast["state"] == "Active"].iloc[0]
+    trace = forecast_trace(active)
+    day35 = trace.loc[trace["Outcome"] == "Recorded Day 35 bodyweight"].iloc[0]
+
+    assert day35["Model"] == "Observed"
+    assert day35["Model status"] == "Recorded farm result · not a forecast"
 
 
 def test_day22_recovery_interpolates_between_day21_and_day28(dataset):
@@ -69,7 +95,7 @@ def test_day22_recovery_interpolates_between_day21_and_day28(dataset):
     manifest, _ = load_model_bundle("recovery")
     if active["recovery_model_name"].eq("Trish Model 1 · Extra Trees").all():
         assert active["recovery_live_age_policy"].str.contains(
-            "Day 14 Trish v18 outlook"
+            "Held from Day 14 evidence"
         ).all()
     elif manifest["model_kind"] == "formula":
         losses = manifest["additional_loss_by_age_band"]
@@ -120,7 +146,7 @@ def test_missing_current_weight_does_not_receive_a_fake_building_projection(data
 
     assert active["projected_day35_weight_kg"].isna().all()
     assert active["day35_weight_scope"].eq("Unavailable").all()
-    assert active["day35_weight_status"].str.contains("measured weight", case=False).all()
+    assert active["day35_weight_status"].str.contains("validated v19 forecast", case=False).all()
 
 
 def test_inactive_buildings_do_not_receive_forecasts(dataset):
@@ -143,9 +169,9 @@ def test_refreshed_complete_day_keeps_building_forecasts_current(dataset):
     # buildings on this replay date.
     assert set(active["building_id"]) == {"Tags 1", "Tags 2", "Tags 3"}
     assert active["predicted_final_recovery"].between(0, 1).all()
-    assert active["recovery_forecast_status"].eq("Forecast available").all()
+    assert active["recovery_forecast_status"].eq("Pilot-stage outlook available").all()
     assert active["projected_day35_weight_kg"].notna().all()
-    assert active["day35_weight_scope"].eq("Trish Model 3 outlook").all()
+    assert active["day35_weight_scope"].eq("Trish Model 3 checkpoint outlook").all()
     assert active["day35_weight_model_name"].str.contains("Trish Model 3").all()
 
 
@@ -156,9 +182,9 @@ def test_records_ended_trace_keeps_forecasts_and_discloses_proxy(dataset):
     ).loc[lambda frame: frame["state"] == "Records ended"].iloc[0]
 
     trace = forecast_trace(ended)
-    recovery = trace.loc[trace["Outcome"] == "Harvest survival"].iloc[0]
-    assert "harvest not confirmed" in recovery["Status"]
-    assert "last-recorded recovery" in recovery["Important limitation"]
+    recovery = trace.loc[trace["Outcome"] == "End-of-cycle recovery-proxy outlook"].iloc[0]
+    assert recovery["Model"] == "M1"
+    assert "last recorded population" in recovery["Important boundary"].lower()
 
 
 def test_day14_projection_is_building_specific_when_weights_exist(dataset):
@@ -174,8 +200,8 @@ def test_day14_projection_is_building_specific_when_weights_exist(dataset):
 
     assert len(available) >= 3
     assert available["projected_day35_weight_kg"].nunique() > 1
-    assert available["day35_weight_scope"].eq("Building projection").all()
-    assert available["day35_weight_status"].str.contains("Day 35 projection").all()
+    assert available["day35_weight_scope"].eq("Trish Model 3 checkpoint outlook").all()
+    assert available["day35_weight_status"].str.contains("Day 35 outlook").all()
 
 
 def test_recovery_contributions_explain_direction_without_claiming_cause(dataset):

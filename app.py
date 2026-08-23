@@ -23,12 +23,14 @@ from canary import (
     RiskConfigurationError,
     WorkbookValidationError,
     apply_recommendations,
+    build_matched_recommendation_table,
     attach_management_priority,
     attach_forecasts,
     attach_historical_day14_backtests,
     build_operational_driver_trace,
     build_cycle_snapshot,
     build_dimension_trace,
+    build_pattern_trace,
     build_forecast_history,
     build_recommendation_trace,
     build_risk_history,
@@ -52,6 +54,23 @@ from canary import (
     load_outcome_research_evidence,
     load_prospective_shadow_status,
     DAY35_TARGET_KG,
+    baseline_without_cycle,
+    merge_replay_csv,
+    DEFAULT_MANAGEMENT_DECISIONS_PATH,
+    DECISION_TYPES,
+    FOLLOW_UP_STATUSES,
+    latest_management_decisions,
+    load_management_decisions,
+    record_management_decision,
+    DEFAULT_CALCULATION_HISTORY_PATH,
+    latest_calculation_snapshot,
+    load_calculation_snapshots,
+    record_calculation_snapshots,
+    DEFAULT_OVERRIDE_HISTORY_PATH,
+    OVERRIDE_FIELDS,
+    latest_management_overrides,
+    load_management_overrides,
+    record_management_override,
 )
 from canary.harvest_analysis import (
     build_harvest_analysis_rows,
@@ -60,7 +79,11 @@ from canary.harvest_analysis import (
     weight_cycle_summary,
 )
 from canary.outcomes import build_historical_outcomes, latest_cycle_id
-from canary.operational_alerts import evaluate_operational_alerts
+from canary.operational_alerts import (
+    evaluate_operational_alerts,
+    evaluate_persistent_signals,
+    persistent_signal_trace,
+)
 from canary.business_value import (
     DEFAULT_CYCLES_PER_YEAR,
     DEFAULT_PRICE_PHP_PER_KG,
@@ -71,7 +94,14 @@ from canary.business_value import (
 )
 from canary.anomaly import build_age_adjusted_anomalies
 from canary.feedback import record_alert_feedback
-from canary.trish_models import load_v18_manifest, v18_local_contributions
+from canary.trish_v19 import (
+    load_v19_manifest,
+    validate_v19_bundle,
+    v19_calculation_trace,
+    v19_global_drivers,
+    v19_input_trace,
+    v19_outlook,
+)
 
 
 st.set_page_config(page_title="Project Canary", page_icon="🐤", layout="wide")
@@ -86,6 +116,13 @@ st.markdown(
       .hero small { color:var(--canary); font-weight:850; letter-spacing:.08em; }
       .hero h1 { margin:.12rem 0 .2rem; font-size:1.78rem; }
       .hero p { color:#deebe4; margin:0; max-width:900px; }
+      .home-hero { position:relative; overflow:hidden; padding:1.05rem 1.35rem; border-radius:18px; background:linear-gradient(128deg,#123b2c 0%,#1d563d 64%,#2f704e 100%); color:white; margin-bottom:.75rem; box-shadow:0 12px 26px rgba(19,60,44,.11); }
+      .home-hero::after { content:""; position:absolute; width:260px; height:260px; right:-98px; top:-150px; border:1px solid rgba(199,242,75,.28); border-radius:50%; box-shadow:0 0 0 28px rgba(199,242,75,.045), 0 0 0 56px rgba(199,242,75,.03); }
+      .home-hero small { position:relative; z-index:1; color:var(--canary); font-weight:850; letter-spacing:.08em; }
+      .home-hero h1 { position:relative; z-index:1; margin:.12rem 0 .2rem; font-size:1.82rem; max-width:820px; }
+      .home-hero p { position:relative; z-index:1; color:#deebe4; margin:0; max-width:800px; }
+      .home-hero-meta { position:relative; z-index:1; display:flex; flex-wrap:wrap; gap:.42rem; margin-top:.7rem; }
+      .home-hero-meta span { display:inline-flex; border:1px solid rgba(224,240,231,.28); border-radius:999px; padding:.18rem .48rem; color:#e2eee7; background:rgba(7,38,27,.22); font-size:.69rem; font-weight:720; }
       .context { display:flex; flex-wrap:wrap; gap:.45rem .8rem; align-items:center; background:white; border:1px solid var(--line); border-radius:13px; padding:.65rem .85rem; margin:0 0 .85rem; color:#465b51; font-size:.82rem; }
       .context strong { color:var(--green); }
       .context .dot { color:#9aac9f; }
@@ -123,6 +160,9 @@ st.markdown(
       .value-strip { padding:.5rem .62rem; border-radius:10px; background:#eef6e5; border:1px solid #d9e8c7; display:flex; justify-content:space-between; align-items:center; gap:.5rem; }
       .value-strip strong { color:#214b34; font-size:.98rem; white-space:nowrap; }
       .driver { border-left:4px solid #94bc2b; padding:.42rem .55rem; background:#f7faeb; border-radius:7px; color:#3f5149; font-size:.76rem; }
+      .persistent-alert { border-left:4px solid #d99614; padding:.42rem .55rem; background:#fff7df; border-radius:7px; color:#634716; font-size:.74rem; line-height:1.38; }
+      .override-alert { border-left:4px solid #5a6fc5; padding:.42rem .55rem; background:#eef1ff; border-radius:7px; color:#34457f; font-size:.74rem; line-height:1.38; }
+      .pattern-tags { color:#51665b; font-size:.71rem; line-height:1.4; padding:.35rem .48rem; background:#f2f6f3; border-radius:8px; }
       .backtest { border-top:1px solid #e4ece7; padding-top:.52rem; color:#52645b; font-size:.72rem; line-height:1.45; }
       .backtest strong { color:var(--green); }
       .state-note { background:#f5f8f6; border:1px dashed #cbd9d1; border-radius:10px; padding:.68rem; color:#53665d; font-size:.78rem; margin:.5rem 0; }
@@ -136,6 +176,7 @@ st.markdown(
       .score-tile .evidence { color:var(--muted); font-size:.72rem; line-height:1.35; }
       .forecast-note { background:#f4f8f5; border-left:4px solid #80a98f; border-radius:8px; padding:.62rem .72rem; color:#40544a; font-size:.79rem; min-height:62px; }
       .model-badge { display:inline-block; background:#eaf1ed; color:#3e5b4c; border-radius:999px; padding:.18rem .5rem; font-size:.68rem; font-weight:800; margin-bottom:.45rem; }
+      .provenance-line { margin-top:.35rem; color:#5b7065; font-size:.70rem; line-height:1.35; font-weight:650; }
       .empty-state { background:#f4f7f5; border:1px dashed #cbd9d1; border-radius:11px; padding:.9rem; color:#53665d; font-size:.82rem; margin-top:.8rem; }
       .evidence-note { color:#8a6500; font-size:.74rem; font-weight:700; margin:.2rem 0 .55rem; }
       .intro-grid { display:grid; grid-template-columns:1fr 1fr; gap:.75rem; margin:.2rem 0 .75rem; }
@@ -154,6 +195,17 @@ st.markdown(
       .value-path { display:flex; flex-wrap:wrap; gap:.45rem; align-items:center; justify-content:center; background:#f3f8da; border:1px solid #d6e99c; border-left:7px solid #8bb627; border-radius:16px; padding:.78rem 1rem; margin:0 0 .85rem; color:#23412d; font-size:.86rem; font-weight:800; box-shadow:0 7px 18px rgba(72,100,32,.06); }
       .value-path .path-arrow { color:#789329; font-size:1.05rem; }
       .value-path-note { display:block; width:100%; text-align:center; color:#5d6c62; font-size:.71rem; font-weight:650; }
+      .about-hero { padding:1.3rem 1.4rem; border-radius:18px; background:linear-gradient(128deg,#123b2c,#286245); color:white; margin-bottom:.9rem; box-shadow:0 12px 26px rgba(19,60,44,.10); }
+      .about-hero small { color:var(--canary); font-weight:850; letter-spacing:.08em; }
+      .about-hero h1 { margin:.15rem 0 .35rem; font-size:2rem; }
+      .about-hero p { color:#deebe4; max-width:750px; margin:0; line-height:1.52; }
+      .about-flow { display:grid; grid-template-columns:repeat(4,1fr); gap:.55rem; margin:.7rem 0 .9rem; }
+      .about-step { background:white; border:1px solid var(--line); border-radius:14px; padding:.75rem .8rem; min-height:112px; box-shadow:0 6px 16px rgba(17,59,43,.04); }
+      .about-step .number { color:#8eaf22; font-size:.72rem; font-weight:900; letter-spacing:.06em; }
+      .about-step strong { display:block; color:var(--green); margin:.2rem 0; font-size:.95rem; }
+      .about-step span { color:#5d6e65; font-size:.74rem; line-height:1.38; }
+      .about-boundary { background:#f3f8da; border:1px solid #d6e99c; border-left:6px solid #8bb627; border-radius:13px; padding:.75rem .9rem; color:#29431f; font-size:.83rem; }
+      .about-boundary strong { color:#23412d; }
       .executive-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.68rem; margin:.15rem 0 .8rem; }
       .executive-card { background:white; border:1px solid var(--line); border-radius:15px; padding:.78rem .85rem; min-height:112px; box-shadow:0 6px 16px rgba(17,59,43,.045); }
       .executive-card.priority { background:linear-gradient(145deg,#173f31,#295f47); border-color:#295f47; }
@@ -179,14 +231,16 @@ st.markdown(
       @media (max-width: 900px) {
         .card-body { min-height:0; }
         .hero h1 { font-size:1.55rem; }
+        .home-hero h1 { font-size:1.55rem; }
         .signal-grid { grid-template-columns:1fr 1fr; }
         .intro-grid { grid-template-columns:1fr; }
         .executive-grid { grid-template-columns:1fr 1fr; }
+        .about-flow { grid-template-columns:1fr 1fr; }
         .decision-question { grid-template-columns:1fr; }
         [data-testid="stHorizontalBlock"]:has(.card-body) { flex-direction:column !important; gap:.75rem !important; }
         [data-testid="stHorizontalBlock"]:has(.card-body) > div { width:100% !important; flex:1 1 100% !important; }
       }
-      @media (max-width: 620px) { .executive-grid { grid-template-columns:1fr; } }
+      @media (max-width: 620px) { .executive-grid, .about-flow { grid-template-columns:1fr; } }
     </style>
     """,
     unsafe_allow_html=True,
@@ -298,7 +352,7 @@ def _current_vs_outlook_table(row: pd.Series) -> pd.DataFrame:
     return pd.DataFrame(
         [
             {
-                "Outcome": "Harvest recovery",
+                "Outcome": "Recovery proxy",
                 "Current recorded status": _percent(row["percentage_alive"]),
                 "Predicted final outcome": _percent(row["predicted_final_recovery"]),
                 "Expected change": _signed(recovery_change_pp, 1, " pts"),
@@ -590,6 +644,47 @@ FEATURE_DISPLAY = {
     "is_lags_building": "Lagundi building indicator",
 }
 
+# Local Trish v18 explanations include engineered features.  These labels keep
+# the owner-facing view readable without disguising a predictive association as
+# a causal diagnosis.
+V18_FEATURE_DISPLAY = {
+    "average_temperature": "Average temperature",
+    "temperature_range": "Temperature range",
+    "temperature_volatility": "Temperature variability",
+    "max_temperature": "Highest temperature",
+    "max_thi_cycle": "Highest heat-humidity index",
+    "max_thi_day": "Latest heat-humidity index",
+    "average_humidity": "Average humidity",
+    "humidity_range": "Humidity range",
+    "humidity_volatility": "Humidity variability",
+    "low_humidity_days": "Low-humidity days",
+    "high_humidity_days": "High-humidity days",
+    "percent_low_humidity_days": "Share of low-humidity days",
+    "percent_high_humidity_days": "Share of high-humidity days",
+    "bodyweight_g": "Latest measured bodyweight",
+    "bodyweight_at_day7": "Day 7 bodyweight",
+    "bodyweight_deficit_g_interpolated": "Bodyweight gap versus target",
+    "projected_day35_weight_from_trajectory": "Observed growth trajectory",
+    "day14_to_21_growth_rate": "Day 14–21 growth rate",
+    "current_population": "Current population",
+    "current_recoverable_ratio": "Current recovery to date",
+    "mortality_percent_cum": "Cumulative mortality",
+    "high_mortality_severity": "Mortality severity",
+    "average_daily_mortality_ratio_to_normal_target": "Mortality versus normal allowance",
+    "cumulative_mortality_difference_from_normal_target": "Cumulative mortality gap",
+    "daily_mortality_difference_from_normal_target": "Latest mortality gap",
+    "feed_daily_g_per_bird": "Daily feed per bird",
+    "feed_cumulative_g_per_bird": "Cumulative feed per bird",
+    "feed_gap_daily": "Daily feed gap",
+    "feed_gap_cumulative": "Cumulative feed gap",
+    "feed_deficit_days": "Feed-deficit days",
+    "critical_days": "Recorded critical-condition days",
+    "warning_days": "Recorded warning-condition days",
+    "compounding_stress_days": "Days with multiple recorded stresses",
+    "resting_days": "Downtime before placement",
+    "sqft_per_bird": "Stocking space per bird",
+}
+
 
 def _global_recovery_importance_table(manifest: dict[str, object]) -> pd.DataFrame:
     rows = []
@@ -673,22 +768,42 @@ def _owner_recovery_driver_table(contributions: pd.DataFrame) -> pd.DataFrame:
     ]
 
 
-def _owner_v18_driver_table(contributions: pd.DataFrame, unit: str) -> pd.DataFrame:
-    """Turn local SHAP associations into a compact owner-readable table."""
+def _owner_v18_driver_table(
+    contributions: pd.DataFrame,
+    unit: str,
+    direction: str,
+    limit: int = 3,
+) -> pd.DataFrame:
+    """Return the strongest local SHAP associations in one plain-language direction."""
 
     if contributions.empty:
         return pd.DataFrame()
-    result = contributions.head(3).copy()
-    result["Factor"] = result["feature"].map(
-        lambda value: str(value).replace("_", " ").strip().title()
+    if direction not in {"up", "down"}:
+        raise ValueError("direction must be 'up' or 'down'")
+    filtered = contributions.loc[
+        contributions["contribution"].gt(0)
+        if direction == "up"
+        else contributions["contribution"].lt(0)
+    ].head(limit).copy()
+    if filtered.empty:
+        return pd.DataFrame()
+    filtered["Factor"] = filtered["feature"].map(
+        lambda value: V18_FEATURE_DISPLAY.get(
+            str(value), feature_display_name(str(value))
+        )
     )
-    result["Direction"] = result["contribution"].map(
-        lambda value: "Raises outlook" if float(value) > 0 else "Lowers outlook"
+    filtered["Model movement"] = filtered["contribution"].map(
+        lambda value: (
+            f"+{abs(float(value)) * 100:.2f} pts"
+            if unit == "recovery" and float(value) > 0
+            else f"−{abs(float(value)) * 100:.2f} pts"
+            if unit == "recovery"
+            else f"+{abs(float(value)):.0f} g"
+            if float(value) > 0
+            else f"−{abs(float(value)):.0f} g"
+        )
     )
-    result["Relative influence"] = result["absolute_contribution"].map(
-        lambda value: f"{float(value) * 100:.2f} pts" if unit == "recovery" else f"{float(value):.0f} g"
-    )
-    return result[["Factor", "Direction", "Relative influence"]]
+    return filtered[["Factor", "Model movement"]]
 
 
 def _eda_coverage_table(dataset) -> pd.DataFrame:
@@ -900,7 +1015,7 @@ def _render_model_evidence_outcome(outcome: str) -> None:
     recovery = outcome == "recovery"
     unit = "percentage points" if recovery else "g"
     short_unit = "pp" if recovery else "g"
-    outcome_title = "Harvest recovery" if recovery else "Day 35 bodyweight"
+    outcome_title = "Recovery proxy" if recovery else "Day 35 bodyweight"
     target_text = "95% final recovery" if recovery else "1,800 g on Day 35"
     challenger_name = display_name(evidence.challenger)
     selected_name = display_name(evidence.one_se_selection)
@@ -1238,9 +1353,16 @@ VIEW_CHECKS = "Data & Settings"
 VIEW_EVIDENCE = "EDA"
 VIEW_MODEL_EVIDENCE = "Model Evidence"
 VIEW_METHODS = "Canary Methodology"
+VIEW_PREDICTION_LAB = "Prediction Lab"
+VIEW_HOW_CANARY_WORKS = "How Canary Works"
+VIEW_ACTION_HISTORY = "Action History"
+VIEW_ABOUT = "About Canary"
 
 
 PAGE_HOME = st.Page("pages/home.py", title="Home", icon=":material/home:", default=True)
+PAGE_ABOUT = st.Page(
+    "pages/about_canary.py", title="About Canary", icon=":material/info:"
+)
 PAGE_BUILDING = st.Page(
     "pages/building.py", title="Building View", icon=":material/domain:"
 )
@@ -1263,11 +1385,21 @@ PAGE_ACTIONS = st.Page(
 PAGE_DATA = st.Page(
     "pages/data_settings.py", title="Data & Settings", icon=":material/database:"
 )
+PAGE_PREDICTION_LAB = st.Page(
+    "pages/prediction_lab.py", title="Model Evidence Explorer", icon=":material/science:"
+)
+PAGE_HOW_CANARY_WORKS = st.Page(
+    "pages/how_canary_works.py", title="How Canary Works", icon=":material/account_tree:"
+)
+PAGE_ACTION_HISTORY = st.Page(
+    "pages/action_history.py", title="Action History", icon=":material/history:"
+)
 
 navigation = st.navigation(
     {
-        "Farm owner": [PAGE_HOME, PAGE_BUILDING, PAGE_HARVEST, PAGE_EDA],
+        "Farm owner": [PAGE_HOME, PAGE_ABOUT, PAGE_BUILDING, PAGE_ACTION_HISTORY, PAGE_HARVEST, PAGE_EDA],
         "Administration": [PAGE_ACTIONS, PAGE_DATA],
+        "Defense tools": [PAGE_PREDICTION_LAB, PAGE_HOW_CANARY_WORKS],
     }
 )
 navigation.run()
@@ -1328,6 +1460,60 @@ def _show_priorities() -> None:
 
 def _show_evidence() -> None:
     st.switch_page(PAGE_EDA)
+
+
+def _save_calculation_window(
+    dataset: object,
+    cycle_id: str,
+    start_date: object,
+    end_date: object,
+    rules: dict,
+    playbook: dict,
+    *,
+    snapshot_kind: str,
+) -> dict[str, int]:
+    """Recalculate and persist an as-of-safe date window for all buildings."""
+
+    inserted = 0
+    skipped = 0
+    for current in pd.date_range(pd.Timestamp(start_date), pd.Timestamp(end_date), freq="D"):
+        daily = apply_recommendations(
+            score_cycle_snapshot(dataset, cycle_id, current, rules),
+            playbook,
+        )
+        result = record_calculation_snapshots(
+            daily,
+            dataset,
+            DEFAULT_CALCULATION_HISTORY_PATH,
+            snapshot_kind=snapshot_kind,
+        )
+        inserted += int(result["inserted"])
+        skipped += int(result["skipped"])
+    return {"inserted": inserted, "skipped": skipped}
+
+
+DEMO_SESSION_KEYS = {
+    "canary_cycle_choice",
+    "detail_building",
+    "prediction_lab_model",
+    "prediction_lab_building",
+    "prediction_lab_day",
+    "prediction_lab_scenario",
+}
+
+
+def _reset_demo_state() -> None:
+    """Return the UI to history through 2026-2 without touching source files."""
+
+    for key in list(st.session_state):
+        if key in DEMO_SESSION_KEYS or key.startswith("canary_cycle_widget_") or key.startswith("prediction_lab_"):
+            st.session_state.pop(key, None)
+    st.session_state["demo_reset_active"] = True
+    st.session_state["demo_reset_message"] = True
+    st.session_state["demo_uploader_nonce"] = int(st.session_state.get("demo_uploader_nonce", 0)) + 1
+    st.session_state["demo_cycle_nonce"] = int(st.session_state.get("demo_cycle_nonce", 0)) + 1
+    st.session_state["canary_cycle_choice"] = "2026-2"
+    st.session_state["_canary_view"] = VIEW_PRIORITIES
 
 
 def _card_driver(row: pd.Series) -> str:
@@ -1396,11 +1582,19 @@ def _attach_owner_action_context(
         "owner_reason_detail",
         "owner_action",
         "owner_action_basis",
+        "persistent_signal_summary",
     ):
         output[column] = pd.NA
+    output["persistent_signal_count"] = 0
     for index, row in output.iterrows():
         if str(row.get("state")) not in {"Active", "Incomplete"}:
             continue
+        persistent_signals = evaluate_persistent_signals(
+            dataset, str(cycle_id), str(row["building_id"]), pd.Timestamp(as_of)
+        )
+        output.at[index, "persistent_signal_count"] = len(persistent_signals)
+        if persistent_signals:
+            output.at[index, "persistent_signal_summary"] = str(persistent_signals[0]["title"])
         risk_score = row.get("risk_score", pd.NA)
         if pd.notna(risk_score) and float(risk_score) > 0:
             display_title, _ = _pattern_display(row.get("risk_pattern"))
@@ -1418,14 +1612,126 @@ def _attach_owner_action_context(
     return output
 
 
+def _attach_management_decision_context(
+    snapshot: pd.DataFrame,
+    cycle_id: str,
+    as_of: object,
+) -> pd.DataFrame:
+    """Overlay the latest logged manager decision without changing Canary outputs."""
+
+    output = snapshot.copy()
+    output["system_recommended_action"] = output.get("recommended_action", pd.Series(pd.NA, index=output.index))
+    output["system_recommendation_urgency"] = output.get("recommendation_urgency", pd.Series(pd.NA, index=output.index))
+    defaults = {
+        "management_decision_status": "No management decision recorded",
+        "management_decision_type": "",
+        "management_decision_action": "",
+        "management_decision_rationale": "",
+        "management_decision_owner": "",
+        "management_follow_up_due": "",
+        "management_follow_up_status": "",
+        "management_decision_recorded_at": "",
+    }
+    for column, default in defaults.items():
+        output[column] = default
+
+    decisions = latest_management_decisions(
+        DEFAULT_MANAGEMENT_DECISIONS_PATH,
+        cycle_id=str(cycle_id),
+        through_date=str(pd.Timestamp(as_of).date()),
+    )
+    if decisions.empty:
+        return output
+    by_building = decisions.set_index("building_id")
+    review_day = pd.Timestamp(as_of).date()
+    for index, row in output.iterrows():
+        building = str(row.get("building_id"))
+        if building not in by_building.index:
+            continue
+        decision = by_building.loc[building]
+        follow_up_due = str(decision["follow_up_due"])
+        follow_up_status = str(decision["follow_up_status"])
+        overdue = (
+            follow_up_status == "Open"
+            and bool(follow_up_due)
+            and pd.Timestamp(follow_up_due).date() < review_day
+        )
+        display_status = "Follow-up overdue" if overdue else f"Management decision: {decision['decision_type']}"
+        output.at[index, "management_decision_status"] = display_status
+        output.at[index, "management_decision_type"] = str(decision["decision_type"])
+        output.at[index, "management_decision_action"] = str(decision["final_action"])
+        output.at[index, "management_decision_rationale"] = str(decision["rationale"])
+        output.at[index, "management_decision_owner"] = str(decision["responsible_person"])
+        output.at[index, "management_follow_up_due"] = follow_up_due
+        output.at[index, "management_follow_up_status"] = follow_up_status
+        output.at[index, "management_decision_recorded_at"] = str(decision["recorded_at"])
+        # The card and decision summary must show the manager's recorded plan,
+        # while the original system recommendation remains independently visible.
+        output.at[index, "owner_action"] = str(decision["final_action"])
+        output.at[index, "owner_action_basis"] = (
+            f"Management decision recorded · Canary rule {decision['system_rule_id']} retained"
+        )
+    return output
+
+
+def _attach_override_context(
+    snapshot: pd.DataFrame,
+    cycle_id: str,
+    as_of: object,
+) -> pd.DataFrame:
+    """Attach the latest human disposition without replacing system outputs."""
+
+    output = snapshot.copy()
+    output["management_override_count"] = 0
+    output["management_override_summary"] = ""
+    output["effective_priority"] = output.get("risk_rating", pd.Series("Not rated", index=output.index))
+    output["effective_primary_pattern"] = output.get("risk_pattern", pd.Series("Not applicable", index=output.index))
+    output["effective_recommendation"] = output.get("owner_action", output.get("recommended_action", pd.Series("", index=output.index)))
+    overrides = latest_management_overrides(
+        DEFAULT_OVERRIDE_HISTORY_PATH,
+        cycle_id=str(cycle_id),
+        through_date=str(pd.Timestamp(as_of).date()),
+    )
+    if overrides.empty:
+        return output
+    for building_id, group in overrides.groupby("building_id"):
+        matches = output.index[output["building_id"].eq(str(building_id))]
+        if len(matches) == 0:
+            continue
+        index = matches[0]
+        summaries = []
+        for _, override in group.iterrows():
+            key = str(override["field_key"])
+            new_value = str(override["new_value"])
+            if key == "risk_rating":
+                output.at[index, "effective_priority"] = new_value
+            elif key == "risk_pattern":
+                output.at[index, "effective_primary_pattern"] = new_value
+            elif key == "recommended_action":
+                output.at[index, "effective_recommendation"] = new_value
+                output.at[index, "owner_action"] = new_value
+                output.at[index, "owner_action_basis"] = "Active management override; original Canary recommendation preserved"
+            summaries.append(
+                f"{override['field_label']}: {override['original_value']} → {new_value}"
+            )
+        output.at[index, "management_override_count"] = len(group)
+        output.at[index, "management_override_summary"] = " | ".join(summaries)
+    return output
+
+
 def _building_card(row: pd.Series) -> str:
     building_id = html.escape(str(row["building_id"]))
     state = str(row["state"])
 
     if state == "Harvest completed":
         completion = pd.Timestamp(row["completion_date"]).strftime("%d %b %Y")
-        actual_weight = _grams(row.get("actual_final_average_weight_kg", pd.NA))
-        weight_status = html.escape(str(row.get("actual_final_weight_status", "Not available")))
+        recorded_weight = _grams(row.get("display_recorded_weight_kg", pd.NA))
+        weight_label = html.escape(
+            str(row.get("display_recorded_weight_label", "Recorded weight (g)"))
+        )
+        weight_status = html.escape(
+            str(row.get("display_recorded_weight_status", "Not available"))
+        )
         backtest_parts = []
         if pd.notna(row.get("day14_projected_recovery", pd.NA)):
             recovery_error = float(row["day14_recovery_error"]) * 100
@@ -1453,8 +1759,8 @@ def _building_card(row: pd.Series) -> str:
           <div class="head"><div class="name">{building_id}</div><span class="pill completed">Harvest completed</span></div>
           <div class="meta">Completed on {completion}</div>
           <div class="outcome-stack">
-            <div class="outcome-row"><div class="outcome-name">Actual harvest recovery</div><div class="outcome-detail"><div class="outcome-flow"><span>Recorded result</span><strong>{_percent(row.get('actual_harvest_recovery', pd.NA))}</strong></div></div></div>
-            <div class="outcome-row"><div class="outcome-name">Actual final avg weight (g)</div><div class="outcome-detail"><div class="outcome-flow"><span>Recorded result</span><strong>{actual_weight}</strong></div></div></div>
+            <div class="outcome-row"><div class="outcome-name">Recorded ending recovery</div><div class="outcome-detail"><div class="outcome-flow"><span>Last recorded population proxy</span><strong>{_percent(row.get('actual_harvest_recovery', pd.NA))}</strong></div></div></div>
+            <div class="outcome-row"><div class="outcome-name">{weight_label}</div><div class="outcome-detail"><div class="outcome-flow"><span>Recorded result</span><strong>{recorded_weight}</strong></div></div></div>
           </div>
           <div class="sub">Recorded outcomes only · {weight_status}</div>
           {backtest}
@@ -1480,7 +1786,7 @@ def _building_card(row: pd.Series) -> str:
 
     rating = str(row["risk_rating"])
     rating_class = rating.lower().replace(" ", "-")
-    rating_text = "Not rated" if rating == "Not rated" else f"{rating} risk"
+    rating_text = "Not rated" if rating == "Not rated" else f"{rating} priority"
     day = f"Day {int(row['cycle_day'])}"
     recovery_gap, recovery_class = _gap(row["recovery_target_gap_pp"], " pts")
     if pd.isna(row["projected_day35_weight_kg"]):
@@ -1517,45 +1823,143 @@ def _building_card(row: pd.Series) -> str:
     pattern_title = str(row.get("owner_reason_title", _pattern_display(row["risk_pattern"])[0]))
     pattern_subtitle = str(row.get("owner_action_basis", _pattern_display(row["risk_pattern"])[1]))
     owner_action = str(row.get("owner_action", row["recommended_action"]))
+    detected_pattern_details = str(row.get("risk_pattern_details", row.get("risk_pattern", "Not available")))
+    pattern_tags = (
+        f'<div class="pattern-tags"><strong>Detected problems:</strong> {html.escape(detected_pattern_details.replace(" | ", " · "))}</div>'
+        if detected_pattern_details not in {"", "Not applicable", "No Material Concern (0/3)"}
+        else ""
+    )
+    decision_status = str(row.get("management_decision_status", "No management decision recorded"))
+    decision_badge = (
+        ""
+        if decision_status == "No management decision recorded"
+        else f'<span class="micro-badge">{html.escape(decision_status)}</span>'
+    )
+    override_count = int(row.get("management_override_count", 0) or 0)
+    override_badge = (
+        f'<span class="micro-badge">{override_count} management override{"s" if override_count != 1 else ""}</span>'
+        if override_count
+        else ""
+    )
+    override_alert = (
+        f'<div class="override-alert"><strong>Management override:</strong> {html.escape(str(row.get("management_override_summary", "")))}</div>'
+        if override_count
+        else ""
+    )
+    persistent_count = int(row.get("persistent_signal_count", 0) or 0)
+    persistent_badge = (
+        f'<span class="micro-badge">{persistent_count} persistent 3-day watch{"es" if persistent_count != 1 else ""}</span>'
+        if persistent_count
+        else ""
+    )
+    persistent_alert = (
+        f'<div class="persistent-alert"><strong>Persistent watch:</strong> {html.escape(str(row.get("persistent_signal_summary")))}</div>'
+        if persistent_count
+        else ""
+    )
+    action_label = (
+        "Management decision"
+        if decision_status != "No management decision recorded"
+        else f"Next action · {row['recommendation_urgency']}"
+    )
+    uses_trish = str(row.get("trish_bundle_version", "Not available")) != "Not available"
+    current_day = int(row.get("cycle_day", 0))
+    lineage = str(row.get("trish_lineage_status", ""))
+    lineage_short = "v19 held-out replay" if "v19" in lineage.lower() or "oof" in lineage.lower() else "source lineage unavailable"
+    recovery_provenance = ""
+    if pd.notna(predicted_recovery):
+        if uses_trish:
+            recovery_evidence_day = int(row.get("trish_prediction_day", min(current_day, 14)))
+            recovery_status = "recalculated" if current_day <= 14 else f"held from Day {recovery_evidence_day}"
+            recovery_provenance = (
+                f'<div class="provenance-line">Model used: {html.escape(str(row.get("recovery_model_id", "M1")))} · '
+                f'{html.escape(str(row.get("recovery_model_name", "Extra Trees")).replace("Trish Model 1 · ", ""))} · '
+                f'Day {recovery_evidence_day} evidence · {recovery_status} · {lineage_short}</div>'
+            )
+        else:
+            recovery_provenance = '<div class="provenance-line">Fallback baseline · open Building View for method and source details</div>'
+    weight_provenance = ""
+    if pd.notna(row.get("projected_day35_weight_kg", pd.NA)):
+        if str(row.get("day35_weight_scope")) == "Recorded Day 35 result":
+            weight_provenance = '<div class="provenance-line">Recorded Day 35 result · not a forecast</div>'
+        elif uses_trish:
+            weight_model_id = str(row.get("day35_weight_model_id", "M3"))
+            weight_evidence_day = int(row.get("trish_weight_prediction_day", min(current_day, 21)))
+            weight_window = 21
+            weight_status = "recalculated" if current_day <= weight_window else f"held from Day {weight_evidence_day}"
+            algorithm = str(row.get("day35_weight_model_name", "")).split(" · ")[-1]
+            weight_provenance = (
+                f'<div class="provenance-line">Model used: {html.escape(weight_model_id)} · {html.escape(algorithm)} · '
+                f'Day {weight_evidence_day} evidence · {weight_status} · {lineage_short}</div>'
+            )
+        else:
+            weight_provenance = '<div class="provenance-line">Fallback baseline · open Building View for method and source details</div>'
     return f"""
     <div class="card-body">
       <div class="head"><div class="name">{building_id}</div><span class="pill {rating_class}">{html.escape(rating_text)}</span></div>
-      <div class="card-summary"><div class="meta">{day} · Score {'—' if pd.isna(row['risk_score']) else str(int(row['risk_score'])) + '/12'}</div><div>{evidence_note} {freshness_badge}</div></div>
+      <div class="card-summary"><div class="meta">{day} · Observed concern {'—' if pd.isna(row['risk_score']) else str(int(row['risk_score'])) + '/' + str(int(row.get('available_score_max', 12)))}</div><div>{override_badge} {persistent_badge} {evidence_note} {freshness_badge}</div></div>
       {evidence_detail}
       <div class="driver"><span class="pattern-title">{html.escape(pattern_title)}</span><span class="pattern-subtitle">{html.escape(pattern_subtitle)}<br><strong>Why now:</strong> {html.escape(driver)}</span></div>
+      {pattern_tags}
+      {persistent_alert}
+      {override_alert}
       <div class="outcome-stack">
-        <div class="outcome-row"><div class="outcome-name">Harvest recovery</div><div class="outcome-detail"><div class="outcome-flow"><span>Current recorded: {_percent(current_recovery)}</span><span class="outcome-arrow">→</span><strong>Projected: {_percent(predicted_recovery)}</strong></div><span class="gap-tag {recovery_class}">{html.escape(recovery_gap)} · harvest goal 95%</span></div></div>
-        <div class="outcome-row"><div class="outcome-name">Average weight (g)</div><div class="outcome-detail"><div class="outcome-flow"><span>Latest: {html.escape(current_weight_text)}</span><span class="outcome-arrow">→</span><strong>Projected Day 35: {weight_value}</strong></div><span class="gap-tag {weight_class}">{html.escape(weight_gap)} · Day 35 goal 1,800 g</span></div></div>
+        <div class="outcome-row"><div class="outcome-name">Recovery proxy</div><div class="outcome-detail"><div class="outcome-flow"><span>Current recorded: {_percent(current_recovery)}</span><span class="outcome-arrow">→</span><strong>Projected: {_percent(predicted_recovery)}</strong></div><span class="gap-tag {recovery_class}">{html.escape(recovery_gap)} · recovery-proxy goal 95%</span>{recovery_provenance}</div></div>
+        <div class="outcome-row"><div class="outcome-name">Average weight (g)</div><div class="outcome-detail"><div class="outcome-flow"><span>Latest: {html.escape(current_weight_text)}</span><span class="outcome-arrow">→</span><strong>Projected Day 35: {weight_value}</strong></div><span class="gap-tag {weight_class}">{html.escape(weight_gap)} · Day 35 goal 1,800 g</span>{weight_provenance}</div></div>
       </div>
-      <div class="action"><div class="label">Next action · {html.escape(str(row['recommendation_urgency']))}</div>{html.escape(owner_action)}</div>
+      <div class="action"><div class="label">{html.escape(str(action_label))}</div>{html.escape(owner_action)}<br>{decision_badge}</div>
     </div>
     """
 
 
 with st.sidebar:
     st.header("Choose what to review")
+    st.markdown("**Demo controls**")
+    if st.button("Reset demo", type="primary", use_container_width=True, on_click=_reset_demo_state):
+        st.rerun()
+    if st.session_state.pop("demo_reset_message", False):
+        st.success("Demo reset complete · ready to upload the next 2026-3 checkpoint")
+    uploader_nonce = int(st.session_state.get("demo_uploader_nonce", 0))
+    st.caption(
+        "Choose a checkpoint CSV below. Canary validates and applies it automatically—"
+        "there is no separate Submit button."
+    )
     uploaded = st.file_uploader(
-        "Update daily farm data (optional)",
-        type=["xlsx"],
-        help="The app starts with its bundled capstone data. Upload a newer standardized FARM HARVEST DATA.xlsx to replace it for this session and recalculate the dashboard.",
+        "Upload current-cycle data",
+        type=["csv", "xlsx"],
+        key=f"daily_upload_{uploader_nonce}",
+        help="Upload a prepared 2026-3 checkpoint CSV for the defense replay, or a standardized FARM HARVEST DATA.xlsx.",
     )
-    uploaded_performance = st.file_uploader(
-        "Update final-weight data (optional)",
-        type=["xlsx"],
-        help="The bundled final-weight summary is used by default. Upload a newer Farm Performance Summary.xlsx to replace it for this session. Canary reads only its final average-weight field.",
-    )
+    if uploaded is not None:
+        st.info(f"File received · {uploaded.name}\n\nCanary is refreshing the dashboard automatically.")
 
 try:
+    default_path = _default_workbook()
+    if not default_path.exists():
+        st.info("No bundled farm data was found. Upload FARM HARVEST DATA.xlsx to begin.")
+        st.stop()
+    reference_dataset = _load_path(str(default_path), default_path.stat().st_mtime_ns)
     if uploaded is not None:
-        dataset = _load_upload(uploaded.getvalue(), uploaded.name)
-        source_description = f"Uploaded: {uploaded.name}"
+        if uploaded.name.lower().endswith(".csv"):
+            dataset, replay_validation = merge_replay_csv(
+                uploaded.getvalue(), uploaded.name, reference_dataset
+            )
+            source_description = f"Validated replay: {uploaded.name}"
+            st.session_state["demo_reset_active"] = False
+            st.session_state["canary_cycle_choice"] = "2026-3"
+        else:
+            dataset = _load_upload(uploaded.getvalue(), uploaded.name)
+            source_description = f"Uploaded: {uploaded.name}"
+            replay_validation = None
+            st.session_state["demo_reset_active"] = False
+    elif st.session_state.get("demo_reset_active", False):
+        dataset = baseline_without_cycle(reference_dataset)
+        source_description = "Historical baseline through 2026-2"
+        replay_validation = None
     else:
-        default_path = _default_workbook()
-        if not default_path.exists():
-            st.info("No bundled farm data was found. Upload FARM HARVEST DATA.xlsx to begin.")
-            st.stop()
-        dataset = _load_path(str(default_path), default_path.stat().st_mtime_ns)
+        dataset = reference_dataset
         source_description = default_path.name
+        replay_validation = None
 except WorkbookValidationError as exc:
     st.error(str(exc))
     st.stop()
@@ -1569,26 +1973,46 @@ if dataset.quality.blocking_errors:
 with st.sidebar:
     st.success("Workbook ready")
     st.caption(source_description)
+    if dataset.replay_validated:
+        st.success(
+            f"Applied automatically · 2026-3 loaded through Day {dataset.replay_cutoff_day} · 3 active buildings · "
+            f"{dataset.replay_cutoff_day * 3} building-day records · dashboard recalculated"
+        )
+        st.caption("Done — review the refreshed Home dashboard on the right.")
+    with st.expander("Optional · replace final-weight summary", expanded=False):
+        st.caption("Not needed for the checkpoint demo.")
+        uploaded_performance = st.file_uploader(
+            "Upload final-weight workbook",
+            type=["xlsx"],
+            help="The bundled final-weight summary is used by default. Upload a newer Farm Performance Summary.xlsx to replace it for this session. Canary reads only its final average-weight field.",
+        )
     cycle_options = dataset.cycles.groupby("cycle_id")["start_date"].min().sort_values().index.tolist()
     current_cycle = latest_cycle_id(dataset)
+    reset_baseline = bool(st.session_state.get("demo_reset_active", False))
     if selected_view == VIEW_HARVEST:
         selected_cycle = current_cycle
-        historical_cycle = False
+        historical_cycle = reset_baseline
         minimum_date, maximum_date = cycle_date_bounds(dataset, current_cycle)
         st.caption(
             "Harvest Analysis starts with all recorded cycles. Use the page filters to narrow the history."
         )
-        selected_date = st.date_input(
-            "Review date",
-            value=default_as_of_date(dataset, current_cycle),
-            min_value=minimum_date,
-            max_value=maximum_date,
-            format="DD/MM/YYYY",
-            help="Historical results stay fixed. Current-cycle observations and projections use only records available by this date.",
-        )
-        st.caption(
-            "Changing this date replays the current cycle from that point in time. Historical recorded outcomes are not changed."
-        )
+        if historical_cycle:
+            selected_date = maximum_date
+            st.info(
+                "Reset baseline: all loaded cycles are completed history. No live risk scores or forecasts are shown."
+            )
+        else:
+            selected_date = st.date_input(
+                "Review date",
+                value=default_as_of_date(dataset, current_cycle),
+                min_value=minimum_date,
+                max_value=maximum_date,
+                format="DD/MM/YYYY",
+                help="Historical results stay fixed. Current-cycle observations and projections use only records available by this date.",
+            )
+            st.caption(
+                "Changing this date replays the current cycle from that point in time. Historical recorded outcomes are not changed."
+            )
     else:
         st.caption("Choose the production batch you want to review.")
         # Streamlit treats a widget on each page as a separate widget, even when it
@@ -1597,7 +2021,15 @@ with st.sidebar:
         remembered_cycle = st.session_state.get("canary_cycle_choice", cycle_options[-1])
         if remembered_cycle not in cycle_options:
             remembered_cycle = cycle_options[-1]
-        cycle_widget_key = f"canary_cycle_widget_{selected_view.lower().replace(' ', '_')}"
+        cycle_context = (
+            str(dataset.replay_fingerprint)[:12]
+            if dataset.replay_fingerprint
+            else "baseline" if st.session_state.get("demo_reset_active", False) else "workbook"
+        )
+        cycle_widget_key = (
+            f"canary_cycle_widget_{selected_view.lower().replace(' ', '_')}_"
+            f"{int(st.session_state.get('demo_cycle_nonce', 0))}_{cycle_context}"
+        )
         if st.session_state.get(cycle_widget_key) != remembered_cycle:
             st.session_state.pop(cycle_widget_key, None)
         selected_cycle = st.selectbox(
@@ -1610,7 +2042,9 @@ with st.sidebar:
             help="Choose the production batch or growing round you want to review.",
         )
         st.session_state["canary_cycle_choice"] = selected_cycle
-        historical_cycle = selected_cycle != current_cycle
+        # Reset deliberately removes the live 2026-3 overlay.  The latest
+        # remaining cycle (2026-2) is completed history, not a new active flock.
+        historical_cycle = reset_baseline or selected_cycle != current_cycle
         minimum_date, maximum_date = cycle_date_bounds(dataset, selected_cycle)
         if historical_cycle:
             selected_date = maximum_date
@@ -1656,7 +2090,7 @@ if hasattr(load_day35_manifest, "cache_clear"):
 recovery_manifest, _recovery_model = load_model_bundle("recovery")
 day35_manifest = load_day35_manifest()
 try:
-    trish_release = load_v18_manifest()["bundle_version"]
+    trish_release = load_v19_manifest()["bundle_version"]
 except (FileNotFoundError, KeyError, ValueError):
     trish_release = None
 with st.sidebar:
@@ -1697,6 +2131,19 @@ if historical_cycle:
         validate="one_to_one",
         suffixes=("", "_outcome"),
     )
+    # A user-uploaded workbook can occasionally carry a same-named display
+    # column into the snapshot.  Normalize the outcome fields after the merge
+    # so the completed-cycle Home page never assumes a missing column.
+    for field, fallback in (
+        ("display_recorded_weight_kg", pd.NA),
+        ("display_recorded_weight_label", "Recorded weight (g)"),
+        ("display_recorded_weight_status", "No recorded weight result"),
+    ):
+        suffixed = f"{field}_outcome"
+        if field not in snapshot.columns and suffixed in snapshot.columns:
+            snapshot[field] = snapshot[suffixed]
+        elif field not in snapshot.columns:
+            snapshot[field] = fallback
     recorded = snapshot["placement_date"].notna()
     snapshot.loc[recorded, "state"] = "Harvest completed"
     snapshot.loc[recorded, "status_note"] = (
@@ -1713,6 +2160,10 @@ else:
     snapshot = _attach_owner_action_context(
         snapshot, dataset, selected_cycle, selected_date
     )
+    snapshot = _attach_management_decision_context(
+        snapshot, selected_cycle, selected_date
+    )
+    snapshot = _attach_override_context(snapshot, selected_cycle, selected_date)
     ranked = rank_management_priorities(snapshot)
 all_buildings = snapshot.sort_values("building_order").reset_index(drop=True)
 if historical_cycle:
@@ -1731,18 +2182,10 @@ unrecorded_names = all_buildings.loc[
 if selected_view == VIEW_PRIORITIES:
     st.markdown(
         """
-        <div class="hero"><small>PROJECT CANARY · EARLY WARNING AND DECISION SUPPORT</small>
-          <h1>Make production outcomes more consistent by identifying off-track buildings early.</h1>
-          <p>Project Canary is an early-warning and decision-support system for broiler farms. It gives management earlier visibility into buildings at risk of missing the 1,800 g Day 35 weight milestone or 95% harvest-recovery goal, explains the recorded warning signs, projects likely outcomes, and recommends what to check next.</p>
-        </div>
-        <div class="intro-grid">
-          <div class="intro-panel"><span class="intro-kicker">The management problem</span><strong>Production outcomes are inconsistent.</strong><span>Harvest recovery varies and can fall below the 95% goal. Birds also do not consistently reach the desired Day 35 weight milestone.</span></div>
-          <div class="intro-panel solution"><span class="intro-kicker">The management gap</span><strong>The farm needs earlier visibility of off-track flocks.</strong><span>Daily records alone do not make it easy to see which building is drifting, why it is drifting, and where management should focus before poor results become final outcomes.</span></div>
-        </div>
-        <div class="value-path"><span>Earlier visibility</span><span class="path-arrow">→</span><span>Earlier investigation and action</span><span class="path-arrow">→</span><span>More consistent recovery and growth outcomes</span><span class="value-path-note">Canary supports management decisions; it does not diagnose disease, prescribe treatment, or guarantee outcomes.</span></div>
-        <div class="decision-question">
-          <div class="decision-icon">?</div>
-          <div><span class="decision-kicker">The business question</span><strong>How can the farm make production outcomes more consistent? Which buildings are going off-track, what evidence explains the concern, what recovery and Day 35 weight are currently expected, and what should management check first?</strong><div class="decision-goals"><span class="goal-chip">1,800 g average weight by Day 35</span><span class="goal-chip">95% recovery at harvest</span></div></div>
+        <div class="home-hero"><small>PROJECT CANARY · DAILY MANAGEMENT VIEW</small>
+          <h1>What needs attention today?</h1>
+          <p>Review the recorded signals, planning outlooks, and next inspection for each active building—in one place.</p>
+          <div class="home-hero-meta"><span>Observed risk is separate from forecasts</span><span>Management remains in control</span></div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -1761,17 +2204,103 @@ if selected_view == VIEW_HARVEST:
         """,
         unsafe_allow_html=True,
     )
-else:
+elif selected_view != VIEW_ABOUT:
+    if historical_cycle:
+        context_detail = (
+            f"All recorded buildings completed by <strong>{pd.Timestamp(maximum_date).strftime('%d %b %Y')}</strong>"
+        )
+        context_note = "Individual building completion dates are shown below"
+    else:
+        active_days = pd.to_numeric(
+            ranked.loc[ranked["state"].isin(["Active", "Incomplete"]), "cycle_day"],
+            errors="coerce",
+        ).dropna()
+        review_day = int(active_days.max()) if not active_days.empty else None
+        context_detail = (
+            f"Day {review_day} review"
+            if review_day is not None
+            else "Current-cycle review"
+        )
+        context_note = (
+            f"Records through <strong>{pd.Timestamp(selected_date).strftime('%d %b %Y')}</strong>"
+        )
     st.markdown(
         f"""
         <div class="context">
           <strong>Cycle {html.escape(str(selected_cycle))}</strong>
           <span class="dot">•</span>
-          <span>{'Completion summary' if historical_cycle else 'Showing what was known by'} <strong>{pd.Timestamp(selected_date).strftime('%d %b %Y')}</strong></span>
+          <span>{context_detail}</span>
+          <span class="dot">•</span>
+          <span>{context_note}</span>
         </div>
         """,
         unsafe_allow_html=True,
     )
+
+if not historical_cycle and selected_view != VIEW_ABOUT:
+    measured_cycle_weights = dataset.daily.loc[
+        dataset.daily["cycle_id"].astype(str).eq(str(selected_cycle))
+        & dataset.daily["record_date"].le(pd.Timestamp(selected_date))
+        & dataset.daily["weight_measured"].fillna(False).astype(bool)
+        & dataset.daily["bodyweight_kg"].notna(),
+        ["building_id", "age_day", "bodyweight_kg"],
+    ].copy()
+    if not measured_cycle_weights.empty:
+        latest_weight_day = int(measured_cycle_weights["age_day"].max())
+        latest_weights = measured_cycle_weights.loc[
+            measured_cycle_weights["age_day"].eq(latest_weight_day)
+        ].drop_duplicates("building_id", keep="last")
+        latest_weight_values = pd.to_numeric(
+            latest_weights["bodyweight_kg"], errors="coerce"
+        )
+        if (
+            len(latest_weights) >= 3
+            and latest_weight_values.round(6).nunique(dropna=True) == 1
+        ):
+            repeated_weight_g = float(latest_weight_values.dropna().iloc[0]) * 1000
+            st.warning(
+                f"Data-quality check: all {len(latest_weights)} reporting buildings have the exact same "
+                f"Day {latest_weight_day} weight ({repeated_weight_g:.2f} g) in the Daily source. "
+                "Canary is using that recorded value, but management should verify the weighing consolidation before acting on weight-related warnings."
+            )
+
+if selected_view == VIEW_ABOUT:
+    st.markdown(
+        """
+        <div class="about-hero"><small>ABOUT PROJECT CANARY</small>
+          <h1>Earlier visibility for better daily management.</h1>
+          <p>Canary gives Doc Raymond one building-level view of what needs attention, why it was flagged, what outcomes are currently expected, and what to inspect next.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.markdown('<div class="title">One practical management loop</div>', unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div class="about-flow">
+          <div class="about-step"><span class="number">01 · SEE</span><strong>Review the building view</strong><span>Bring daily records into one current-cycle view.</span></div>
+          <div class="about-step"><span class="number">02 · PRIORITIZE</span><strong>Identify what needs attention</strong><span>Use transparent observed-condition checks to focus the review.</span></div>
+          <div class="about-step"><span class="number">03 · INVESTIGATE</span><strong>Understand the recorded signal</strong><span>See the evidence, outlook, and approved inspection prompt.</span></div>
+          <div class="about-step"><span class="number">04 · LEARN</span><strong>Record the management response</strong><span>Keep an auditable history of actions, overrides, and follow-up.</span></div>
+        </div>
+        <div class="about-boundary"><strong>What Canary is—and is not.</strong> It supports investigation and management judgment. It does not diagnose disease, prescribe treatment, automatically control equipment, or guarantee production outcomes.</div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.markdown('<div class="title">Three separate engines</div>', unsafe_allow_html=True)
+    engine_columns = st.columns(3)
+    engine_copy = [
+        ("Observed risk", "Where should we look first?", "Four traceable checks rate observed growth, population, daily mortality, and environmental conditions."),
+        ("Planning outlooks", "What outcome is currently plausible?", "Trish v19 Models 1 and 3 provide two planning references with their evidence cutoff and held-out error."),
+        ("Inspection guidance", "What should management check next?", "Recorded patterns map to approved prompts. The farm decides whether and how to act."),
+    ]
+    for column, (name, question, copy) in zip(engine_columns, engine_copy):
+        with column:
+            with st.container(border=True):
+                st.caption(name.upper())
+                st.subheader(question)
+                st.write(copy)
+    st.caption("For technical model routing, validation, and explainability, open **How Canary Works** under Defense tools.")
 
 if selected_view == VIEW_PRIORITIES:
     if historical_cycle:
@@ -1779,7 +2308,7 @@ if selected_view == VIEW_PRIORITIES:
         historical_recorded = ranked.loc[ranked["state"] == "Harvest completed"]
         recovery_actuals = int(historical_recorded["actual_harvest_recovery"].notna().sum())
         weight_actuals = int(
-            historical_recorded["actual_final_average_weight_kg"].notna().sum()
+            historical_recorded["display_recorded_weight_kg"].notna().sum()
         )
         summary[0].metric(
             "Completed buildings",
@@ -1805,15 +2334,21 @@ if selected_view == VIEW_PRIORITIES:
                 f"{len(recovery_portfolio)} building(s), inventory-weighted"
             )
         summary[1].metric(
-            "Final harvest recovery",
+            "Recorded ending recovery",
             _percent(portfolio_actual_recovery),
             portfolio_actual_note,
-            help="Across the cycle: total estimated ending birds divided by total beginning birds for completed buildings with both values available.",
+            help=(
+                "Across the cycle: total population on each building's last recorded day divided by total beginning birds. "
+                "This is the project's ending-population recovery proxy, not a sale-count reconciliation and not uniformly a Day 35 metric."
+            ),
         )
         summary[2].metric(
-            "Actual weight results",
+            "Recorded weight results",
             f"{weight_actuals} of {len(historical_recorded)}",
-            help="Completed buildings with a defensible final average weight match in Farm Performance Summary.",
+            help=(
+                "Completed buildings with a recorded weight result. A defensible final sale weight is used when available; "
+                "otherwise Canary shows the recorded Day 35 milestone or latest measured weight and labels it explicitly."
+            ),
         )
     else:
         priority = ranked.loc[ranked["state"].isin(["Active", "Incomplete"])].head(1)
@@ -1846,12 +2381,12 @@ if selected_view == VIEW_PRIORITIES:
             first = priority.iloc[0]
             priority_name = html.escape(str(first["building_id"]))
             priority_risk_text = (
-                f"{first['risk_rating']} observed risk · {int(first['risk_score'])}/12"
+                f"{first['risk_rating']} operational priority · {int(first['risk_score'])}/{int(first.get('available_score_max', 12))} observed-concern points"
                 if pd.notna(first.get("risk_score"))
                 else "Observed risk not assessable"
             )
             priority_sub = html.escape(
-                f"{first['risk_rating']} risk · {first['recommendation_urgency']}"
+                f"{first['risk_rating']} priority · {first['recommendation_urgency']}"
             )
         attention_value = f"{int(needs_attention)} of {len(placed)}"
         attention_sub = (
@@ -1863,7 +2398,7 @@ if selected_view == VIEW_PRIORITIES:
             f"""
             <div class="executive-grid">
               <div class="executive-card"><div class="eyebrow">Buildings needing attention</div><div class="metric-value">{html.escape(attention_value)}</div><div class="metric-sub">{html.escape(attention_sub)}</div></div>
-              <div class="executive-card"><div class="eyebrow">Projected harvest recovery</div><div class="metric-value">{_percent(portfolio_recovery)}</div><div class="metric-sub">{html.escape(portfolio_gap_text)} · inventory-weighted</div></div>
+              <div class="executive-card"><div class="eyebrow">Projected recovery proxy</div><div class="metric-value">{_percent(portfolio_recovery)}</div><div class="metric-sub">{html.escape(portfolio_gap_text)} · inventory-weighted</div></div>
               <div class="executive-card"><div class="eyebrow">Review first</div><div class="metric-value">{priority_name}</div><div class="metric-sub">{priority_sub}</div></div>
             </div>
             """,
@@ -1911,7 +2446,7 @@ if selected_view == VIEW_PRIORITIES:
     st.markdown(
         '<div class="subtitle">Tags 1–3, then Lags 1–3. Earlier cycles show recorded actuals plus a clearly labeled held-out Day 14 model check—never a current risk rating or recommendation.</div>'
         if historical_cycle
-        else '<div class="subtitle">See which buildings are at risk of missing the 1,800 g Day 35 or 95% harvest-recovery goals, why they were flagged, and what management should check next.</div>',
+        else '<div class="subtitle">See which buildings are at risk of missing the 1,800 g Day 35 or 95% recovery-proxy goals, why they were flagged, and what management should check next.</div>',
         unsafe_allow_html=True,
     )
     for start in (0, 3):
@@ -1922,7 +2457,7 @@ if selected_view == VIEW_PRIORITIES:
                     st.markdown(_building_card(row), unsafe_allow_html=True)
                     no_cycle_data = row["state"] == "Inactive" and pd.isna(row["placement_date"])
                     if st.button(
-                        "No details available" if no_cycle_data else f"View {row['building_id']} details",
+                        "No details available" if no_cycle_data else f"See how {row['building_id']} predictions were made",
                         key=f"view_details_{row['building_id']}",
                         use_container_width=True,
                         disabled=no_cycle_data,
@@ -1947,6 +2482,7 @@ if selected_view == VIEW_HARVEST:
         snapshot,
         recovery_manifest,
         day35_manifest,
+        include_latest_as_current=not reset_baseline,
     )
 
     with st.container(border=True):
@@ -2056,11 +2592,11 @@ if selected_view == VIEW_HARVEST:
     )
 
     recovery_tab, weight_tab, history_tab = st.tabs(
-        ["Harvest recovery", "Day 35 weight", "Detailed history"]
+        ["Recovery proxy", "Day 35 weight", "Detailed history"]
     )
 
     with recovery_tab:
-        st.subheader("Harvest recovery across cycles")
+        st.subheader("Recovery proxy across cycles")
         recovery_trend = recovery_cycle_summary(filtered_harvest)
         if recovery_trend.empty:
             st.info("No recovery results match the current filters.")
@@ -2570,7 +3106,7 @@ if selected_view == VIEW_DETAILS:
             unsafe_allow_html=True,
         )
         st.markdown(
-            '<div class="subtitle">Review the recorded recovery and final average weight for this completed building.</div>'
+            '<div class="subtitle">Review the recorded ending-population recovery proxy and available weight milestone for this completed building.</div>'
             if historical_cycle
             else '<div class="subtitle">See what drove the risk score, what outcome is expected, and what management should check next.</div>',
             unsafe_allow_html=True,
@@ -2586,32 +3122,47 @@ if selected_view == VIEW_DETAILS:
     if historical_cycle:
         completed_on = pd.Timestamp(building["completion_date"]).strftime("%d %b %Y")
         actual_recovery = building.get("actual_harvest_recovery", pd.NA)
-        actual_weight = building.get("actual_final_average_weight_kg", pd.NA)
+        recorded_weight = building.get("display_recorded_weight_kg", pd.NA)
+        recorded_weight_label = str(
+            building.get("display_recorded_weight_label", "Recorded weight")
+        ).replace(" (g)", "")
         hcols = st.columns(3)
         hcols[0].metric("Harvest completed on", completed_on)
-        hcols[1].metric("Actual harvest recovery", _percent(actual_recovery))
-        hcols[2].metric("Actual final average weight", _weight(actual_weight))
+        hcols[1].metric("Recorded ending recovery", _percent(actual_recovery))
+        hcols[2].metric(recorded_weight_label, _weight(recorded_weight))
 
         st.subheader("How the actual results were determined")
         ending_population = building.get("actual_ending_population", pd.NA)
         beginning_population = building.get("beginning_inventory", pd.NA)
         if pd.notna(ending_population) and pd.notna(beginning_population):
             st.markdown(
-                f"**Actual harvest recovery:** {int(ending_population):,} ending birds ÷ "
-                f"{int(beginning_population):,} beginning birds = **{_percent(actual_recovery)}**"
+                f"**Recorded ending recovery proxy:** {int(ending_population):,} birds on the last recorded day ÷ "
+                f"{int(beginning_population):,} beginning birds = **{_percent(actual_recovery)}**. "
+                "The endpoint depends on the last day available for that building; it is not uniformly Day 35."
             )
         else:
             st.info("The beginning or ending population needed to calculate actual recovery is missing.")
 
-        if pd.notna(actual_weight):
+        actual_final_weight = building.get("actual_final_average_weight_kg", pd.NA)
+        if pd.notna(actual_final_weight):
             st.markdown(
-                f"**Actual final average weight:** **{_weight(actual_weight)}**, matched to this "
+                f"**Actual final average weight:** **{_weight(actual_final_weight)}**, matched to this "
                 f"building and cycle from {performance_source_status}."
+            )
+        elif pd.notna(building.get("recorded_day35_weight_kg", pd.NA)):
+            st.markdown(
+                f"**Recorded Day 35 weight:** **{_weight(building['recorded_day35_weight_kg'])}**. "
+                "This is the farm's Day 35 management milestone, not a final sale-weight record."
+            )
+        elif pd.notna(building.get("last_recorded_weight_kg", pd.NA)):
+            st.markdown(
+                f"**Last recorded weight (Day {int(building['last_recorded_weight_day'])}):** "
+                f"**{_weight(building['last_recorded_weight_kg'])}**. "
+                "This is the latest available milestone, not a final sale-weight record."
             )
         else:
             st.warning(
-                f"**Actual final average weight: Not available.** "
-                f"{building.get('actual_final_weight_status', 'No defensible source value was found.')}"
+                "**Recorded weight: Not available.** No defensible final, Day 35, or later measured weight was found."
             )
 
         st.subheader("Historical Day 14 model check")
@@ -2623,7 +3174,7 @@ if selected_view == VIEW_DETAILS:
             recovery_error = float(building["day14_recovery_error"]) * 100
             backtest_rows.append(
                 {
-                    "Outcome": "Harvest recovery",
+                    "Outcome": "Recovery proxy",
                     "Day 14 projection": _percent(building["day14_projected_recovery"]),
                     "Observed result": _percent(building["actual_harvest_recovery"]),
                     "Prediction error": f"{recovery_error:+.2f} pts",
@@ -2662,10 +3213,10 @@ if selected_view == VIEW_DETAILS:
         st.stop()
 
     dcols = st.columns(4)
-    dcols[0].metric("Risk level", building["risk_rating"])
-    dcols[1].metric("Risk score", "—" if pd.isna(building["risk_score"]) else f"{int(building['risk_score'])}/12")
+    dcols[0].metric("Operational priority", building["risk_rating"])
+    dcols[1].metric("Observed concern", "—" if pd.isna(building["risk_score"]) else f"{int(building['risk_score'])}/{int(building.get('available_score_max', 12))}")
     dcols[2].metric(
-        "Predicted harvest recovery",
+        "Projected recovery proxy",
         _percent(building["predicted_final_recovery"]),
     )
     detail_weight = "No projection" if pd.isna(building["projected_day35_weight_kg"]) else _weight(building["projected_day35_weight_kg"])
@@ -2674,15 +3225,222 @@ if selected_view == VIEW_DETAILS:
         detail_weight,
         help="Estimated average liveweight on production Day 35, compared with the 1.8 kg milestone.",
     )
+    if int(building.get("management_override_count", 0) or 0):
+        st.info(
+            f"**Canary-calculated priority:** {building['risk_rating']} · "
+            f"**Management disposition:** {building.get('effective_priority', building['risk_rating'])}. "
+            f"{str(building.get('management_override_summary', '')).replace(' | ', ' · ')}"
+        )
     st.subheader("1 · Decision summary and next check")
     dimension_trace = build_dimension_trace(building, rules)
     operational_alerts = evaluate_operational_alerts(
         dataset, selected_cycle, chosen, pd.Timestamp(selected_date)
     )
+    persistent_signals = evaluate_persistent_signals(
+        dataset, selected_cycle, chosen, pd.Timestamp(selected_date)
+    )
+    if persistent_signals:
+        st.warning(
+            "Persistent-condition watch: "
+            + " · ".join(str(signal["title"]) for signal in persistent_signals)
+        )
+    with st.expander("View 3-day signal calculation · recorded evidence → rule → flag"):
+        if persistent_signals:
+            st.dataframe(
+                persistent_signal_trace(persistent_signals),
+                hide_index=True,
+                width="stretch",
+            )
+            for signal in persistent_signals:
+                st.markdown(f"**{signal['title']}**")
+                st.write(signal["evidence"])
+                st.caption(f"Rule: {signal['basis']} {signal['risk_score_effect']}")
+                st.markdown(f"**What to check:** {signal['next_check']}")
+        else:
+            st.info(
+                "No three-day persistent condition could be confirmed. Canary requires three consecutive recorded environmental days; weight is flagged only as an unresolved checkpoint deficit, never as three invented daily measurements."
+            )
+    detected_patterns = str(building.get("risk_pattern_details", building.get("risk_pattern", "Not available")))
+    st.markdown(f"**Detected problem patterns:** {detected_patterns.replace(' | ', ' · ')}")
+    st.caption(
+        "Canary keeps one overall operational-priority label, but it retains every supported problem pattern for inspection guidance."
+    )
     action_style = "success" if str(building["recommendation_guidance_status"]).startswith("Farm-approved") else "warning"
     getattr(st, action_style)(
         f"{building['recommendation_urgency']} — {building.get('owner_action', _next_step(building))}"
     )
+    st.markdown("**Management decision**")
+    st.caption(
+        "Canary retains its observed evidence, risk score, forecast, and original recommendation. "
+        "Management may record a different inspection plan, timing, or escalation decision."
+    )
+    decision_status = str(building.get("management_decision_status", "No management decision recorded"))
+    if decision_status != "No management decision recorded":
+        status_method = st.error if decision_status == "Follow-up overdue" else st.success
+        status_method(
+            f"{decision_status} · {building.get('management_follow_up_status', 'Open')} follow-up"
+        )
+        st.markdown(
+            f"**Recorded plan:** {building.get('management_decision_action', '')}  \n"
+            f"**Canary originally recommended:** {building.get('system_recommended_action', building['recommended_action'])}"
+        )
+        if str(building.get("management_decision_rationale", "")).strip():
+            st.caption(f"Reason recorded: {building['management_decision_rationale']}")
+        if str(building.get("management_follow_up_due", "")).strip():
+            st.caption(
+                f"Responsible: {building.get('management_decision_owner') or 'Not specified'} · "
+                f"Follow-up due: {building['management_follow_up_due']}"
+            )
+    else:
+        st.info("No management decision has been recorded yet. The current card shows Canary's recommendation.")
+
+    with st.expander("Record management decision", expanded=decision_status == "No management decision recorded"):
+        st.caption(
+            "Use this after reviewing the evidence. Changing the plan does not alter Canary's source data, points, priority label, or forecasts."
+        )
+        decision_key = f"{selected_cycle}_{chosen}_{pd.Timestamp(selected_date).date()}".replace(" ", "_")
+        with st.form(f"management_decision_form_{decision_key}"):
+            decision_type = st.selectbox(
+                "Management decision",
+                ["Accept recommendation", "Modify inspection plan", "Defer / monitor", "Escalate"],
+            )
+            final_action = st.text_area(
+                "Final inspection plan",
+                value=str(building.get("system_recommended_action", building["recommended_action"])),
+                help="This is what management will actually do. Canary's original recommendation remains in the history.",
+            )
+            rationale = st.text_area(
+                "Reason for this decision",
+                help="Required if the plan, timing, or escalation differs from Canary's recommendation.",
+            )
+            decision_columns = st.columns(3)
+            with decision_columns[0]:
+                responsible_person = st.text_input("Responsible person", value="Doc Raymond")
+            with decision_columns[1]:
+                follow_up_due = st.date_input(
+                    "Follow-up due",
+                    value=(pd.Timestamp(selected_date) + pd.Timedelta(days=1)).date(),
+                )
+            with decision_columns[2]:
+                follow_up_status = st.selectbox("Follow-up status", ["Open", "Completed"])
+            confirm_decision = st.checkbox(
+                "I confirm that this is a management decision; Canary's original evidence and recommendation will remain on record."
+            )
+            save_decision = st.form_submit_button("Save management decision", type="primary")
+        if save_decision:
+            if not confirm_decision:
+                st.error("Confirm the decision before saving it to the action history.")
+            else:
+                try:
+                    record_management_decision(
+                        DEFAULT_MANAGEMENT_DECISIONS_PATH,
+                        cycle_id=selected_cycle,
+                        building_id=chosen,
+                        as_of_date=str(pd.Timestamp(selected_date).date()),
+                        decision_type=decision_type,
+                        system_recommendation=str(building.get("system_recommended_action", building["recommended_action"])),
+                        system_rule_id=str(building["recommendation_rule_id"]),
+                        system_urgency=str(building["recommendation_urgency"]),
+                        risk_score=building.get("risk_score", pd.NA),
+                        risk_rating=str(building["risk_rating"]),
+                        risk_rule_version=str(building["risk_rule_version"]),
+                        priority_rule_id=str(building["priority_rule_id"]),
+                        recovery_outlook=building.get("predicted_final_recovery", pd.NA),
+                        day35_weight_outlook_kg=building.get("projected_day35_weight_kg", pd.NA),
+                        final_action=final_action,
+                        rationale=rationale,
+                        responsible_person=responsible_person,
+                        follow_up_due=str(follow_up_due),
+                        follow_up_status=follow_up_status,
+                    )
+                except (ValueError, OSError) as exc:
+                    st.error(f"Management decision could not be saved: {exc}")
+                else:
+                    st.session_state["management_decision_saved_message"] = (
+                        f"Decision saved for {chosen}. Canary's original recommendation is preserved in Action History."
+                    )
+                    st.rerun()
+    saved_decision = st.session_state.pop("management_decision_saved_message", None)
+    if saved_decision:
+        st.success(saved_decision)
+
+    with st.expander("Record a management override"):
+        st.warning(
+            "An override does not edit Canary's original score, pattern, or recommendation. It records a separate management value with a required reason and audit trail."
+        )
+        override_key = f"override_{selected_cycle}_{chosen}_{pd.Timestamp(selected_date).date()}".replace(" ", "_")
+        with st.form(override_key):
+            field_label = st.selectbox("Field to override", list(OVERRIDE_FIELDS), key=f"{override_key}_field")
+            original_by_field = {
+                "Operational priority": str(building["risk_rating"]),
+                "Primary problem pattern": str(building["risk_pattern"]),
+                "Recommendation": str(building["recommended_action"]),
+            }
+            original_value = original_by_field[field_label]
+            st.text_input("Canary system value", value=original_value, disabled=True)
+            if field_label == "Operational priority":
+                priority_choices = ["Low", "Medium", "High", "Critical", "Insufficient evidence"]
+                management_value = st.selectbox("Management value", priority_choices)
+            elif field_label == "Primary problem pattern":
+                pattern_choices = [str(rule["pattern"]) for rule in recommendation_playbook["rules"]]
+                management_value = st.selectbox("Management value", pattern_choices)
+            else:
+                management_value = st.text_area("Management value", value=original_value)
+            override_reason = st.text_area("Reason for override")
+            override_columns = st.columns(2)
+            with override_columns[0]:
+                override_person = st.text_input("Responsible person", value="Doc Raymond")
+            with override_columns[1]:
+                override_follow_up = st.date_input(
+                    "Review override on",
+                    value=(pd.Timestamp(selected_date) + pd.Timedelta(days=1)).date(),
+                )
+            confirm_override = st.checkbox(
+                "I confirm that Canary's original calculation will remain unchanged."
+            )
+            save_override = st.form_submit_button("Save management override", type="primary")
+        if save_override:
+            if not confirm_override:
+                st.error("Confirm the audit statement before saving the override.")
+            else:
+                try:
+                    record_calculation_snapshots(
+                        pd.DataFrame([building]),
+                        dataset,
+                        DEFAULT_CALCULATION_HISTORY_PATH,
+                        snapshot_kind="live calculation saved for override",
+                    )
+                    system_snapshot = latest_calculation_snapshot(
+                        DEFAULT_CALCULATION_HISTORY_PATH,
+                        cycle_id=selected_cycle,
+                        building_id=chosen,
+                        as_of_date=str(pd.Timestamp(selected_date).date()),
+                    )
+                    if system_snapshot is None:
+                        raise ValueError("The system calculation could not be saved before the override.")
+                    record_management_override(
+                        DEFAULT_OVERRIDE_HISTORY_PATH,
+                        snapshot_id=str(system_snapshot["snapshot_id"]),
+                        cycle_id=selected_cycle,
+                        building_id=chosen,
+                        as_of_date=str(pd.Timestamp(selected_date).date()),
+                        field_label=field_label,
+                        original_value=original_value,
+                        new_value=str(management_value),
+                        rationale=override_reason,
+                        responsible_person=override_person,
+                        follow_up_due=str(override_follow_up),
+                    )
+                except (ValueError, OSError) as exc:
+                    st.error(f"Management override could not be saved: {exc}")
+                else:
+                    st.session_state["management_override_saved_message"] = (
+                        f"Override saved for {chosen}: {field_label} changed from {original_value} to {management_value}."
+                    )
+                    st.rerun()
+    saved_override = st.session_state.pop("management_override_saved_message", None)
+    if saved_override:
+        st.success(saved_override)
     owner_columns = st.columns(3)
     with owner_columns[0]:
         with st.container(border=True):
@@ -2697,9 +3455,9 @@ if selected_view == VIEW_DETAILS:
                     st.markdown(
                         f"- **{reason['Dimension']} · {int(reason['Score'])}/3:** {reason['Raw observations']}"
                     )
-            owner_total = "—" if pd.isna(building["risk_score"]) else f"{int(building['risk_score'])}/12"
+            owner_total = "—" if pd.isna(building["risk_score"]) else f"{int(building['risk_score'])}/{int(building.get('available_score_max', 12))}"
             st.caption(
-                f"Total: {owner_total} → {building['risk_rating']} risk. This is an attention rating, not a probability."
+                f"Observed-concern total: {owner_total} → {building['risk_rating']} operational priority. {building['risk_label_rule']} This is not a probability."
             )
     with owner_columns[1]:
         with st.container(border=True):
@@ -2710,6 +3468,10 @@ if selected_view == VIEW_DETAILS:
                 st.caption(
                     "These conditions were recorded alongside the warning. They are leads to investigate—not proof of cause."
                 )
+            if persistent_signals:
+                st.markdown("**Persistent watch:**")
+                for signal in persistent_signals:
+                    st.markdown(f"- {signal['title']}")
             else:
                 st.write("No provisional mortality, temperature, or humidity alert was triggered.")
                 st.caption("Feed, water, and heat-stress checks remain limited by unapproved thresholds or missing data.")
@@ -2717,6 +3479,11 @@ if selected_view == VIEW_DETAILS:
         with st.container(border=True):
             st.markdown("**What management should check next**")
             st.write(building.get("owner_action", _next_step(building)))
+            additional_actions = str(building.get("additional_recommended_actions", "")).strip()
+            if additional_actions:
+                st.markdown("**Additional matched guidance:**")
+                for item in additional_actions.split(" | "):
+                    st.markdown(f"- {item}")
             if operational_alerts:
                 st.markdown("**Also verify:**")
                 for alert in operational_alerts[:2]:
@@ -2726,42 +3493,90 @@ if selected_view == VIEW_DETAILS:
             )
     with st.expander("See why this action was selected"):
         st.dataframe(build_recommendation_trace(building), hide_index=True, width="stretch")
+        matched_guidance = build_matched_recommendation_table(building)
+        if not matched_guidance.empty:
+            st.markdown("**All matched inspection guides**")
+            st.dataframe(matched_guidance, hide_index=True, width="stretch")
         st.markdown(f"**What to check:** {building['recommendation_inspection_checklist']}")
         st.markdown(f"**Escalate when:** {building['recommendation_escalation_trigger']}")
         st.caption(
             f"{building['recommendation_guidance_status']} · Rule {building['recommendation_rule_id']}"
         )
 
-    st.subheader("2 · Risk score breakdown")
+    with st.expander("View problem-pattern criteria · evidence → match"):
+        st.dataframe(
+            build_pattern_trace(building, rules),
+            hide_index=True,
+            width="stretch",
+        )
+        st.caption(
+            "A problem pattern is detected from observed evidence. Forecast values do not create or remove these patterns."
+        )
+
+    st.subheader("2 · Traceable observed-risk breakdown")
     risk_table = dimension_trace.rename(
         columns={
             "Raw observations": "What Canary observed",
             "Score": "Points",
             "Applied thresholds": "Rule applied",
         }
-    )[["Dimension", "What Canary observed", "Calculation", "Points", "Rule applied", "Data status"]].copy()
+    )[["Dimension", "Domain", "What Canary observed", "Calculation", "Points", "Rule applied", "Threshold source", "Data status"]].copy()
     risk_table["Points"] = risk_table["Points"].map(
         lambda value: "Not scored" if pd.isna(value) else f"{int(value)}/3"
     )
     risk_total = pd.DataFrame(
         [
             {
-                "Dimension": "TOTAL / FINAL RATING",
+                "Dimension": "TOTAL / OPERATIONAL PRIORITY",
+                "Domain": "—",
                 "What Canary observed": building["score_equation"],
-                "Points": "—" if pd.isna(building["risk_score"]) else f"{int(building['risk_score'])}/12",
-                "Rule applied": f"{building['risk_rating']} · {building['risk_label_rule']}",
+                "Points": "—" if pd.isna(building["risk_score"]) else f"{int(building['risk_score'])}/{int(building.get('available_score_max', 12))}",
+                "Rule applied": f"{building['risk_rating']} · {building['risk_label_rule']} · {building['priority_rule_id']}",
+                "Threshold source": f"{building['risk_rule_version']} · {building['risk_approval_status']}",
+                "Data status": building["evidence_status"],
             }
         ]
     )
     st.dataframe(pd.concat([risk_table, risk_total], ignore_index=True), hide_index=True, width="stretch")
     st.caption(
-        "The risk rating is an operational priority score, not the probability of missing the 95% or 1.8 kg goals."
+        "The 0–12 observed-concern total ranks recorded conditions. The operational-priority label adds explicit emergency overrides and an evidence-coverage rule; neither is a probability of missing the 95% or 1.8 kg goals."
     )
+    with st.expander("View risk calculation · input → rule → score → label"):
+        st.markdown("**1. Inputs and dimension rules**")
+        st.dataframe(risk_table, hide_index=True, width="stretch")
+        st.markdown("**2. Point total**")
+        st.code(str(building["score_equation"]), language=None)
+        st.markdown("**3. Label assignment**")
+        st.write(
+            f"The recorded total maps to **{building['risk_rating']} operational priority** under "
+            f"rule `{building['priority_rule_id']}`. {building['risk_label_rule']}"
+        )
+        st.markdown("**4. Governance and evidence status**")
+        st.write(
+            f"Rules: `{building['risk_rule_version']}` · Approval: {building['risk_approval_status']} · "
+            f"Evidence: {building['evidence_status']}"
+        )
+        st.info(
+            "Forecasts are not inputs to this calculation. A forecast can change while the observed-condition score remains unchanged."
+        )
 
-    st.subheader("3 · Forecast deep dive")
+    st.subheader("3 · Forecast provenance")
     st.caption(
-        f"As-of {pd.Timestamp(selected_date).strftime('%d %b %Y')}: later records are excluded. Forecasts do not change the separate rules-based risk score."
+        f"As-of {pd.Timestamp(selected_date).strftime('%d %b %Y')}: later records are excluded. "
+        "Each row identifies the exact specialist model, validation reference, and evidence cutoff. Forecasts do not change the separate rules-based risk score."
     )
+    forecast_provenance = forecast_trace(building)
+    if str(building.get("trish_bundle_version", "Not available")) != "Not available":
+        primary_outcomes = ["End-of-cycle recovery-proxy outlook", "Day 35 bodyweight outlook", "Recorded Day 35 bodyweight"]
+        primary_provenance = forecast_provenance.loc[
+            forecast_provenance["Outcome"].isin(primary_outcomes),
+            ["Outcome", "Prediction", "Model", "Algorithm", "Evidence cutoff", "Model status", "Typical historical error (LOGO-CV MAE)", "R² (LOGO-CV)", "Source lineage"],
+        ]
+        st.dataframe(primary_provenance, hide_index=True, width="stretch")
+    else:
+        st.info("Trish v19 held-out evidence is unavailable for this data lineage. Canary does not present an unvalidated substitute as a production forecast.")
+
+    st.subheader("4 · Forecast outlooks")
     fcols = st.columns(2)
     with fcols[0]:
         if pd.notna(building["recovery_interval_low"]):
@@ -2772,7 +3587,7 @@ if selected_view == VIEW_DETAILS:
             st.caption(building["recovery_forecast_status"])
     with fcols[1]:
         if pd.notna(building["day35_weight_interval_low_kg"]):
-            st.caption(f"80% Day 35 interval: {_weight(building['day35_weight_interval_low_kg'])}–{_weight(building['day35_weight_interval_high_kg'])} · {building['day35_weight_target_status']} · {building['day35_weight_checkpoint_status']}. {building['day35_weight_confidence']}")
+            st.caption(f"{building.get('day35_weight_interval_label', '80% held-out error band')}: {_weight(building['day35_weight_interval_low_kg'])}–{_weight(building['day35_weight_interval_high_kg'])} · {building['day35_weight_target_status']} · {building['day35_weight_checkpoint_status']}. {building['day35_weight_confidence']}")
         else:
             st.caption(building["day35_weight_status"])
 
@@ -2787,14 +3602,19 @@ if selected_view == VIEW_DETAILS:
     forecast_columns = st.columns(2)
     with forecast_columns[0]:
         with st.container(border=True):
-            st.markdown('<span class="model-badge">OUTCOME 1 · HARVEST SURVIVAL</span>', unsafe_allow_html=True)
+            st.markdown('<span class="model-badge">OUTCOME 1 · RECOVERY PROXY</span>', unsafe_allow_html=True)
             recovery_delta = None if pd.isna(building["recovery_target_gap_pp"]) else f"{float(building['recovery_target_gap_pp']):+.1f} pts vs 95% goal"
             st.metric("Current prediction", _percent(building["predicted_final_recovery"]), recovery_delta)
             if pd.notna(building["recovery_interval_low"]):
                 st.write(f"{building.get('recovery_interval_label', '80% interval')}: **{_percent(building['recovery_interval_low'])}–{_percent(building['recovery_interval_high'])}**")
                 if pd.notna(building.get("recovery_interval_90_low")):
                     st.caption(f"90% interval: {_percent(building['recovery_interval_90_low'])}–{_percent(building['recovery_interval_90_high'])}")
-            recovery_note = "This estimate updates as survival, mortality, measured weight, and available environmental evidence are recorded. Feed is excluded while its units remain unresolved. Its target is last-recorded recovery, used as the capstone proxy until true harvest status is available."
+            recovery_note = (
+                f"{building['recovery_model_name']} uses the latest eligible daily evidence through {building['recovery_checkpoint_status']}. "
+                "It refreshes daily through Day 14, then remains held. Its target is the disclosed last-recorded-population recovery proxy, not independently verified harvest recovery."
+                if str(building.get("trish_bundle_version", "Not available")) != "Not available"
+                else "This estimate updates as survival, mortality, measured weight, and available environmental evidence are recorded. Its target is last-recorded recovery, used as the capstone proxy until true harvest status is available."
+            )
             st.markdown(f'<div class="forecast-note">{recovery_note}</div>', unsafe_allow_html=True)
     with forecast_columns[1]:
         with st.container(border=True):
@@ -2809,7 +3629,12 @@ if selected_view == VIEW_DETAILS:
             weight_note = (
                 "This is the building's recorded Day 35 measurement."
                 if building["day35_weight_scope"] == "Recorded Day 35 result"
-                else "This building-responsive baseline adds historically observed remaining growth from the weighing age to the latest measured weight."
+                else (
+                    f"{building['day35_weight_model_name']} used {building['day35_weight_checkpoint_status']}. "
+                    "The outlook refreshes only at Days 7, 14, and 21 because those are the validated checkpoints. It is held between weigh-ins and after Day 21; a Day 28 measurement still informs observed risk but does not create a new forecast."
+                    if str(building.get("trish_bundle_version", "Not available")) != "Not available"
+                    else "This building-responsive baseline adds historically observed remaining growth from the weighing age to the latest measured weight."
+                )
             )
             st.markdown(f'<div class="forecast-note">{weight_note}</div>', unsafe_allow_html=True)
 
@@ -2824,56 +3649,65 @@ if selected_view == VIEW_DETAILS:
     )
 
     uses_trish = str(building.get("trish_bundle_version", "Not available")) != "Not available"
-    if uses_trish:
-        recovery_contributions = v18_local_contributions(
-            "model_1", selected_cycle, chosen, int(building["cycle_day"])
-        )
-        weight_model_id = "model_2" if int(building["cycle_day"]) <= 14 else "model_3"
-        weight_contributions = v18_local_contributions(
-            weight_model_id, selected_cycle, chosen, int(building["cycle_day"])
-        )
-    else:
-        recovery_contributions = recovery_feature_contributions(
-            dataset, selected_cycle, chosen, pd.Timestamp(selected_date)
-        )
-        weight_contributions = pd.DataFrame()
-    st.subheader("4 · What influenced the outlook")
+    st.subheader("5 · View each forecast calculation")
     st.caption(
-        "These explanations describe how recorded inputs shaped the estimate. They do not prove cause and do not prescribe treatment."
+        "The panels below reproduce the evidence trail for the displayed held-out replay: source row, feature schema, model artifact, prediction, error band, and recorded result."
     )
-    influence_columns = st.columns(2)
-    with influence_columns[0]:
-        st.markdown("**Recovery outlook**")
-        owner_drivers = (
-            _owner_v18_driver_table(recovery_contributions, "recovery")
-            if uses_trish
-            else _owner_recovery_driver_table(recovery_contributions).head(3)
-        )
-        if owner_drivers.empty:
-            st.info("No building-specific recovery explanation is available for this date.")
-        else:
-            st.dataframe(owner_drivers, hide_index=True, width="stretch")
-    with influence_columns[1]:
-        st.markdown("**Day 35 weight outlook**")
-        if uses_trish and not weight_contributions.empty:
-            st.dataframe(
-                _owner_v18_driver_table(weight_contributions, "weight"),
-                hide_index=True,
-                width="stretch",
-            )
-        elif pd.notna(building["projected_day35_weight_kg"]) and pd.notna(building["latest_weight_kg"]):
-            remaining_gain_g = (
-                float(building["projected_day35_weight_kg"])
-                - float(building["latest_weight_kg"])
-            ) * 1000
-            st.write(
-                f"Latest measured weight **{_grams(building['latest_weight_kg'])}** on Day "
-                f"**{int(building['weight_measurement_day'])}**, plus an expected remaining gain of "
-                f"**{remaining_gain_g:.0f} g**, produces the current Day 35 outlook."
-            )
-        else:
-            st.info("A measured building weight is required before Canary can explain a Day 35 outlook.")
-        st.caption("Use the measured growth gap to decide whether to reweigh and inspect feed, water, bird condition, and house conditions.")
+    if uses_trish:
+        for model_id, title in (
+            ("model_1", "Model 1 · End-of-cycle recovery proxy"),
+            ("model_3", "Model 3 · Day 35 bodyweight"),
+        ):
+            detail = v19_outlook(model_id, selected_cycle, chosen, int(building["cycle_day"]))
+            with st.expander(f"View calculation · {title}", expanded=False):
+                if detail is None:
+                    st.info("No eligible held-out model row exists at this review date.")
+                    continue
+                calculation = v19_calculation_trace(detail)
+                if model_id == "model_1":
+                    current_survival = float(building["percentage_alive"])
+                    raw_prediction = float(detail["prediction"])
+                    displayed_prediction = min(raw_prediction, current_survival)
+                    calculation = pd.concat(
+                        [
+                            calculation,
+                            pd.DataFrame([{
+                                "Step": "6 · Apply accounting constraint",
+                                "What Canary used": (
+                                    f"Raw model output {raw_prediction:.2%}; current recorded survival {current_survival:.2%}. "
+                                    "A final-recovery outlook cannot exceed birds recorded alive today."
+                                ),
+                                "Result": f"Displayed recovery-proxy outlook {displayed_prediction:.2%}",
+                            }]),
+                        ],
+                        ignore_index=True,
+                    )
+                elif str(building.get("day35_weight_scope")) == "Recorded Day 35 result":
+                    calculation = pd.concat(
+                        [
+                            calculation,
+                            pd.DataFrame([{
+                                "Step": "6 · Replace forecast at milestone",
+                                "What Canary used": "The farm's recorded Day 35 average bodyweight supersedes the earlier planning outlook.",
+                                "Result": f"Displayed recorded result {_grams(building['projected_day35_weight_kg'])}",
+                            }]),
+                        ],
+                        ignore_index=True,
+                    )
+                st.dataframe(calculation, hide_index=True, width="stretch")
+                st.markdown("**Exact model-ready input row**")
+                st.dataframe(
+                    v19_input_trace(detail),
+                    hide_index=True,
+                    width="stretch",
+                )
+                st.markdown("**Strongest global held-out associations**")
+                st.dataframe(v19_global_drivers(model_id).head(12), hide_index=True, width="stretch")
+                st.caption(
+                    "The association table is global leave-one-feature-out evidence. It helps explain which recorded features mattered across validation; it does not prove causality or reproduce a building-specific SHAP decomposition."
+                )
+    else:
+        st.info("A v19 held-out replay row is required before Canary can display a defensible forecast calculation.")
 
     if pd.notna(building.get("estimated_day_to_1_8kg", pd.NA)):
         with st.expander("Harvest planning outlook"):
@@ -2891,7 +3725,7 @@ if selected_view == VIEW_DETAILS:
                 "Models 4–6 provide secondary planning ranges. Their timing targets are partly curve-derived and do not set an automatic harvest or sale decision."
             )
 
-    st.subheader("5 · How the outlook changed")
+    st.subheader("6 · How the outlook changed")
     if forecast_history.empty:
         st.info("No daily history is available for this selection.")
     else:
@@ -2918,6 +3752,21 @@ if selected_view == VIEW_DETAILS:
             f"- Daily-data evidence: **{building['data_freshness']}**\n"
             f"- Risk checks scored: **{int(building['scored_dimensions'])}/4**\n"
             "- Later records are excluded from this review. Missing evidence remains missing."
+        )
+    with st.expander("See raw source inputs and technical audit trace"):
+        st.caption(
+            "This is an audit of what was available on the review date—not a claim that every input caused the prediction."
+        )
+        evidence = forecast_input_trace(
+            dataset, selected_cycle, chosen, pd.Timestamp(selected_date)
+        )
+        if evidence.empty:
+            st.info("No prediction-time evidence is available for this building and date.")
+        else:
+            st.dataframe(evidence, hide_index=True, width="stretch")
+        st.dataframe(forecast_provenance, hide_index=True, width="stretch")
+        st.info(
+            "MAE is the typical historical absolute miss in business units. R² describes variance explained on held-out cycles but is not the sole decision rule. Neither is a guarantee for this building."
         )
     st.caption(
         "Canary supports prioritization and investigation. It does not diagnose disease, automatically prescribe treatment, replace veterinary judgment, or guarantee an outcome."
@@ -3373,15 +4222,15 @@ if selected_view == VIEW_DETAILS:
             "The Day 35 projection does not cancel the rules-based warning. Today’s measured-weight gap remains a reason to inspect this building."
         )
 
-    with st.expander("See raw forecast inputs and calculation trace"):
+    with st.expander("See raw source inputs and technical audit trace"):
         st.caption("This is an audit of what was available on the review date—not a claim that every input caused the prediction.")
         evidence = forecast_input_trace(dataset, selected_cycle, chosen, pd.Timestamp(selected_date))
         if evidence.empty:
             st.info("No prediction-time evidence is available for this building and date.")
         else:
             st.dataframe(evidence, hide_index=True, width="stretch")
-        st.dataframe(forecast_trace(building), hide_index=True, width="stretch")
-        st.info("MAE is the typical absolute miss in business units. RMSE gives extra weight to large misses. R² describes variance explained on held-out cycles but is not the sole decision rule.")
+        st.dataframe(forecast_provenance, hide_index=True, width="stretch")
+        st.info("MAE is the typical historical absolute miss in business units. R² describes variance explained on held-out cycles but is not the sole decision rule. Neither is a guarantee for this building.")
 
     st.subheader("4 · Additional operational checks")
     st.caption(
@@ -3492,7 +4341,385 @@ if selected_view == VIEW_DETAILS:
             """
         )
 
+if selected_view == VIEW_ACTION_HISTORY:
+    st.markdown('<div class="title">Action history</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="subtitle">Review calculated risk over time, management overrides, and the actions taken afterward. System calculations remain immutable and separate from human decisions.</div>',
+        unsafe_allow_html=True,
+    )
+    risk_history_tab, override_history_tab, action_history_tab = st.tabs(
+        ["Calculated risk history", "Management overrides", "Management actions"]
+    )
+
+    with risk_history_tab:
+        st.caption(
+            "Save the displayed review date or backfill an as-of-safe window. Repeated identical calculations are skipped; a changed source or rule result creates a new immutable snapshot."
+        )
+        history_controls = st.columns([1.4, 1, 1])
+        with history_controls[0]:
+            history_window = st.selectbox(
+                "History window",
+                ["Past 7 days", "Past 30 days", "Entire selected cycle"],
+            )
+        minimum_cycle_date, maximum_cycle_date = cycle_date_bounds(dataset, selected_cycle)
+        history_end = min(pd.Timestamp(selected_date).date(), maximum_cycle_date)
+        requested_days = 7 if history_window == "Past 7 days" else 30
+        history_start = (
+            minimum_cycle_date
+            if history_window == "Entire selected cycle"
+            else max(minimum_cycle_date, history_end - pd.Timedelta(days=requested_days - 1))
+        )
+        with history_controls[1]:
+            save_date = st.button("Save selected review date", use_container_width=True)
+        with history_controls[2]:
+            save_window = st.button("Save / backfill window", type="primary", use_container_width=True)
+        if save_date or save_window:
+            start = history_start if save_window else history_end
+            result = _save_calculation_window(
+                dataset,
+                selected_cycle,
+                start,
+                history_end,
+                rules,
+                recommendation_playbook,
+                snapshot_kind="historical replay" if save_window else "saved review calculation",
+            )
+            st.success(
+                f"Saved {result['inserted']} new building-date calculation(s); {result['skipped']} unchanged calculation(s) were already represented or ineligible."
+            )
+
+        calculated = load_calculation_snapshots(DEFAULT_CALCULATION_HISTORY_PATH)
+        filtered_calculated = calculated.loc[
+            calculated["cycle_id"].eq(str(selected_cycle))
+            & (pd.to_datetime(calculated["as_of_date"], errors="coerce").dt.date >= history_start)
+            & (pd.to_datetime(calculated["as_of_date"], errors="coerce").dt.date <= history_end)
+        ].copy()
+        available_history_buildings = [
+            building for building in CANONICAL_BUILDINGS
+            if building in set(filtered_calculated["building_id"])
+        ]
+        selected_history_buildings = st.multiselect(
+            "Buildings",
+            available_history_buildings,
+            default=available_history_buildings,
+            key="calculated_history_buildings",
+        )
+        filtered_calculated = filtered_calculated.loc[
+            filtered_calculated["building_id"].isin(selected_history_buildings)
+        ].copy()
+        if filtered_calculated.empty:
+            st.info("No saved calculations match this window. Use ‘Save / backfill window’ to create an auditable history from the recorded source data.")
+        else:
+            filtered_calculated["Date"] = pd.to_datetime(filtered_calculated["as_of_date"], errors="coerce")
+            filtered_calculated["Risk score"] = pd.to_numeric(filtered_calculated["risk_score"], errors="coerce")
+            # If the same evidence was recalculated under a newer rule/source,
+            # the latest immutable snapshot is the default chart view; all
+            # versions remain in the detail table.
+            filtered_calculated["_calculated"] = pd.to_datetime(filtered_calculated["calculated_at"], errors="coerce")
+            chart_history = (
+                filtered_calculated.sort_values(["Date", "building_id", "_calculated"])
+                .groupby(["Date", "building_id"], as_index=False)
+                .tail(1)
+            )
+            history_metrics = st.columns(4)
+            history_metrics[0].metric("Saved building-dates", len(chart_history))
+            history_metrics[1].metric("Buildings represented", chart_history["building_id"].nunique())
+            history_metrics[2].metric("Critical building-days", int(chart_history["risk_rating"].eq("Critical").sum()))
+            history_metrics[3].metric("Overrides in ledger", len(load_management_overrides(DEFAULT_OVERRIDE_HISTORY_PATH)))
+
+            chart_columns = st.columns([1.2, 1])
+            with chart_columns[0]:
+                risk_line = (
+                    alt.Chart(chart_history)
+                    .mark_line(point=True)
+                    .encode(
+                        x=alt.X("Date:T", title="Review date"),
+                        y=alt.Y("Risk score:Q", title="Observed-concern score", scale=alt.Scale(domain=[0, 12])),
+                        color=alt.Color("building_id:N", title="Building", sort=list(CANONICAL_BUILDINGS)),
+                        tooltip=["Date:T", "building_id:N", "Risk score:Q", "risk_rating:N", "risk_pattern_details:N"],
+                    )
+                    .properties(title="Risk score across time", height=300)
+                )
+                st.altair_chart(risk_line, width="stretch")
+            with chart_columns[1]:
+                rating_scale = alt.Scale(
+                    domain=["Low", "Medium", "High", "Critical", "Insufficient evidence", "Not rated"],
+                    range=["#5ca66f", "#e8c34b", "#e58b3e", "#bd4050", "#8b9690", "#d5ddd8"],
+                )
+                heatmap = (
+                    alt.Chart(chart_history)
+                    .mark_rect(cornerRadius=3)
+                    .encode(
+                        x=alt.X("yearmonthdate(Date):O", title="Review date"),
+                        y=alt.Y("building_id:N", title="Building", sort=list(CANONICAL_BUILDINGS)),
+                        color=alt.Color("risk_rating:N", title="Priority", scale=rating_scale),
+                        tooltip=["Date:T", "building_id:N", "Risk score:Q", "risk_rating:N", "risk_pattern_details:N", "recommendation_rule_ids:N"],
+                    )
+                    .properties(title="Six-building priority history", height=300)
+                )
+                st.altair_chart(heatmap, width="stretch")
+
+            history_columns = [
+                "as_of_date", "building_id", "risk_score", "risk_rating",
+                "risk_pattern_details", "recommendation_rule_ids", "recommended_action",
+                "evidence_status", "risk_rule_version", "recommendation_rule_version",
+                "snapshot_kind", "calculated_at", "snapshot_id",
+            ]
+            st.dataframe(
+                filtered_calculated.sort_values(["as_of_date", "building_id", "calculated_at"], ascending=[False, True, False])[history_columns].rename(
+                    columns={
+                        "as_of_date": "Review date", "building_id": "Building",
+                        "risk_score": "Score", "risk_rating": "Canary priority",
+                        "risk_pattern_details": "Detected problems", "recommendation_rule_ids": "Matched rules",
+                        "recommended_action": "Primary recommendation", "evidence_status": "Evidence",
+                        "snapshot_kind": "Snapshot type", "calculated_at": "Calculated at",
+                    }
+                ),
+                hide_index=True,
+                width="stretch",
+            )
+            st.download_button(
+                "Download calculated history (CSV)",
+                filtered_calculated.drop(columns=["Date", "Risk score", "_calculated"], errors="ignore").to_csv(index=False).encode("utf-8"),
+                file_name="canary_calculated_risk_history.csv",
+                mime="text/csv",
+            )
+
+    with override_history_tab:
+        overrides = load_management_overrides(DEFAULT_OVERRIDE_HISTORY_PATH)
+        if overrides.empty:
+            st.info("No manual overrides have been logged. Open an active Building View and choose ‘Record a management override.’")
+        else:
+            override_display = overrides.copy()
+            override_display["Review date"] = pd.to_datetime(override_display["as_of_date"], errors="coerce").dt.date
+            override_filters = st.columns(2)
+            with override_filters[0]:
+                override_buildings = st.multiselect(
+                    "Override buildings",
+                    sorted(override_display["building_id"].unique()),
+                    default=sorted(override_display["building_id"].unique()),
+                )
+            with override_filters[1]:
+                override_fields = st.multiselect(
+                    "Overridden fields",
+                    sorted(override_display["field_label"].unique()),
+                    default=sorted(override_display["field_label"].unique()),
+                )
+            override_display = override_display.loc[
+                override_display["building_id"].isin(override_buildings)
+                & override_display["field_label"].isin(override_fields)
+            ]
+            st.dataframe(
+                override_display.sort_values("recorded_at", ascending=False)[
+                    ["Review date", "cycle_id", "building_id", "field_label", "original_value", "new_value", "rationale", "responsible_person", "follow_up_due", "status", "recorded_at", "snapshot_id"]
+                ].rename(
+                    columns={
+                        "cycle_id": "Cycle", "building_id": "Building", "field_label": "Changed field",
+                        "original_value": "Canary value", "new_value": "Management value",
+                        "rationale": "Reason", "responsible_person": "Responsible person",
+                        "follow_up_due": "Review due", "recorded_at": "Recorded at",
+                    }
+                ),
+                hide_index=True,
+                width="stretch",
+            )
+            st.download_button(
+                "Download override history (CSV)",
+                overrides.to_csv(index=False).encode("utf-8"),
+                file_name="canary_management_override_history.csv",
+                mime="text/csv",
+            )
+            st.caption("Each override links to the immutable calculation snapshot that management reviewed.")
+            active_overrides = latest_management_overrides(
+                DEFAULT_OVERRIDE_HISTORY_PATH,
+                cycle_id=str(selected_cycle),
+                through_date=str(pd.Timestamp(selected_date).date()),
+            )
+            with st.expander("Resolve an active override"):
+                if active_overrides.empty:
+                    st.info("No active override is available to resolve for this cycle and review date.")
+                else:
+                    active_overrides = active_overrides.copy()
+                    active_overrides["_label"] = active_overrides.apply(
+                        lambda row: f"{row['building_id']} · {row['field_label']} · {row['original_value']} → {row['new_value']}",
+                        axis=1,
+                    )
+                    with st.form("resolve_override_form"):
+                        resolution_label = st.selectbox("Active override", active_overrides["_label"].tolist())
+                        resolution_reason = st.text_area("Resolution note")
+                        resolution_person = st.text_input("Resolved by", value="Doc Raymond")
+                        confirm_resolution = st.checkbox("Return the management value to the preserved Canary system value.")
+                        resolve_override = st.form_submit_button("Resolve override")
+                    if resolve_override:
+                        selected_override = active_overrides.loc[
+                            active_overrides["_label"].eq(resolution_label)
+                        ].iloc[0]
+                        if not confirm_resolution:
+                            st.error("Confirm the return to the system value before resolving the override.")
+                        else:
+                            try:
+                                record_management_override(
+                                    DEFAULT_OVERRIDE_HISTORY_PATH,
+                                    snapshot_id=str(selected_override["snapshot_id"]),
+                                    cycle_id=str(selected_override["cycle_id"]),
+                                    building_id=str(selected_override["building_id"]),
+                                    as_of_date=str(pd.Timestamp(selected_date).date()),
+                                    field_label=str(selected_override["field_label"]),
+                                    original_value=str(selected_override["new_value"]),
+                                    new_value=str(selected_override["original_value"]),
+                                    rationale=resolution_reason,
+                                    responsible_person=resolution_person,
+                                    status="Resolved",
+                                )
+                            except (ValueError, OSError) as exc:
+                                st.error(f"Override could not be resolved: {exc}")
+                            else:
+                                st.success("Override resolved. The immutable original calculation and full override trail remain available.")
+                                st.rerun()
+
+    with action_history_tab:
+        decisions = load_management_decisions(DEFAULT_MANAGEMENT_DECISIONS_PATH)
+        if decisions.empty:
+            st.info("No management decisions have been logged. Open an active building and use ‘Record management decision’ after reviewing Canary’s evidence.")
+        else:
+            display = decisions.copy()
+            display["As-of date"] = pd.to_datetime(display["as_of_date"], errors="coerce").dt.date
+            display["Follow-up due"] = pd.to_datetime(display["follow_up_due"], errors="coerce").dt.date
+            current_review_day = pd.Timestamp(selected_date).date()
+            display["Status"] = np.where(
+                display["follow_up_status"].eq("Open")
+                & display["Follow-up due"].notna()
+                & (display["Follow-up due"] < current_review_day),
+                "Follow-up overdue",
+                display["follow_up_status"],
+            )
+            filters = st.columns(3)
+            with filters[0]:
+                cycle_filter = st.multiselect("Action cycle", sorted(display["cycle_id"].unique()), default=sorted(display["cycle_id"].unique()))
+            with filters[1]:
+                building_filter = st.multiselect("Action building", sorted(display["building_id"].unique()), default=sorted(display["building_id"].unique()))
+            with filters[2]:
+                status_filter = st.multiselect("Follow-up status", sorted(display["Status"].unique()), default=sorted(display["Status"].unique()))
+            filtered_decisions = display.loc[
+                display["cycle_id"].isin(cycle_filter)
+                & display["building_id"].isin(building_filter)
+                & display["Status"].isin(status_filter)
+            ].copy()
+            history_metrics = st.columns(4)
+            history_metrics[0].metric("Logged decisions", len(filtered_decisions))
+            history_metrics[1].metric("Accepted", int(filtered_decisions["decision_type"].eq("Accept recommendation").sum()))
+            history_metrics[2].metric("Changed / deferred / escalated", int((~filtered_decisions["decision_type"].eq("Accept recommendation")).sum()))
+            history_metrics[3].metric("Follow-up overdue", int(filtered_decisions["Status"].eq("Follow-up overdue").sum()))
+            visible_columns = [
+                "As-of date", "cycle_id", "building_id", "Status", "decision_type", "final_action",
+                "rationale", "responsible_person", "Follow-up due", "risk_score", "risk_rating",
+                "system_rule_id", "system_recommendation", "recorded_at",
+            ]
+            labels = {
+                "cycle_id": "Cycle", "building_id": "Building", "decision_type": "Management decision",
+                "final_action": "Recorded plan", "rationale": "Reason", "responsible_person": "Responsible person",
+                "risk_score": "Observed concern when logged", "risk_rating": "Canary priority when logged",
+                "system_rule_id": "Canary action rule", "system_recommendation": "Canary recommendation",
+                "recorded_at": "Recorded at",
+            }
+            st.dataframe(
+                filtered_decisions.sort_values("recorded_at", ascending=False)[visible_columns].rename(columns=labels),
+                hide_index=True,
+                width="stretch",
+            )
+            st.download_button(
+                "Download action history (CSV)",
+                filtered_decisions.drop(columns=["As-of date", "Follow-up due", "Status"]).to_csv(index=False).encode("utf-8"),
+                file_name="canary_management_decision_history.csv",
+                mime="text/csv",
+            )
+            st.caption(
+                "Each row preserves the original score, rule version, recommendation, and outlook that management saw. Subsequent entries append; they do not overwrite prior decisions."
+            )
+
+    st.caption(
+        "Local audit files are append-only and downloadable. Streamlit Community Cloud does not guarantee durable local files across redeployments; configure CANARY_AUDIT_DIR to a durable mounted location or connect a persistent database before routine cloud use."
+    )
+
 if selected_view == VIEW_MODEL_EVIDENCE:
+    st.markdown(
+        """
+        <div class="hero"><small>CAPSTONE EVIDENCE · TRISH V19 FINAL HANDOFF</small>
+          <h1>Two outcomes, two validated model artifacts</h1>
+          <p>This page shows exactly which models are live, how their held-out predictions performed, and where their use must stop.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    model_manifest = load_v19_manifest()
+    bundle_checks = pd.DataFrame(validate_v19_bundle())
+    st.success(
+        "Canary uses Model 1 for the end-of-cycle recovery proxy and Model 3 for Day 35 bodyweight. "
+        "Both are planning outlooks; neither changes the observed-condition risk score."
+    )
+    st.subheader("Artifact integrity")
+    st.dataframe(bundle_checks, hide_index=True, width="stretch")
+    st.caption(
+        f"Bundle `{model_manifest['bundle_version']}`. Hash checks confirm that the loaded artifacts match the files named in the frozen manifest."
+    )
+    model_rows = []
+    for model_id, metadata in model_manifest["models"].items():
+        is_recovery = model_id == "model_1"
+        model_rows.append({
+            "Model": "Model 1" if is_recovery else "Model 3",
+            "Outcome": metadata["target_definition"],
+            "Algorithm": metadata["algorithm"],
+            "Features": metadata["feature_count"],
+            "Validated overall MAE": (
+                f"{metadata['validated_mae'] * 100:.2f} percentage points"
+                if is_recovery else f"{metadata['validated_mae_g']:.1f} g"
+            ),
+            "Validated R²": f"{metadata['validated_r2']:.3f}",
+            "Operational refresh": metadata["refresh_policy"],
+            "Status": metadata["status"],
+        })
+    st.subheader("Live model registry")
+    st.dataframe(pd.DataFrame(model_rows), hide_index=True, width="stretch")
+    checkpoint_rows = []
+    for model_id, checkpoints in (("model_1", [7, 14]), ("model_3", [7, 14, 21])):
+        v19_global_drivers(model_id)  # validates the packaged evidence file
+        for checkpoint in checkpoints:
+            result = v19_outlook(model_id, "2026-3", "Tags 1", checkpoint)
+            if result is None:
+                continue
+            checkpoint_rows.append({
+                "Model": "Model 1" if model_id == "model_1" else "Model 3",
+                "Checkpoint": f"Day {checkpoint}",
+                "Held-out MAE": (
+                    f"{result['checkpoint_mae'] * 100:.2f} percentage points"
+                    if model_id == "model_1" else f"{result['checkpoint_mae']:.1f} g"
+                ),
+                "80th-percentile absolute error": (
+                    f"{result['error_band_half_width'] * 100:.2f} percentage points"
+                    if model_id == "model_1" else f"{result['error_band_half_width']:.1f} g"
+                ),
+                "Held-out rows": result["checkpoint_n"],
+            })
+    st.subheader("Performance by decision checkpoint")
+    st.dataframe(pd.DataFrame(checkpoint_rows), hide_index=True, width="stretch")
+    st.info(
+        "Model 1 can refresh daily through Day 14 because its training rows are daily. Model 3 is displayed at Days 7, 14, and 21 because bodyweight is measured mainly at weekly checkpoints. "
+        "After Day 21, Canary holds the last validated Model 3 outlook; it does not manufacture a Day 28 forecast."
+    )
+    st.warning(
+        "Validation used saved leave-one-building-flock-out predictions. That is stronger than showing an in-sample fitted value, but other buildings from the same production cycle may remain in a fold's training data. "
+        "The 34-building-flock sample, recovery-proxy target, and incomplete environmental coverage limit certainty."
+    )
+    for model_id, label in (("model_1", "Model 1"), ("model_3", "Model 3")):
+        with st.expander(f"{label} · strongest global held-out associations"):
+            st.dataframe(v19_global_drivers(model_id).head(15), hide_index=True, width="stretch")
+            st.caption(
+                "LOFO measures how held-out error changed when one feature was removed. It describes predictive association, not causal effect or a guaranteed management lever."
+            )
+    st.stop()
+
+    # Legacy benchmark page retained below for code-history only; st.stop() above
+    # prevents it from appearing in the v19 application.
     st.markdown(
         """
         <div class="hero"><small>CAPSTONE EVIDENCE · FINAL MODEL SELECTION</small>
@@ -3778,7 +5005,7 @@ if selected_view == VIEW_CHECKS:
                 },
                 {
                     "Risk check": "4 · Environmental conditions",
-                    "What is measured": "Higher of daily temperature swing and humidity deviation from the age range",
+                    "What is measured": "Higher of temperature or humidity deviation from the age-specific reference band",
                     "Why it is kept": "Connects the warning to an operating condition management can inspect",
                 },
             ]
@@ -3791,7 +5018,7 @@ if selected_view == VIEW_CHECKS:
     )
     st.caption(
         "The Farmer Validation Workbook supplies the starting weight, population-loss, and daily-mortality references. "
-        "Temperature and humidity now use the supplied tropical age bands. The distance outside each band remains provisional until Doc Raymond approves the severity cutoffs."
+        "Temperature and humidity use the supplied tropical age bands. Severity distances, label bands, and emergency overrides are proposed for shadow-pilot validation and farm approval."
     )
 
     if st.session_state.pop("risk_rules_saved_message", None):
@@ -3947,20 +5174,20 @@ if selected_view == VIEW_EVIDENCE:
         evidence_rows = pd.DataFrame(eda["evidence_rows"])
         recovery_manifest, _ = load_model_bundle("recovery")
         day35_manifest = load_day35_manifest()
-        trish_models = load_v18_manifest()["models"] if trish_release else {}
+        trish_models = load_v19_manifest()["models"] if trish_release else {}
         recovery_mae = float(
             trish_models.get("model_1", {}).get(
-                "reported_logo_mae", recovery_manifest["selected_metrics"]["mae"]
+                "validated_mae", recovery_manifest["selected_metrics"]["mae"]
             )
         )
         day14_weight_mae_g = float(
-            trish_models.get("model_2", {}).get(
-                "reported_logo_mae", day35_manifest["selected_metrics"]["mae_kg"] * 1000
+            trish_models.get("model_3", {}).get("checkpoint_mae_g", {}).get(
+                "14", day35_manifest["selected_metrics"]["mae_kg"] * 1000
             )
         )
         day21_weight_mae_g = float(
-            trish_models.get("model_3", {}).get(
-                "reported_logo_mae", day14_weight_mae_g
+            trish_models.get("model_3", {}).get("checkpoint_mae_g", {}).get(
+                "21", day14_weight_mae_g
             )
         )
         ecols = st.columns(4)
@@ -4194,6 +5421,380 @@ if selected_view == VIEW_EVIDENCE:
             "Historical evidence snapshot. Source files: FARM HARVEST DATA.xlsx and final average weight only from Farm Performance Summary.xlsx."
         )
 
+if selected_view == VIEW_PREDICTION_LAB:
+    st.markdown('<div class="title">Model Evidence Explorer</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="subtitle">Replay a saved held-out prediction and inspect its full evidence trail. This page does not edit farm data, retrain a model, or simulate an intervention.</div>',
+        unsafe_allow_html=True,
+    )
+    st.info(
+        "Choose a model, building, and validated evidence day. Canary will retrieve the exact out-of-fold prediction that was made when that building-flock was excluded from its own fitted model."
+    )
+    model_labels = {
+        "model_1": "Model 1 · End-of-cycle recovery proxy",
+        "model_3": "Model 3 · Day 35 bodyweight",
+    }
+    controls = st.columns(3)
+    with controls[0]:
+        lab_model = st.selectbox(
+            "Forecast model", list(model_labels), format_func=model_labels.get,
+            key="v19_evidence_model",
+        )
+    with controls[1]:
+        lab_building = st.selectbox(
+            "Building", ["Tags 1", "Tags 2", "Tags 3"], key="v19_evidence_building"
+        )
+    eligible_days = [7, 14] if lab_model == "model_1" else [7, 14, 21]
+    with controls[2]:
+        lab_day = st.selectbox(
+            "Validated evidence day", eligible_days, format_func=lambda value: f"Day {value}",
+            key=f"v19_evidence_day_{lab_model}",
+        )
+    result = v19_outlook(lab_model, "2026-3", lab_building, int(lab_day))
+    if result is None:
+        st.error("No saved held-out row exists for this selection.")
+    else:
+        is_recovery = lab_model == "model_1"
+        display_prediction = f"{result['prediction']:.2%}" if is_recovery else f"{result['prediction']:.0f} g"
+        display_actual = f"{result['actual']:.2%}" if is_recovery else f"{result['actual']:.0f} g"
+        display_mae = (
+            f"{result['checkpoint_mae'] * 100:.2f} pts" if is_recovery
+            else f"{result['checkpoint_mae']:.1f} g"
+        )
+        display_band = (
+            f"{result['lower_estimate']:.2%}–{result['upper_estimate']:.2%}" if is_recovery
+            else f"{result['lower_estimate']:.0f}–{result['upper_estimate']:.0f} g"
+        )
+        metrics = st.columns(4)
+        metrics[0].metric("Held-out prediction", display_prediction)
+        metrics[1].metric("Recorded outcome", display_actual, help="Shown only because this historical cycle is now complete.")
+        metrics[2].metric("Typical checkpoint error", display_mae)
+        metrics[3].metric("80% held-out error band", display_band)
+        st.subheader("Input → process → output")
+        st.dataframe(v19_calculation_trace(result), hide_index=True, width="stretch")
+        with st.expander("View all model-ready input values"):
+            st.dataframe(v19_input_trace(result), hide_index=True, width="stretch")
+        with st.expander("View strongest global held-out associations"):
+            st.dataframe(v19_global_drivers(lab_model).head(15), hide_index=True, width="stretch")
+            st.caption(
+                "These are global leave-one-feature-out associations. They are not causal effects, treatment recommendations, or a local decomposition of this one prediction."
+            )
+        st.warning(
+            "The recorded outcome is available only for retrospective validation. It was not an input to the forecast. The production use case would display the prediction before that outcome is known."
+        )
+    st.stop()
+
+    # Legacy v18 what-if laboratory retained below for code-history only; the
+    # v19 application stops above and never presents it to users.
+    st.markdown('<div class="title">Prediction Lab</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="subtitle">Run a guided what-if against one real, leakage-safe 2026-3 model-ready row. This does not edit the uploaded farm data or retrain a model.</div>',
+        unsafe_allow_html=True,
+    )
+    st.warning(
+        "Defense boundary: this is a sensitivity demonstration anchored to Trish’s prepared feature row. "
+        "Non-edited engineered inputs remain fixed. It is not yet a generic raw-data feature pipeline."
+    )
+    manifest = load_v18_manifest()
+    model_labels = {
+        "model_1": "M1 · Harvest recovery outlook",
+        "model_2": "M2 · Day 35 bodyweight (Days 1–14)",
+        "model_3": "M3 · Day 35 bodyweight refresh (Days 15–21)",
+        "model_4": "M4 · Estimated day to 1.8 kg",
+        "model_5": "M5 · Estimated day to 2.0 kg",
+        "model_6": "M6 · Sale-window recovery outlook",
+    }
+    top = st.columns(3)
+    with top[0]:
+        lab_model = st.selectbox(
+            "Specialist model", list(model_labels), format_func=model_labels.get,
+            key="prediction_lab_model",
+        )
+    with top[1]:
+        lab_building = st.selectbox(
+            "Building", ["Tags 1", "Tags 2", "Tags 3"], key="prediction_lab_building"
+        )
+    eligible_days = [7, 14] if lab_model != "model_3" else [15, 21]
+    with top[2]:
+        lab_day = st.selectbox(
+            "Evidence day", eligible_days, format_func=lambda value: f"Day {value}",
+            key=f"prediction_lab_day_{lab_model}",
+        )
+    located = v18_feature_row(lab_model, "2026-3", lab_building, int(lab_day))
+    if located is None:
+        st.error("No authoritative model-ready row is available for this selection.")
+    else:
+        baseline_row, model_meta, model_features = located
+        baseline_prediction = predict_v18_feature_scenario(lab_model, baseline_row)
+        scenario = baseline_row.copy()
+        control_definitions = {
+            "current_population": ("Current population", 0.85, 1.05, 1.0),
+            "current_recoverable_ratio": ("Current recoverable ratio", 0.90, 1.02, 0.001),
+            "mortality_percent_cum": ("Cumulative mortality (%)", 0.50, 1.75, 0.01),
+            "bodyweight_g": ("Current bodyweight (g)", 0.70, 1.30, 1.0),
+            "bodyweight_deficit_g_interpolated": ("Bodyweight deficit (g)", 0.25, 1.75, 1.0),
+            "feed_daily_g_per_bird": ("Daily feed per bird (g)", 0.60, 1.40, 0.1),
+            "average_temperature": ("Average temperature (°C)", 0.85, 1.15, 0.1),
+            "temperature_range": ("Temperature range (°C)", 0.50, 1.50, 0.1),
+            "average_humidity": ("Average humidity (%)", 0.80, 1.20, 0.1),
+        }
+        editable = [name for name in control_definitions if name in model_features and pd.notna(baseline_row.get(name))]
+        st.subheader("Adjust recorded-style inputs")
+        control_columns = st.columns(3)
+        for index, feature_name in enumerate(editable):
+            label, lower_factor, upper_factor, step = control_definitions[feature_name]
+            baseline_value = float(baseline_row[feature_name])
+            lower = min(baseline_value * lower_factor, baseline_value * upper_factor)
+            upper = max(baseline_value * lower_factor, baseline_value * upper_factor)
+            if abs(upper - lower) < step * 2:
+                lower, upper = baseline_value - step * 5, baseline_value + step * 5
+            with control_columns[index % 3]:
+                scenario[feature_name] = st.number_input(
+                    label,
+                    min_value=float(lower),
+                    max_value=float(upper),
+                    value=baseline_value,
+                    step=float(step),
+                    key=f"prediction_lab_input_{lab_model}_{lab_building}_{lab_day}_{feature_name}",
+                    help=f"Real baseline: {baseline_value:,.3f}. Only this exact model input changes.",
+                )
+        scenario_prediction = predict_v18_feature_scenario(lab_model, scenario)
+        delta = scenario_prediction - baseline_prediction
+
+        def _prediction_display(model_id: str, value: float) -> str:
+            if model_id in {"model_1", "model_6"}:
+                return f"{value:.1%}"
+            if model_id in {"model_2", "model_3"}:
+                return f"{value:,.0f} g"
+            return f"Day {value:.1f}"
+
+        def _delta_display(model_id: str, value: float) -> str:
+            if model_id in {"model_1", "model_6"}:
+                return f"{value * 100:+.2f} pts"
+            if model_id in {"model_2", "model_3"}:
+                return f"{value:+,.0f} g"
+            return f"{value:+.2f} days"
+
+        results = st.columns(4)
+        results[0].metric("Baseline prediction", _prediction_display(lab_model, baseline_prediction))
+        results[1].metric("Scenario prediction", _prediction_display(lab_model, scenario_prediction), _delta_display(lab_model, delta))
+        target_text = "95%" if lab_model in {"model_1", "model_6"} else "1,800 g" if lab_model in {"model_2", "model_3"} else "Earlier is better"
+        results[2].metric("Management reference", target_text)
+        mae = float(model_meta["reported_logo_mae"])
+        results[3].metric("Typical historical error", _delta_display(lab_model, abs(mae)).lstrip("+"))
+
+        contributions = v18_scenario_contributions(lab_model, scenario).head(10).copy()
+        contributions["Direction"] = np.where(contributions["contribution"] >= 0, "Raises estimate", "Lowers estimate")
+        contributions["Feature"] = contributions["feature"].str.replace("_", " ").str.title()
+        st.subheader("Why the scenario estimate moved")
+        st.altair_chart(
+            alt.Chart(contributions)
+            .mark_bar(cornerRadiusEnd=5)
+            .encode(
+                x=alt.X("contribution:Q", title="Local SHAP contribution", stack=None),
+                y=alt.Y("Feature:N", sort="-x", title=None),
+                color=alt.Color("Direction:N", scale=alt.Scale(domain=["Raises estimate", "Lowers estimate"], range=["#2f855a", "#c05640"])),
+                tooltip=["Feature", alt.Tooltip("value:Q", title="Scenario value", format=",.3f"), alt.Tooltip("contribution:Q", format="+.4f")],
+            )
+            .properties(height=330),
+            width="stretch",
+        )
+        highest = contributions.iloc[0]
+        interpretation = (
+            "a later estimated target-weight day" if lab_model in {"model_4", "model_5"}
+            else "a higher predicted outcome"
+        )
+        st.info(
+            f"The largest local model association is **{highest['Feature']}**. Positive SHAP means {interpretation}; "
+            "negative SHAP means the opposite. This explains the model calculation—it does not establish causality."
+        )
+        with st.expander("Audit the complete model-ready feature row"):
+            # Render mixed numeric/boolean engineered features as text so the
+            # audit table remains Arrow-safe across Streamlit versions.
+            audit = pd.DataFrame(
+                {
+                    "Feature": model_features,
+                    "Baseline": [str(baseline_row.get(f)) for f in model_features],
+                    "Scenario": [str(scenario.get(f)) for f in model_features],
+                }
+            )
+            st.dataframe(audit, hide_index=True, width="stretch")
+            st.caption(f"{model_meta['algorithm']} · evidence row Day {int(baseline_row['prediction_day'])} · LOGO-CV MAE shown as a typical-error reference.")
+
+if selected_view == VIEW_HOW_CANARY_WORKS:
+    st.markdown('<div class="title">How Canary Works</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="subtitle">A defense-ready explanation of the observed-risk engine, two forecast models, evidence boundaries, and management handoff.</div>',
+        unsafe_allow_html=True,
+    )
+    st.subheader("From today’s records to a management review")
+    st.dataframe(pd.DataFrame([
+        {"Step": "1 · Read", "What happens": "Validate the uploaded records and freeze the selected review date."},
+        {"Step": "2 · Observe", "What happens": "Build one as-of record per building; later records are excluded."},
+        {"Step": "3 · Prioritize", "What happens": "Apply four transparent observed-condition rules and assign 0–12 points plus explicit overrides."},
+        {"Step": "4 · Forecast", "What happens": "Model 1 estimates the end-of-cycle recovery proxy; Model 3 estimates Day 35 bodyweight at validated checkpoints."},
+        {"Step": "5 · Explain", "What happens": "Show the exact feature row, artifact identity, held-out error reference, and output lineage."},
+        {"Step": "6 · Guide", "What happens": "Offer preliminary inspection and documentation guidance based on observed conditions."},
+        {"Step": "7 · Decide", "What happens": "Management or veterinary staff investigate and decide; Canary does not diagnose or treat."},
+    ]), hide_index=True, width="stretch")
+    engines = st.columns(3)
+    with engines[0]:
+        st.subheader("Observed-risk engine")
+        st.write("Answers: **Which building should we review first, and why?**")
+        st.caption("Rules-based and independent of forecasts. Missing evidence is not scored as normal.")
+    with engines[1]:
+        st.subheader("Forecast engine")
+        st.write("Answers: **What recovery proxy and Day 35 weight are currently plausible?**")
+        st.caption("Model 1 and Model 3 are planning outlooks with explicit evidence cutoffs and held-out error references.")
+    with engines[2]:
+        st.subheader("Inspection guide")
+        st.write("Answers: **What should staff verify next?**")
+        st.caption("Preliminary inspection and documentation guidance—not automatic intervention.")
+    st.subheader("Two outcomes, two models")
+    manifest = load_v19_manifest()
+    st.dataframe(pd.DataFrame([
+        {
+            "Model": "Model 1",
+            "Question": "Where might the end-of-cycle recovery proxy finish?",
+            "Algorithm": manifest["models"]["model_1"]["algorithm"],
+            "Refresh": "Daily through Day 14; held afterward",
+            "Overall held-out MAE": f"{manifest['models']['model_1']['validated_mae'] * 100:.2f} percentage points",
+        },
+        {
+            "Model": "Model 3",
+            "Question": "Where might average bodyweight finish on Day 35?",
+            "Algorithm": manifest["models"]["model_3"]["algorithm"],
+            "Refresh": "Days 7, 14, and 21; held between and afterward",
+            "Overall held-out MAE": f"{manifest['models']['model_3']['validated_mae_g']:.1f} g",
+        },
+    ]), hide_index=True, width="stretch")
+    st.info(
+        "Bodyweight does not update every day because the farm mainly weighs birds weekly. A daily-changing number between weigh-ins would create false precision. "
+        "The Day 21 outlook is held through Day 34; on Day 35, the recorded measurement replaces it."
+    )
+    st.subheader("Why forecasts do not change risk points")
+    st.write(
+        "The risk score summarizes conditions that have already been observed. The forecasts estimate uncertain future outcomes. Keeping them separate prevents a model error from silently creating or removing an operational alert and lets management audit both pieces of evidence independently."
+    )
+    st.subheader("Validation boundary")
+    st.warning(
+        "The displayed retrospective values are saved leave-one-building-flock-out predictions. The final artifacts were trained on 34 building-flocks, and the application does not yet contain a packaged raw-data-to-85-feature transformer for arbitrary future flocks. "
+        "For that reason, the current release is a pilot-stage historical/prospective replay—not an autonomous production forecasting service."
+    )
+    st.caption(
+        "Recovery means last recorded population divided by beginning population. It is a data-available proxy, not independently verified harvest or sales recovery. Feature associations are predictive, not causal."
+    )
+    st.stop()
+
+    # Legacy v18 explainer retained below for code-history only; st.stop()
+    # prevents it from appearing in the v19 application.
+    st.markdown('<div class="title">How Canary Works</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="subtitle">A defense-ready explanation of the three engines, six specialist models, validation boundary, and management handoff.</div>',
+        unsafe_allow_html=True,
+    )
+    st.subheader("From today’s records to the next management check")
+    steps = pd.DataFrame([
+        {"Step": "1 · Upload", "What happens": "Validate one current-cycle prefix and freeze the review date."},
+        {"Step": "2 · Observe", "What happens": "Build one as-of record per building using no later-day data."},
+        {"Step": "3 · Score", "What happens": "Calculate four transparent observed-condition checks (0–12)."},
+        {"Step": "4 · Forecast", "What happens": "Route the eligible evidence day to the relevant Trish specialist models."},
+        {"Step": "5 · Explain", "What happens": "Show local SHAP associations and the historical typical-error reference."},
+        {"Step": "6 · Guide", "What happens": "Map recorded warnings to deterministic inspection guidance."},
+        {"Step": "7 · Decide", "What happens": "Management investigates and chooses any action; Canary does not diagnose or treat."},
+    ])
+    st.dataframe(steps, hide_index=True, width="stretch")
+    engines = st.columns(3)
+    with engines[0]:
+        st.subheader("1 · Risk engine")
+        st.write("Transparent rules answer: **Where should we look first, and why?**")
+        st.caption("Independent of every forecast. Missing evidence is never scored as zero.")
+    with engines[1]:
+        st.subheader("2 · Predictive engine")
+        st.write("Six specialists answer: **What outcomes are currently plausible?**")
+        st.caption("Planning references with model ID, evidence cutoff, and typical historical error.")
+    with engines[2]:
+        st.subheader("3 · Recommendation engine")
+        st.write("Approved rules answer: **What should management inspect next?**")
+        st.caption("Deterministic guidance—not diagnosis, treatment, or automated control.")
+    manifest = load_v18_manifest()
+    registry_rows = []
+    for model_id, metadata in manifest["models"].items():
+        registry_rows.append({
+            "Model": model_id.replace("model_", "M"),
+            "Decision supported": metadata["label"],
+            "Algorithm": metadata["algorithm"],
+            "Evidence window": f"Days 1–{metadata['window_end']}",
+            "Typical error (LOGO-CV MAE)": (
+                f"{metadata['reported_logo_mae'] * 100:.2f} pts" if model_id in {"model_1", "model_6"}
+                else f"{metadata['reported_logo_mae']:.0f} g" if model_id in {"model_2", "model_3"}
+                else f"{metadata['reported_logo_mae']:.2f} days"
+            ),
+        })
+    st.subheader("Why six specialists—not one all-purpose model")
+    st.info(
+        "The farm does not make one decision. It asks different questions at different moments: "
+        "survival, Day 35 weight, timing to 1.8 kg or 2.0 kg, and recovery at the sale-ready point. "
+        "One model would blur those targets and evidence windows. Canary uses one specialist per question—then shows only the relevant answer."
+    )
+    simple_registry = pd.DataFrame(
+        [
+            {"Model": "M1", "Plain-language question": "Where might ending recovery finish?", "When it refreshes": "Days 1–14"},
+            {"Model": "M2", "Plain-language question": "Where might Day 35 weight finish?", "When it refreshes": "Days 1–14"},
+            {"Model": "M3", "Plain-language question": "With later weights, can we refresh the Day 35 weight outlook?", "When it refreshes": "Days 15–21"},
+            {"Model": "M4", "Plain-language question": "When might the flock reach 1.8 kg?", "When it refreshes": "Days 1–14"},
+            {"Model": "M5", "Plain-language question": "When might the flock reach 2.0 kg?", "When it refreshes": "Days 1–14"},
+            {"Model": "M6", "Plain-language question": "What recovery might remain at the sale-ready point?", "When it refreshes": "Days 1–14"},
+        ]
+    )
+    st.dataframe(simple_registry, hide_index=True, width="stretch")
+    st.caption(
+        "They are not averaged and they do not vote. Each specialist answers one separate planning question. "
+        "M1 and M2 are the standard early-cycle outlooks on the Command Center; M3 replaces M2 when later weight evidence is available."
+    )
+    with st.expander("Technical six-model registry and typical historical error"):
+        st.dataframe(pd.DataFrame(registry_rows), hide_index=True, width="stretch")
+
+    st.subheader("One simple handoff across the cycle")
+    st.dataframe(pd.DataFrame([
+        {"Current day": "Days 1–14", "What updates": "Risk score + M1, M2, M4, M5, M6", "What management sees": "Early recovery, Day 35 weight, and timing outlooks"},
+        {"Current day": "Days 15–21", "What updates": "Risk score + M3", "What management sees": "A refreshed Day 35 weight outlook; early recovery and timing outlooks remain held"},
+        {"Current day": "Days 22–34", "What updates": "Risk score only", "What management sees": "The latest earlier outlooks, clearly labelled as held"},
+        {"Current day": "Day 35", "What updates": "Risk score + recorded Day 35 weight", "What management sees": "Actual Day 35 weight replaces the forecast; recovery remains an outlook until the ending record is confirmed"},
+    ]), hide_index=True, width="stretch")
+    evidence_root = Path(__file__).resolve().parent.parent / "capstone_FINAL_v18" / "artifacts"
+    proof_columns = st.columns(2)
+    recovery_plot = evidence_root / "model_1_harvest_recovery_1_to_14" / "extra_trees_actual_vs_predicted_logocv.png"
+    weight_plot = evidence_root / "_exploratory_analysis_growth_and_sale_timing" / "CURRENT_RUN_actual_vs_predicted.png"
+    with proof_columns[0]:
+        if recovery_plot.exists():
+            st.image(str(recovery_plot), caption="M1 recovery: cycle-grouped out-of-fold actual versus predicted")
+    with proof_columns[1]:
+        if weight_plot.exists():
+            st.image(str(weight_plot), caption="Bodyweight/timing proof from the authoritative v18 handoff")
+    with st.expander("Global SHAP and feature-importance evidence"):
+        shap_columns = st.columns(2)
+        with shap_columns[0]:
+            image_path = evidence_root / "model_1_harvest_recovery_1_to_14" / "extra_trees_shap_beeswarm.png"
+            if image_path.exists():
+                st.image(str(image_path), caption="M1 global SHAP summary")
+        with shap_columns[1]:
+            image_path = evidence_root / "model_1_harvest_recovery_1_to_14" / "extra_trees_feature_importance_combined.csv"
+            if image_path.exists():
+                global_importance = pd.read_csv(image_path).head(12)
+                st.dataframe(global_importance, hide_index=True, width="stretch")
+        st.caption("SHAP and feature importance describe predictive association. They do not prove that changing a feature will cause the outcome to change.")
+    st.subheader("Validation boundary")
+    st.info(
+        "The six champion algorithms were selected using cycle-grouped Leave-One-Group-Out cross-validation. "
+        "Cycle 2026-3 was excluded from fitting and is used here as a prospective replay. The current CSV workflow validates known 2026-3 prefixes; "
+        "arbitrary future-cycle inference still requires packaging Trish’s complete feature-engineering transformer."
+    )
+    st.warning(
+        "Small samples, a last-recorded recovery proxy, incomplete environmental coverage, and curve-derived timing targets limit certainty. "
+        "Use forecasts to prioritize investigation—not as guaranteed outcomes or treatment instructions."
+    )
+
 if selected_view == VIEW_METHODS:
     recovery_manifest, _ = load_model_bundle("recovery")
     day35_manifest = load_day35_manifest()
@@ -4269,8 +5870,8 @@ if selected_view == VIEW_METHODS:
                 {
                     "Component": "1 · Rules-based risk",
                     "Input": "Current weight gap, population loss, daily mortality, and age-specific temperature/humidity evidence",
-                    "Process": "Four transparent 0–3 checks; total 0–12",
-                    "Output": "Low / Medium / High / Critical, with the exact why",
+                    "Process": "Four transparent 0–3 checks; observed-concern total plus documented priority overrides",
+                    "Output": "Operational priority, with the exact evidence, point, and rule",
                     "Business use": "Choose where to inspect first",
                 },
                 {
@@ -4848,14 +6449,14 @@ if selected_view == VIEW_METHODS:
         st.subheader("What the risk score means")
         st.markdown(
             """
-            Canary gives 0–3 points to four directly observed building-level checks. The total sets the operational-priority label; it is not a probability of missing either target.
+            Canary gives 0–3 points to four directly observed building-level checks. The observed-concern total starts the operational-priority label; documented acute and evidence-coverage rules can override it. It is not a probability of missing either target.
 
-            - **Low:** 0–1
-            - **Medium:** 2–3
-            - **High:** 4–5
-            - **Critical:** 6–12
+            - **Low:** 0–2
+            - **Medium:** 3–5
+            - **High:** 6–8
+            - **Critical:** 9–12
 
-            Missing evidence is shown as missing and is never silently scored as zero.
+            Acute daily mortality or population loss can make a building Critical. Two distinct severe domains can also make it Critical; the two survivability checks are deliberately one domain. With fewer than three scored dimensions, Canary shows Insufficient evidence unless an acute survivability override applies. Missing evidence is never silently scored as zero.
             """
         )
         st.dataframe(

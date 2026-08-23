@@ -1,9 +1,11 @@
+from dataclasses import replace
 from pathlib import Path
 import os
 
 from canary import (
     build_operational_driver_trace,
     evaluate_operational_alerts,
+    evaluate_persistent_signals,
     load_operational_alert_rules,
     load_workbook,
 )
@@ -65,3 +67,40 @@ def test_temperature_gap_is_measured_to_range_boundary_not_midpoint():
 
     assert "provisional reference range" in temperature["target"]
     assert "above the provisional range" in temperature["gap"]
+
+
+def test_persistent_environment_signal_requires_three_consecutive_recorded_days():
+    dataset = load_workbook(SOURCE)
+    daily = dataset.daily.copy()
+    mask = (
+        daily["cycle_id"].eq("2026-3")
+        & daily["building_id"].eq("Tags 2")
+        & daily["age_day"].isin([7, 8, 9])
+    )
+    assert mask.sum() == 3
+    daily.loc[mask, "temperature_avg_c"] = 40.0
+    modified = replace(dataset, daily=daily)
+    as_of = daily.loc[mask, "record_date"].max()
+
+    signals = evaluate_persistent_signals(modified, "2026-3", "Tags 2", as_of)
+    temperature = next(signal for signal in signals if signal["check"] == "Temperature")
+
+    assert "3 consecutive recorded days" in temperature["title"]
+    assert len(temperature["trace"]) == 3
+    assert temperature["risk_score_effect"].startswith("None")
+
+
+def test_unresolved_weight_signal_does_not_claim_three_weight_measurements():
+    dataset = load_workbook(SOURCE)
+    daily = dataset.daily.copy()
+    building = daily.loc[
+        daily["cycle_id"].eq("2026-3") & daily["building_id"].eq("Tags 2")
+    ]
+    as_of = building.loc[building["age_day"].eq(9), "record_date"].max()
+
+    signals = evaluate_persistent_signals(dataset, "2026-3", "Tags 2", as_of)
+    weight = next((signal for signal in signals if signal["check"] == "Bodyweight"), None)
+    if weight is not None:
+        assert "unresolved" in weight["title"]
+        assert "one checkpoint" in weight["basis"]
+        assert len(weight["trace"]) == 1

@@ -1,6 +1,6 @@
 {
   "outcome": "day35_average_liveweight",
-  "model_version": "day35-weight-2.2.0",
+  "model_version": "day35-weight-capstone-3.1.0",
   "selected_model": "historical_remaining_gain",
   "research_champion": "checkpoint_linear_remaining_gain",
   "operational_model": "historical_remaining_gain",
@@ -1665,11 +1665,11 @@
   },
   "selected_metrics": {
     "rows": 124,
-    "r2": 0.12576571848076057,
-    "target_side_accuracy": 0.8467741935483871,
-    "majority_side_accuracy": 0.8387096774193549,
-    "below_target_recall": 1.0,
-    "at_or_above_target_recall": 0.05,
+    "r2": 0.3101295976001815,
+    "target_side_accuracy": 0.9596774193548387,
+    "majority_side_accuracy": 0.967741935483871,
+    "below_target_recall": 0.9833333333333332,
+    "at_or_above_target_recall": 0.25,
     "balanced_target_accuracy": 0.525,
     "confusion_matrix": {
       "actual_below_predicted_below": 104,
@@ -1715,12 +1715,12 @@
         "bias_kg": 0.14557031666666667
       }
     },
-    "mae_kg": 0.17765109488656503,
+    "mae_kg": 0.12712089974299892,
     "cycle_macro_mae_kg": 0.18236335273199022,
-    "rmse_kg": 0.24167376465211882,
-    "bias_kg": 0.003402481043956063,
-    "within_100g_rate": 0.4032258064516129,
-    "within_200g_rate": 0.6532258064516129,
+    "rmse_kg": 0.1639088726017671,
+    "bias_kg": -0.0006461027915633013,
+    "within_100g_rate": 0.5080645161290323,
+    "within_200g_rate": 0.7580645161290323,
     "fold_mae_std_kg": 0.0698465766817896,
     "uncertainty_half_width_80_kg": 0.2662060800000002,
     "outer_fold_best_parameters": [
@@ -1734,249 +1734,39 @@
     "horizon": {
       "Day 7": {
         "rows": 31,
-        "r2": -0.08499177751592546,
-        "target_side_accuracy": 0.8387096774193549,
-        "majority_side_accuracy": 0.8387096774193549,
-        "below_target_recall": 1.0,
-        "at_or_above_target_recall": 0.0,
-        "balanced_target_accuracy": 0.5,
-        "confusion_matrix": {
-          "actual_below_predicted_below": 26,
-          "actual_below_predicted_at_or_above": 0,
-          "actual_at_or_above_predicted_below": 5,
-          "actual_at_or_above_predicted_at_or_above": 0
-        },
-        "cycle": {
-          "2025-2": {
-            "rows": 3,
-            "mae_kg": 0.30394035714285716,
-            "rmse_kg": 0.30394035714285716,
-            "bias_kg": -0.30394035714285716
-          },
-          "2025-3": {
-            "rows": 5,
-            "mae_kg": 0.09387853846153842,
-            "rmse_kg": 0.14528325722115049,
-            "bias_kg": -0.053943307692307665
-          },
-          "2025-4": {
-            "rows": 5,
-            "mae_kg": 0.09244807692307688,
-            "rmse_kg": 0.10990339439075326,
-            "bias_kg": 0.038608384615384406
-          },
-          "2025-5": {
-            "rows": 6,
-            "mae_kg": 0.3313333333333333,
-            "rmse_kg": 0.40063306618514,
-            "bias_kg": 0.13078680000000031
-          },
-          "2026-1": {
-            "rows": 6,
-            "mae_kg": 0.18978020000000004,
-            "rmse_kg": 0.24154531420937703,
-            "bias_kg": -0.17311446666666672
-          },
-          "2026-2": {
-            "rows": 6,
-            "mae_kg": 0.22755746666666665,
-            "rmse_kg": 0.28603874966649767,
-            "bias_kg": 0.2258245333333333
-          }
-        },
-        "mae_kg": 0.2043703273661822,
-        "cycle_macro_mae_kg": 0.20648966208791208,
-        "rmse_kg": 0.2692333248693579,
-        "bias_kg": 0.0036285649415101107,
-        "within_100g_rate": 0.3870967741935484,
-        "within_200g_rate": 0.4838709677419355,
-        "fold_mae_std_kg": 0.09263943278563531,
-        "uncertainty_half_width_80_kg": 0.31422730769230767
+        "mae_kg": 0.15545049454094292,
+        "rmse_kg": 0.2047417741687511,
+        "r2": -0.0764045158238466,
+        "within_200g_rate": 0.6451612903225806,
+        "target_side_accuracy": 0.967741935483871
       },
       "Day 14": {
         "rows": 31,
-        "r2": 0.16162183865970947,
-        "target_side_accuracy": 0.8387096774193549,
-        "majority_side_accuracy": 0.8387096774193549,
-        "below_target_recall": 1.0,
-        "at_or_above_target_recall": 0.0,
-        "balanced_target_accuracy": 0.5,
-        "confusion_matrix": {
-          "actual_below_predicted_below": 26,
-          "actual_below_predicted_at_or_above": 0,
-          "actual_at_or_above_predicted_below": 5,
-          "actual_at_or_above_predicted_at_or_above": 0
-        },
-        "cycle": {
-          "2025-2": {
-            "rows": 3,
-            "mae_kg": 0.203735,
-            "rmse_kg": 0.20855203241637324,
-            "bias_kg": -0.203735
-          },
-          "2025-3": {
-            "rows": 5,
-            "mae_kg": 0.09878838461538467,
-            "rmse_kg": 0.1615511133138023,
-            "bias_kg": -0.050030076923076726
-          },
-          "2025-4": {
-            "rows": 5,
-            "mae_kg": 0.09698599999999993,
-            "rmse_kg": 0.11660296437055101,
-            "bias_kg": 0.031425999999999774
-          },
-          "2025-5": {
-            "rows": 6,
-            "mae_kg": 0.3095,
-            "rmse_kg": 0.377030870933544,
-            "bias_kg": 0.09359680000000015
-          },
-          "2026-1": {
-            "rows": 6,
-            "mae_kg": 0.16784679999999996,
-            "rmse_kg": 0.20181854779406833,
-            "bias_kg": -0.1319385333333333
-          },
-          "2026-2": {
-            "rows": 6,
-            "mae_kg": 0.19083673333333342,
-            "rmse_kg": 0.22733137086869482,
-            "bias_kg": 0.16855686666666683
-          }
-        },
-        "mae_kg": 0.18061864913151365,
-        "cycle_macro_mae_kg": 0.17794881965811968,
-        "rmse_kg": 0.23666583591362667,
-        "bias_kg": 0.002485981141439261,
-        "within_100g_rate": 0.3870967741935484,
-        "within_200g_rate": 0.5806451612903226,
-        "fold_mae_std_kg": 0.07194922041410755,
-        "uncertainty_half_width_80_kg": 0.2524951999999998
+        "mae_kg": 0.13806099581708614,
+        "rmse_kg": 0.17398556046812932,
+        "r2": 0.2226994061662538,
+        "within_200g_rate": 0.6451612903225806,
+        "target_side_accuracy": 0.967741935483871
       },
       "Day 21": {
         "rows": 31,
-        "r2": 0.3336611760675271,
-        "target_side_accuracy": 0.8387096774193549,
-        "majority_side_accuracy": 0.8387096774193549,
-        "below_target_recall": 1.0,
-        "at_or_above_target_recall": 0.0,
-        "balanced_target_accuracy": 0.5,
-        "confusion_matrix": {
-          "actual_below_predicted_below": 26,
-          "actual_below_predicted_at_or_above": 0,
-          "actual_at_or_above_predicted_below": 5,
-          "actual_at_or_above_predicted_at_or_above": 0
-        },
-        "cycle": {
-          "2025-2": {
-            "rows": 3,
-            "mae_kg": 0.18081119047619043,
-            "rmse_kg": 0.1814411993557126,
-            "bias_kg": -0.18081119047619043
-          },
-          "2025-3": {
-            "rows": 5,
-            "mae_kg": 0.13933853846153826,
-            "rmse_kg": 0.19975886723251537,
-            "bias_kg": -0.08570069230769226
-          },
-          "2025-4": {
-            "rows": 5,
-            "mae_kg": 0.049953000000000004,
-            "rmse_kg": 0.08221635278337275,
-            "bias_kg": 0.036362999999999965
-          },
-          "2025-5": {
-            "rows": 6,
-            "mae_kg": 0.30383333333333346,
-            "rmse_kg": 0.3563458887715325,
-            "bias_kg": 0.0969514666666667
-          },
-          "2026-1": {
-            "rows": 6,
-            "mae_kg": 0.15643866666666664,
-            "rmse_kg": 0.17797271046240015,
-            "bias_kg": -0.05402266666666666
-          },
-          "2026-2": {
-            "rows": 6,
-            "mae_kg": 0.1042232,
-            "rmse_kg": 0.12649758940143224,
-            "bias_kg": 0.10108480000000004
-          }
-        },
-        "mae_kg": 0.15728588592697623,
-        "cycle_macro_mae_kg": 0.15576632148962147,
-        "rmse_kg": 0.2109906208291892,
-        "bias_kg": 0.0024180505494505707,
-        "within_100g_rate": 0.3870967741935484,
-        "within_200g_rate": 0.7741935483870968,
-        "fold_mae_std_kg": 0.07818201193336727,
-        "uncertainty_half_width_80_kg": 0.20698480000000008
+        "mae_kg": 0.11220029216589861,
+        "rmse_kg": 0.13831136612750194,
+        "r2": 0.5087774125278297,
+        "within_200g_rate": 0.8709677419354839,
+        "target_side_accuracy": 0.967741935483871
       },
       "Day 28": {
         "rows": 31,
-        "r2": 0.09277163671173094,
-        "target_side_accuracy": 0.8709677419354839,
-        "majority_side_accuracy": 0.8387096774193549,
-        "below_target_recall": 1.0,
-        "at_or_above_target_recall": 0.2,
-        "balanced_target_accuracy": 0.6,
-        "confusion_matrix": {
-          "actual_below_predicted_below": 26,
-          "actual_below_predicted_at_or_above": 0,
-          "actual_at_or_above_predicted_below": 4,
-          "actual_at_or_above_predicted_at_or_above": 1
-        },
-        "cycle": {
-          "2025-2": {
-            "rows": 3,
-            "mae_kg": 0.41137500000000005,
-            "rmse_kg": 0.41137500000000005,
-            "bias_kg": -0.41137500000000005
-          },
-          "2025-3": {
-            "rows": 5,
-            "mae_kg": 0.23838923076923071,
-            "rmse_kg": 0.37389125605554463,
-            "bias_kg": -0.09789384615384597
-          },
-          "2025-4": {
-            "rows": 5,
-            "mae_kg": 0.12222061538461548,
-            "rmse_kg": 0.12761572988500616,
-            "bias_kg": 0.051383076923076795
-          },
-          "2025-5": {
-            "rows": 6,
-            "mae_kg": 0.16583333333333333,
-            "rmse_kg": 0.2526082276305874,
-            "bias_kg": 0.11916666666666663
-          },
-          "2026-1": {
-            "rows": 6,
-            "mae_kg": 0.11085839999999998,
-            "rmse_kg": 0.14345560467415228,
-            "bias_kg": 0.06469760000000006
-          },
-          "2026-2": {
-            "rows": 6,
-            "mae_kg": 0.08681506666666657,
-            "rmse_kg": 0.11866778103551665,
-            "bias_kg": 0.08681506666666657
-          }
-        },
-        "mae_kg": 0.16832951712158808,
-        "cycle_macro_mae_kg": 0.18924860769230767,
-        "rmse_kg": 0.24619197975912888,
-        "bias_kg": 0.005077327543424309,
-        "within_100g_rate": 0.45161290322580644,
-        "within_200g_rate": 0.7741935483870968,
-        "fold_mae_std_kg": 0.11062972536892304,
-        "uncertainty_half_width_80_kg": 0.2598384
+        "mae_kg": 0.10277181644806804,
+        "rmse_kg": 0.12706010675698484,
+        "r2": 0.5854460875304885,
+        "within_200g_rate": 0.8709677419354839,
+        "target_side_accuracy": 0.935483870967742
       }
-    }
+    },
+    "cycle_macro_rmse_kg": 0.1499082719395848,
+    "worst_cycle_rmse_kg": 0.2031370166198503
   },
   "research_champion_metrics": {
     "rows": 124,
@@ -2799,17 +2589,17 @@
   ],
   "feature_importance_interpretation": "Held-out permutation importance shows predictive association and model reliance, not causality.",
   "remaining_gain_by_measurement_day_kg": {
-    "7": 1.4064732258064516,
-    "14": 1.2549812903225808,
-    "21": 0.9710200000000001,
-    "28": 0.5984354838709678,
+    "7": 1.388860322580645,
+    "14": 1.2435296774193547,
+    "21": 0.9691167741935484,
+    "28": 0.5275645161290323,
     "35": 0.0
   },
   "uncertainty_half_width_by_measurement_day_kg": {
-    "7": 0.31422730769230767,
-    "14": 0.2524951999999998,
-    "21": 0.20698480000000008,
-    "28": 0.2598384,
+    "7": 0.3008668,
+    "14": 0.2492231999999999,
+    "21": 0.18241519999999992,
+    "28": 0.18787760000000003,
     "35": 0.0
   },
   "primary_whole_cycle_bootstrap_mae_95ci": {
@@ -4409,14 +4199,14 @@
   ],
   "historical_remaining_gain_definition": "Within each training fold, calculate observed Day 35 weight minus the checkpoint weight, average that remaining gain for the same checkpoint, and add it to the current building's measured weight.",
   "early_day_fallback": "historical_remaining_gain",
-  "status": "Experimental - historical remaining-gain baseline retained",
+  "status": "Capstone operational baseline; not production-approved",
   "limitations": [
     "Only 31 independent Day 35 building outcomes across 6 cycles are available for training.",
     "Only five historical outcomes reached the 1.8 kg milestone.",
     "Weight sampling and environmental coverage vary across cycles.",
     "The projection is not a guarantee of target attainment."
   ],
-  "training_source": "FARM HARVEST DATA.xlsx",
+  "training_source": "data/FARM HARVEST DATA.xlsx",
   "prospective_latest_cycle_audit": {
     "cycle_id": "2026-3",
     "training_exclusion": "The latest cycle was excluded from model fitting and champion selection.",
@@ -4606,5 +4396,7 @@
         "absolute_error_kg": 0.21556451612903205
       }
     ]
-  }
+  },
+  "source_sha256": "11caac03934559bb7e1033d6d0d1e0847b2923e9937f7511f2a2d644e39fa57e",
+  "selection_rationale": "Historical remaining gain had the lowest cycle-macro RMSE on the latest corrected workbook and remained simpler than all statistically eligible learned challengers."
 }

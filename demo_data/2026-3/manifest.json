@@ -1,0 +1,109 @@
+{
+  "schema_version": "canary-demo-csv-v1",
+  "entries": [
+    {
+      "file": "Project_Canary_2026-3_Day_07.csv",
+      "cycle": "2026-3",
+      "cutoff_day": 7,
+      "cutoff_date": "2026-07-10",
+      "row_count": 21,
+      "buildings": [
+        "Tags 1",
+        "Tags 2",
+        "Tags 3"
+      ],
+      "source": "FARM HARVEST DATA.xlsx \u00b7 canonical 2026-3 building-day records",
+      "normalized_sha256": "414f6039c05c07d4b037f16a2920ef1561dc285e42d063d26c34054e425fb2b6"
+    },
+    {
+      "file": "Project_Canary_2026-3_Day_14.csv",
+      "cycle": "2026-3",
+      "cutoff_day": 14,
+      "cutoff_date": "2026-07-17",
+      "row_count": 42,
+      "buildings": [
+        "Tags 1",
+        "Tags 2",
+        "Tags 3"
+      ],
+      "source": "FARM HARVEST DATA.xlsx \u00b7 canonical 2026-3 building-day records",
+      "normalized_sha256": "aca90a83e336664de3a7da6803c0ae9a1f322650440bca7b1991c696a9e1628d"
+    },
+    {
+      "file": "Project_Canary_2026-3_Day_15.csv",
+      "cycle": "2026-3",
+      "cutoff_day": 15,
+      "cutoff_date": "2026-07-18",
+      "row_count": 45,
+      "buildings": [
+        "Tags 1",
+        "Tags 2",
+        "Tags 3"
+      ],
+      "source": "FARM HARVEST DATA.xlsx \u00b7 canonical 2026-3 building-day records",
+      "normalized_sha256": "e967d0d373fdeadf419f9cb5003a191526527c58dbea777b82a3003081dd082e"
+    },
+    {
+      "file": "Project_Canary_2026-3_Day_21.csv",
+      "cycle": "2026-3",
+      "cutoff_day": 21,
+      "cutoff_date": "2026-07-24",
+      "row_count": 63,
+      "buildings": [
+        "Tags 1",
+        "Tags 2",
+        "Tags 3"
+      ],
+      "source": "FARM HARVEST DATA.xlsx \u00b7 canonical 2026-3 building-day records",
+      "normalized_sha256": "4c2b390c512b78f7fdb8c3f31054b28a0364e0c315a8962ab77d958d8a0e823d"
+    },
+    {
+      "file": "Project_Canary_2026-3_Day_28.csv",
+      "cycle": "2026-3",
+      "cutoff_day": 28,
+      "cutoff_date": "2026-07-31",
+      "row_count": 84,
+      "buildings": [
+        "Tags 1",
+        "Tags 2",
+        "Tags 3"
+      ],
+      "source": "FARM HARVEST DATA.xlsx \u00b7 canonical 2026-3 building-day records",
+      "normalized_sha256": "fe3f33bdc1406f30beb0da20417196e7ad33a099b90605de185512be87157bab"
+    },
+    {
+      "file": "Project_Canary_2026-3_Day_35.csv",
+      "cycle": "2026-3",
+      "cutoff_day": 35,
+      "cutoff_date": "2026-08-07",
+      "row_count": 105,
+      "buildings": [
+        "Tags 1",
+        "Tags 2",
+        "Tags 3"
+      ],
+      "source": "FARM HARVEST DATA.xlsx \u00b7 canonical 2026-3 building-day records",
+      "normalized_sha256": "f7dc9664d94d0d335791fba6fac510c585be27afa53cfcddf50c51a4eb9bd953"
+    }
+  ],
+  "columns": [
+    "cycle_id",
+    "building_id",
+    "age_day",
+    "record_date",
+    "beginning_inventory",
+    "population",
+    "mortality_daily",
+    "mortality_cumulative",
+    "feed_daily_bags",
+    "feed_cumulative_bags",
+    "feed_daily_kg_per_bird",
+    "bodyweight_kg",
+    "temperature_min_c",
+    "temperature_max_c",
+    "temperature_avg_c",
+    "humidity_min_pct",
+    "humidity_max_pct",
+    "humidity_avg_pct"
+  ]
+}

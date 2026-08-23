@@ -24,10 +24,13 @@ def main() -> None:
     dataset = load_workbook(ROOT / "data" / "FARM HARVEST DATA.xlsx")
     cycles = complete_cycle_ids(dataset)
     rows = []
+    checkpoints = {"Day 7": 7, "Day 14": 14, "Day 21": 21, "Day 28": 28}
     for cycle in cycles:
         meta = dataset.cycles.loc[dataset.cycles["cycle_id"] == cycle]
         cycle_start = pd.Timestamp(meta["start_date"].min()).normalize()
-        for timing, as_of in (("Day 14", cycle_start + pd.DateOffset(days=13)), ("Last recorded", pd.Timestamp(meta["end_date"].max()))):
+        timings = [(label, cycle_start + pd.DateOffset(days=day - 1)) for label, day in checkpoints.items()]
+        timings.append(("Last recorded", pd.Timestamp(meta["end_date"].max())))
+        for timing, as_of in timings:
             scored = score_cycle_snapshot(dataset, cycle, as_of)
             for _, row in scored.loc[scored["risk_score"].notna()].iterrows():
                 building = row["building_id"]
@@ -44,6 +47,11 @@ def main() -> None:
                     "cycle_id": cycle,
                     "building_id": building,
                     "risk_score": row["risk_score"],
+                    "base_risk_rating": row.get("base_risk_rating"),
+                    "risk_rating": row.get("risk_rating"),
+                    "evidence_status": row.get("evidence_status"),
+                    "priority_rule_id": row.get("priority_rule_id"),
+                    "scored_dimensions": row.get("scored_dimensions"),
                     "weight_score": row.get("weight_score"),
                     "population_loss_score": row.get("population_loss_score"),
                     "daily_mortality_score": row.get("daily_mortality_score"),
@@ -54,8 +62,18 @@ def main() -> None:
     frame = pd.DataFrame(rows)
     day14 = frame.loc[frame["timing"] == "Day 14"]
     last = frame.loc[frame["timing"] == "Last recorded"]
+    checkpoint_audit = {}
+    for timing in checkpoints:
+        subset = frame.loc[frame["timing"] == timing]
+        checkpoint_audit[timing] = {
+            "scored_snapshots": int(len(subset)),
+            "priority_distribution": {str(label): int(count) for label, count in subset["risk_rating"].value_counts().sort_index().items()},
+            "evidence_distribution": {str(label): int(count) for label, count in subset["evidence_status"].value_counts().sort_index().items()},
+            "environment_scored": int(subset["environment_score"].notna().sum()),
+            "priority_overrides": int(subset["priority_rule_id"].astype(str).str.startswith("PRIORITY-OVERRIDE").sum()),
+        }
     payload = {
-        "audit_date": "2026-08-10",
+        "audit_date": "2026-08-19",
         "purpose": "Audit the revised direct-evidence risk score for traceability and historical association without treating it as an outcome probability.",
         "design": {
             "dimensions": ["Weight gap", "Population loss", "Daily mortality", "Environmental conditions"],
@@ -75,13 +93,14 @@ def main() -> None:
             "score_vs_final_recovery_correlation": correlation(day14, "risk_score", "final_recovery"),
             "score_vs_day35_weight_correlation": correlation(day14, "risk_score", "day35_weight_kg"),
         },
+        "checkpoint_priority_audit": checkpoint_audit,
         "last_recorded_audit": {
             "scored_snapshots": int(len(last)),
             "environment_scored": int(last["environment_score"].notna().sum()),
             "score_vs_final_recovery_correlation": correlation(last, "risk_score", "final_recovery"),
             "score_vs_day35_weight_correlation": correlation(last, "risk_score", "day35_weight_kg"),
         },
-        "decision": "Use the score for transparent prioritization. Do not claim calibrated probability or causal environmental effects. Validate the environmental thresholds with the farm before operational reliance.",
+        "decision": "Use the score for transparent prioritization. Do not claim calibrated probability or causal environmental effects. Test the proposed labels and overrides in a one-to-two-cycle shadow pilot; revise only with documented farm approval.",
     }
     OUTPUT.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(payload, indent=2))

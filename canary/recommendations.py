@@ -114,14 +114,18 @@ def save_recommendation_playbook(
     temporary.replace(destination)
 
 
-def _selected_pattern(row: pd.Series) -> str:
-    pattern = str(row.get("risk_pattern", "No Material Concern"))
+def _selected_patterns(row: pd.Series) -> list[str]:
+    raw = str(row.get("risk_patterns", row.get("risk_pattern", "No Material Concern")))
+    patterns = [pattern.strip() for pattern in raw.split("|") if pattern.strip()]
+    if not patterns:
+        patterns = [str(row.get("risk_pattern", "No Material Concern"))]
     evidence = str(row.get("evidence_status", ""))
-    if evidence == "Insufficient" or (
-        pattern == "No Material Concern" and evidence not in {"Complete", "Not eligible"}
-    ):
-        return "Missing or Stale Evidence"
-    return pattern
+    evidence_missing = evidence.startswith("Insufficient") or evidence == "Reduced evidence"
+    if evidence_missing and "Missing or Stale Evidence" not in patterns:
+        patterns.append("Missing or Stale Evidence")
+    if evidence_missing and patterns == ["No Material Concern", "Missing or Stale Evidence"]:
+        patterns = ["Missing or Stale Evidence"]
+    return list(dict.fromkeys(patterns))
 
 
 def _guidance_status(rule: dict[str, Any], playbook: dict[str, Any]) -> str:
@@ -138,6 +142,14 @@ def _rule_source(rule: dict[str, Any]) -> str:
     if rule["rule_id"] in {"DOC-001", "DOC-011"}:
         return "Canary team safeguard"
     return "Farmer Validation Workbook (Doc Raymond)"
+
+
+def _action_for_rule(rule: dict[str, Any], playbook: dict[str, Any]) -> str:
+    if rule["approval_status"] == "Rejected":
+        return "No recommendation is active for this pattern. Ask the farm owner to review the rule."
+    if rule["approval_status"] == "Approved" and rule["approved_wording"].strip():
+        return rule["approved_wording"].strip()
+    return rule["dashboard_action"].strip()
 
 
 def apply_recommendations(
@@ -163,6 +175,11 @@ def apply_recommendations(
                     "recommended_action": "No flock is active in this building.",
                     "recommendation_rule_id": "Not applicable",
                     "recommendation_pattern": "Not applicable",
+                    "recommendation_patterns": "Not applicable",
+                    "recommendation_rule_ids": "Not applicable",
+                    "recommendation_match_count": 0,
+                    "recommendation_matches_json": "[]",
+                    "additional_recommended_actions": "",
                     "recommendation_urgency": "Not applicable",
                     "recommendation_urgency_instruction": "Not applicable",
                     "recommendation_inspection_checklist": "Not applicable",
@@ -177,12 +194,15 @@ def apply_recommendations(
             )
             records.append(row)
             continue
-        pattern = _selected_pattern(source)
-        rule = rule_by_pattern.get(pattern)
-        if rule is None:
+        patterns = _selected_patterns(source)
+        missing_patterns = [pattern for pattern in patterns if pattern not in rule_by_pattern]
+        if missing_patterns:
             raise RecommendationConfigurationError(
-                f"No recommendation rule is configured for pattern '{pattern}'."
+                "No recommendation rule is configured for pattern(s): " + ", ".join(missing_patterns)
             )
+        matched_rules = [rule_by_pattern[pattern] for pattern in patterns]
+        rule = matched_rules[0]
+        pattern = patterns[0]
         rating = str(source.get("risk_rating", "Not rated"))
         severity = severity_by_rating.get(
             rating,
@@ -192,18 +212,35 @@ def apply_recommendations(
             },
         )
         guidance_status = _guidance_status(rule, playbook)
-        if rule["approval_status"] == "Rejected":
-            action = "No recommendation is active for this pattern. Ask the farm owner to review the rule."
-        elif rule["approval_status"] == "Approved" and rule["approved_wording"].strip():
-            action = rule["approved_wording"].strip()
-        else:
-            action = rule["dashboard_action"].strip()
+        action = _action_for_rule(rule, playbook)
+        matches = [
+            {
+                "pattern": matched["pattern"],
+                "rule_id": matched["rule_id"],
+                "action": _action_for_rule(matched, playbook),
+                "inspection_checklist": matched["inspection_checklist"],
+                "escalation_trigger": matched["escalation_trigger"],
+                "possible_causes": matched.get("possible_causes", "Not specified"),
+                "response_time": matched.get("response_time", severity["urgency"]),
+                "responsible_person": matched.get("responsible_person", "Farm manager"),
+                "approval_status": matched["approval_status"],
+                "source": matched.get("source", _rule_source(matched)),
+            }
+            for matched in matched_rules
+        ]
 
         row.update(
             {
                 "recommended_action": action,
                 "recommendation_rule_id": rule["rule_id"],
                 "recommendation_pattern": pattern,
+                "recommendation_patterns": " | ".join(patterns),
+                "recommendation_rule_ids": " | ".join(match["rule_id"] for match in matches),
+                "recommendation_match_count": len(matches),
+                "recommendation_matches_json": json.dumps(matches),
+                "additional_recommended_actions": " | ".join(
+                    f"{match['pattern']}: {match['action']}" for match in matches[1:]
+                ),
                 "recommendation_urgency": severity["urgency"],
                 "recommendation_urgency_instruction": severity["owner_instruction"],
                 "recommendation_inspection_checklist": rule["inspection_checklist"],
@@ -229,9 +266,11 @@ def apply_recommendations(
 def build_recommendation_trace(row: pd.Series) -> pd.DataFrame:
     return pd.DataFrame(
         [
-            {"Decision element": "Identified pattern", "Applied value": row["recommendation_pattern"]},
+            {"Decision element": "Primary identified pattern", "Applied value": row["recommendation_pattern"]},
+            {"Decision element": "All detected patterns", "Applied value": row.get("recommendation_patterns", row["recommendation_pattern"])},
             {"Decision element": "Risk-level urgency", "Applied value": f"{row['risk_rating']} → {row['recommendation_urgency']}"},
             {"Decision element": "Action rule", "Applied value": row["recommendation_rule_id"]},
+            {"Decision element": "All matched rules", "Applied value": row.get("recommendation_rule_ids", row["recommendation_rule_id"])},
             {"Decision element": "Rule version", "Applied value": row["recommendation_rule_version"]},
             {"Decision element": "Rule approval", "Applied value": row["recommendation_rule_approval"]},
             {"Decision element": "Overall status", "Applied value": row["recommendation_approval_status"]},
@@ -241,3 +280,28 @@ def build_recommendation_trace(row: pd.Series) -> pd.DataFrame:
             {"Decision element": "Response time", "Applied value": row.get("recommendation_response_time", row["recommendation_urgency"])},
         ]
     )
+
+
+def build_matched_recommendation_table(row: pd.Series | dict[str, object]) -> pd.DataFrame:
+    """Return one auditable guidance row for every detected problem pattern."""
+
+    source = pd.Series(row)
+    try:
+        matches = json.loads(str(source.get("recommendation_matches_json", "[]")))
+    except json.JSONDecodeError:
+        matches = []
+    rows = []
+    for index, match in enumerate(matches):
+        rows.append(
+            {
+                "Role": "Primary" if index == 0 else "Additional",
+                "Problem pattern": match["pattern"],
+                "Matched rule": match["rule_id"],
+                "Recommended inspection": match["action"],
+                "Detailed checklist": match["inspection_checklist"],
+                "Escalate when": match["escalation_trigger"],
+                "Responsible function": match["responsible_person"],
+                "Guidance status": match["approval_status"],
+            }
+        )
+    return pd.DataFrame(rows)

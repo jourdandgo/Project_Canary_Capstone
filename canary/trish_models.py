@@ -172,19 +172,25 @@ def predict_v18_outlooks(
     building_id: str,
     cycle_day: int,
     source_sha256: str | None = None,
+    replay_validated: bool = False,
     bundle_dir: str | Path = DEFAULT_BUNDLE_DIR,
 ) -> dict[str, Any] | None:
-    """Score one building-date only when the source workbook matches v18."""
+    """Score one building-date for the authoritative workbook or validated replay."""
 
     bundle = Path(bundle_dir)
     manifest = load_v18_manifest(bundle)
-    if source_sha256 != manifest.get("source_workbook_sha256"):
+    if not replay_validated and source_sha256 != manifest.get("source_workbook_sha256"):
         return None
     weight_model_id = "model_2" if int(cycle_day) <= 14 else "model_3"
     selected = ["model_1", weight_model_id, "model_4", "model_5", "model_6"]
     output: dict[str, Any] = {
         "bundle_version": manifest["bundle_version"],
         "holdout_cycle": manifest["holdout_cycle"],
+        "lineage_status": (
+            "Validated source-backed 2026-3 replay"
+            if replay_validated
+            else "Authoritative v18 source workbook"
+        ),
     }
     for model_id in selected:
         located = _v18_row(model_id, cycle_id, building_id, cycle_day, bundle)
@@ -212,6 +218,69 @@ def predict_v18_outlooks(
     return output
 
 
+def v18_feature_row(
+    model_id: str,
+    cycle_id: str,
+    building_id: str,
+    cycle_day: int,
+    bundle_dir: str | Path = DEFAULT_BUNDLE_DIR,
+) -> tuple[pd.Series, dict[str, Any], list[str]] | None:
+    """Return the real, leakage-safe v18 feature row used for one prediction."""
+
+    bundle = Path(bundle_dir)
+    located = _v18_row(model_id, cycle_id, building_id, cycle_day, bundle)
+    if located is None:
+        return None
+    row, metadata = located
+    features = json.loads((bundle / metadata["features_file"]).read_text(encoding="utf-8"))
+    return row.copy(), metadata, features
+
+
+def predict_v18_feature_scenario(
+    model_id: str,
+    values: dict[str, object] | pd.Series,
+    bundle_dir: str | Path = DEFAULT_BUNDLE_DIR,
+) -> float:
+    """Score a complete model-ready what-if row without changing farm data."""
+
+    bundle = Path(bundle_dir)
+    manifest = load_v18_manifest(bundle)
+    metadata = manifest["models"][model_id]
+    features = json.loads((bundle / metadata["features_file"]).read_text(encoding="utf-8"))
+    frame = pd.DataFrame([{feature: values.get(feature, np.nan) for feature in features}])
+    return float(np.asarray(_load_v18_model(model_id, str(bundle)).predict(frame), dtype=float).reshape(-1)[0])
+
+
+def v18_scenario_contributions(
+    model_id: str,
+    values: dict[str, object] | pd.Series,
+    bundle_dir: str | Path = DEFAULT_BUNDLE_DIR,
+) -> pd.DataFrame:
+    """Return local SHAP associations for a complete model-ready scenario row."""
+
+    bundle = Path(bundle_dir)
+    manifest = load_v18_manifest(bundle)
+    metadata = manifest["models"][model_id]
+    features = json.loads((bundle / metadata["features_file"]).read_text(encoding="utf-8"))
+    frame = pd.DataFrame([{feature: values.get(feature, np.nan) for feature in features}])
+    model = _load_v18_model(model_id, str(bundle))
+    if metadata["algorithm"] == "CatBoost":
+        from catboost import Pool
+
+        shap_values = np.asarray(model.get_feature_importance(Pool(frame), type="ShapValues"), dtype=float)[0, :-1]
+    else:
+        import shap
+
+        shap_values = np.asarray(shap.TreeExplainer(model).shap_values(frame), dtype=float).reshape(-1)
+    result = pd.DataFrame({
+        "feature": features,
+        "value": [values.get(feature, np.nan) for feature in features],
+        "contribution": shap_values,
+    })
+    result["absolute_contribution"] = result["contribution"].abs()
+    return result.sort_values("absolute_contribution", ascending=False).reset_index(drop=True)
+
+
 def v18_local_contributions(
     model_id: str,
     cycle_id: str,
@@ -221,32 +290,8 @@ def v18_local_contributions(
 ) -> pd.DataFrame:
     """Return local SHAP associations for the selected owner-facing model."""
 
-    bundle = Path(bundle_dir)
-    located = _v18_row(model_id, cycle_id, building_id, cycle_day, bundle)
+    located = v18_feature_row(model_id, cycle_id, building_id, cycle_day, bundle_dir)
     if located is None:
         return pd.DataFrame()
-    row, metadata = located
-    features = json.loads(
-        (bundle / metadata["features_file"]).read_text(encoding="utf-8")
-    )
-    frame = pd.DataFrame([{feature: row[feature] for feature in features}])
-    model = _load_v18_model(model_id, str(bundle))
-    if metadata["algorithm"] == "CatBoost":
-        from catboost import Pool
-
-        values = np.asarray(
-            model.get_feature_importance(Pool(frame), type="ShapValues"), dtype=float
-        )[0, :-1]
-    else:
-        import shap
-
-        values = np.asarray(shap.TreeExplainer(model).shap_values(frame), dtype=float).reshape(-1)
-    result = pd.DataFrame(
-        {
-            "feature": features,
-            "value": [row[feature] for feature in features],
-            "contribution": values,
-        }
-    )
-    result["absolute_contribution"] = result["contribution"].abs()
-    return result.sort_values("absolute_contribution", ascending=False).reset_index(drop=True)
+    row, _metadata, _features = located
+    return v18_scenario_contributions(model_id, row, bundle_dir)

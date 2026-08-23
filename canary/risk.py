@@ -21,6 +21,17 @@ DIMENSION_LABELS = {
     "daily_mortality": "Daily mortality",
     "environment": "Environmental conditions",
 }
+PATTERN_PRIORITY = (
+    "High Mortality",
+    "Rapid Population Loss",
+    "High Temperature",
+    "Low Temperature",
+    "High Humidity",
+    "Low Humidity",
+    "Low Body Weight",
+    "Missing or Stale Evidence",
+    "No Material Concern",
+)
 
 
 class RiskConfigurationError(ValueError):
@@ -53,6 +64,8 @@ def validate_risk_rules(rules: dict[str, Any]) -> None:
         "humidity_ranges_pct",
         "maximum_environment_reading_age_days",
         "notes",
+        "priority_policy",
+        "threshold_provenance",
     }
     missing = sorted(required - set(rules))
     if missing:
@@ -92,6 +105,39 @@ def validate_risk_rules(rules: dict[str, Any]) -> None:
             raise RiskConfigurationError(f"The last {label.lower()} range must cover days beyond Day 35.")
     if int(rules["maximum_environment_reading_age_days"]) < 0:
         raise RiskConfigurationError("Environmental reading age cannot be negative.")
+
+    priority_policy = rules["priority_policy"]
+    required_policy = {
+        "minimum_scored_dimensions",
+        "domains",
+        "critical_single_dimension",
+        "critical_concurrent_domain_score",
+        "critical_concurrent_domain_count",
+        "minimum_high_single_dimension_score",
+    }
+    missing_policy = sorted(required_policy - set(priority_policy))
+    if missing_policy:
+        raise RiskConfigurationError(
+            "Priority policy is missing: " + ", ".join(missing_policy)
+        )
+    if not 1 <= int(priority_policy["minimum_scored_dimensions"]) <= len(DIMENSION_ORDER):
+        raise RiskConfigurationError("Minimum scored dimensions must be between 1 and 4.")
+    domains = priority_policy["domains"]
+    if set(domains) != set(DIMENSION_ORDER) or not all(str(value).strip() for value in domains.values()):
+        raise RiskConfigurationError("Priority-policy domains must map every risk dimension.")
+    critical_single = set(priority_policy["critical_single_dimension"])
+    if not critical_single <= set(DIMENSION_ORDER):
+        raise RiskConfigurationError("Critical single-dimension overrides must name risk dimensions.")
+    for key in (
+        "critical_concurrent_domain_score",
+        "minimum_high_single_dimension_score",
+    ):
+        if not 1 <= int(priority_policy[key]) <= 3:
+            raise RiskConfigurationError(f"{key} must be between 1 and 3.")
+    if int(priority_policy["critical_concurrent_domain_count"]) < 2:
+        raise RiskConfigurationError("Critical concurrent-domain count must be at least 2.")
+    if set(rules["threshold_provenance"]) != required_dimensions:
+        raise RiskConfigurationError("Threshold provenance must cover every configured cutoff.")
 
     max_score = len(DIMENSION_ORDER) * 3
     covered_scores: list[int] = []
@@ -139,6 +185,62 @@ def _rating_rule(total: int, rules: dict[str, Any]) -> str:
         if int(band["minimum"]) <= total <= int(band["maximum"]):
             return f"Score {int(band['minimum'])}-{int(band['maximum'])} => {band['label']}"
     raise RiskConfigurationError(f"No rating band covers score {total}.")
+
+
+def _priority_decision(
+    available: dict[str, int], rules: dict[str, Any]
+) -> tuple[str, str, str, bool]:
+    """Return operational label, rationale, rule id, and override status.
+
+    The total remains transparent, while acute or independent severe domains can
+    elevate a building for immediate review.  Population loss and daily mortality
+    intentionally share one survivability domain to avoid double counting a single
+    underlying loss event.
+    """
+    policy = rules["priority_policy"]
+    total = sum(available.values())
+    base_label = _rating(total, rules)
+    base_rule = _rating_rule(total, rules)
+    acute = [
+        dimension
+        for dimension in policy["critical_single_dimension"]
+        if available.get(dimension) == 3
+    ]
+    if acute:
+        readable = " and ".join(DIMENSION_LABELS[dimension].lower() for dimension in acute)
+        return (
+            "Critical",
+            f"Critical override: {readable} reached 3/3.",
+            "PRIORITY-OVERRIDE-ACUTE-SURVIVABILITY",
+            True,
+        )
+
+    domains: dict[str, int] = {}
+    for dimension, score in available.items():
+        domain = str(policy["domains"][dimension])
+        domains[domain] = max(domains.get(domain, 0), score)
+    severe_domains = [
+        domain
+        for domain, score in domains.items()
+        if score >= int(policy["critical_concurrent_domain_score"])
+    ]
+    if len(severe_domains) >= int(policy["critical_concurrent_domain_count"]):
+        readable = " and ".join(sorted(severe_domains))
+        return (
+            "Critical",
+            f"Critical override: {readable} each reached {int(policy['critical_concurrent_domain_score'])}/3.",
+            "PRIORITY-OVERRIDE-CONCURRENT-DOMAINS",
+            True,
+        )
+
+    if max(available.values()) >= int(policy["minimum_high_single_dimension_score"]) and base_label in {"Low", "Medium"}:
+        return (
+            "High",
+            "High floor: at least one observed dimension reached 3/3.",
+            "PRIORITY-OVERRIDE-SINGLE-DIMENSION-HIGH",
+            True,
+        )
+    return base_label, f"Base band: {base_rule}.", f"PRIORITY-BASE-{base_label.upper()}", False
 
 
 def _humidity_range(rules: dict[str, Any], age: int) -> dict[str, Any]:
@@ -417,7 +519,7 @@ def build_dimension_trace(scored_row: pd.Series | dict[str, object], rules: dict
     rules = rules or load_risk_rules()
     row = pd.Series(scored_row)
     if pd.isna(row.get("cycle_day")):
-        return pd.DataFrame(columns=["Dimension", "Raw observations", "Calculation", "Applied thresholds", "Score", "Data status"])
+        return pd.DataFrame(columns=["Dimension", "Domain", "Raw observations", "Calculation", "Applied thresholds", "Threshold source", "Score", "Data status"])
     cutoffs = rules["dimension_cutoffs"]
     if pd.isna(row.get("environment_score")):
         last_parts: list[str] = []
@@ -446,33 +548,44 @@ def build_dimension_trace(scored_row: pd.Series | dict[str, object], rules: dict
     trace = [
         {
             "Dimension": "Weight gap",
+            "Domain": str(rules["priority_policy"]["domains"]["weight"]).title(),
             "Raw observations": "Unavailable" if pd.isna(row.get("latest_weight_kg")) else f"{float(row['latest_weight_kg']):.3f} kg on Day {int(row['weight_measurement_day'])}; target {float(row['weight_target_at_measurement_kg']):.3f} kg",
             "Calculation": "Not scored" if pd.isna(row.get("weight_gap_pct")) else f"max((target - actual) / target, 0) = {float(row['weight_gap_pct']):.2f}%",
             "Applied thresholds": _threshold_description(cutoffs["weight_gap_pct"], "%"),
+            "Threshold source": rules["threshold_provenance"]["weight_gap_pct"],
             "Score": row.get("weight_score", pd.NA),
             "Data status": row.get("weight_freshness", "Unavailable"),
         },
         {
             "Dimension": "Population loss",
+            "Domain": str(rules["priority_policy"]["domains"]["population_loss"]).title(),
             "Raw observations": "Unavailable" if pd.isna(row.get("percentage_alive")) else f"{float(row['percentage_alive']):.2%} alive from {int(row['beginning_inventory']):,} beginning birds",
             "Calculation": "Not scored" if pd.isna(row.get("population_loss_pct")) else f"(beginning - current) / beginning = {float(row['population_loss_pct']):.2f}%",
             "Applied thresholds": _threshold_description(cutoffs["population_loss_pct"], "%"),
+            "Threshold source": rules["threshold_provenance"]["population_loss_pct"],
             "Score": row.get("population_loss_score", pd.NA),
             "Data status": row.get("data_freshness", "Unavailable"),
         },
         {
             "Dimension": "Daily mortality",
+            "Domain": str(rules["priority_policy"]["domains"]["daily_mortality"]).title(),
             "Raw observations": "Unavailable" if pd.isna(row.get("daily_mortality_pct")) else f"{float(row['daily_mortality_pct']):.2f}% of beginning birds on recorded Day {int(row['latest_operational_day'])}",
             "Calculation": "latest daily mortality / beginning population",
             "Applied thresholds": _threshold_description(cutoffs["daily_mortality_pct"], "%"),
+            "Threshold source": rules["threshold_provenance"]["daily_mortality_pct"],
             "Score": row.get("daily_mortality_score", pd.NA),
             "Data status": row.get("data_freshness", "Unavailable"),
         },
         {
             "Dimension": "Environmental conditions",
+            "Domain": str(rules["priority_policy"]["domains"]["environment"]).title(),
             "Raw observations": environment_raw,
             "Calculation": f"Higher of temperature-deviation score and humidity-deviation score; driver: {row.get('environment_driver', 'Not scored')}",
             "Applied thresholds": f"Temperature outside age range: {_threshold_description(cutoffs['temperature_deviation_c'], '°C')}; humidity outside age range: {_threshold_description(cutoffs['humidity_deviation_pp'], ' pp')}",
+            "Threshold source": (
+                f"Temperature: {rules['threshold_provenance']['temperature_deviation_c']} "
+                f"Humidity: {rules['threshold_provenance']['humidity_deviation_pp']}"
+            ),
             "Score": row.get("environment_score", pd.NA),
             "Data status": row.get(
                 "environment_status",
@@ -503,6 +616,122 @@ def _pattern_for(row: pd.Series, available: dict[str, int]) -> str:
     return "Low Body Weight"
 
 
+def _detected_patterns(
+    row: pd.Series,
+    available: dict[str, int],
+    *,
+    include_missing: bool,
+) -> list[tuple[str, object, str]]:
+    """Return every supported problem pattern, ordered for management review.
+
+    The first item remains the primary headline for backward compatibility.
+    Additional items are retained for multi-pattern recommendation matching.
+    """
+
+    candidates: list[tuple[str, int, str]] = []
+
+    def add(pattern: str, value: object, dimension: str) -> None:
+        if pd.notna(value) and int(value) > 0:
+            candidates.append((pattern, int(value), dimension))
+
+    add("High Mortality", row.get("daily_mortality_score"), "Daily mortality")
+    add("Rapid Population Loss", row.get("population_loss_score"), "Population loss")
+    if str(row.get("temperature_direction")) == "High Temperature":
+        add("High Temperature", row.get("temperature_score"), "Environmental conditions")
+    elif str(row.get("temperature_direction")) == "Low Temperature":
+        add("Low Temperature", row.get("temperature_score"), "Environmental conditions")
+    if str(row.get("humidity_direction")) == "High Humidity":
+        add("High Humidity", row.get("humidity_score"), "Environmental conditions")
+    elif str(row.get("humidity_direction")) == "Low Humidity":
+        add("Low Humidity", row.get("humidity_score"), "Environmental conditions")
+    add("Low Body Weight", row.get("weight_score"), "Weight gap")
+
+    priority = {pattern: index for index, pattern in enumerate(PATTERN_PRIORITY)}
+    candidates.sort(key=lambda item: (-item[1], priority[item[0]]))
+    detected: list[tuple[str, object, str]] = list(candidates)
+    if include_missing:
+        detected.append(("Missing or Stale Evidence", pd.NA, "Data availability"))
+    if not detected:
+        detected.append(("No Material Concern", 0, "All scored dimensions"))
+    return detected
+
+
+def build_pattern_trace(
+    scored_row: pd.Series | dict[str, object],
+    rules: dict[str, Any] | None = None,
+) -> pd.DataFrame:
+    """Explain every problem-pattern criterion and whether it matched."""
+
+    rules = rules or load_risk_rules()
+    row = pd.Series(scored_row)
+    cutoffs = rules["dimension_cutoffs"]
+    score_columns = [f"{dimension}_score" for dimension in DIMENSION_ORDER]
+    scored_count = sum(pd.notna(row.get(column)) for column in score_columns)
+    complete = scored_count == len(DIMENSION_ORDER)
+    all_zero = complete and all(int(row.get(column)) == 0 for column in score_columns)
+
+    def value_or_missing(value: object, formatter) -> str:
+        return "Unavailable or stale" if pd.isna(value) else formatter(float(value))
+
+    rows = [
+        {
+            "Problem pattern": "Low Body Weight",
+            "Criterion": f"Measured weight gap > {cutoffs['weight_gap_pct'][0]:g}% of the age-specific target",
+            "Recorded evidence": value_or_missing(row.get("weight_gap_pct"), lambda value: f"{value:.1f}% below target"),
+            "Detected": pd.notna(row.get("weight_score")) and int(row.get("weight_score")) > 0,
+        },
+        {
+            "Problem pattern": "High Mortality",
+            "Criterion": f"Latest daily mortality > {cutoffs['daily_mortality_pct'][0]:g}% of beginning population",
+            "Recorded evidence": value_or_missing(row.get("daily_mortality_pct"), lambda value: f"{value:.2f}% of beginning population"),
+            "Detected": pd.notna(row.get("daily_mortality_score")) and int(row.get("daily_mortality_score")) > 0,
+        },
+        {
+            "Problem pattern": "Rapid Population Loss",
+            "Criterion": f"Cumulative population loss > {cutoffs['population_loss_pct'][0]:g}% of beginning population",
+            "Recorded evidence": value_or_missing(row.get("population_loss_pct"), lambda value: f"{value:.2f}% of beginning population"),
+            "Detected": pd.notna(row.get("population_loss_score")) and int(row.get("population_loss_score")) > 0,
+        },
+        {
+            "Problem pattern": "High Temperature",
+            "Criterion": "Latest current daily average is above the age-specific upper temperature limit",
+            "Recorded evidence": "Unavailable or stale" if pd.isna(row.get("temperature_avg_c")) else f"{float(row['temperature_avg_c']):.1f}°C; upper limit {float(row['temperature_maximum_c']):.1f}°C",
+            "Detected": str(row.get("temperature_direction")) == "High Temperature" and pd.notna(row.get("temperature_score")) and int(row.get("temperature_score")) > 0,
+        },
+        {
+            "Problem pattern": "Low Temperature",
+            "Criterion": "Latest current daily average is below the age-specific lower temperature limit",
+            "Recorded evidence": "Unavailable or stale" if pd.isna(row.get("temperature_avg_c")) else f"{float(row['temperature_avg_c']):.1f}°C; lower limit {float(row['temperature_minimum_c']):.1f}°C",
+            "Detected": str(row.get("temperature_direction")) == "Low Temperature" and pd.notna(row.get("temperature_score")) and int(row.get("temperature_score")) > 0,
+        },
+        {
+            "Problem pattern": "High Humidity",
+            "Criterion": "Latest current daily average is above the age-specific upper humidity limit",
+            "Recorded evidence": "Unavailable or stale" if pd.isna(row.get("humidity_avg_pct")) else f"{float(row['humidity_avg_pct']):.1f}%; upper limit {float(row['humidity_maximum_pct']):.1f}%",
+            "Detected": str(row.get("humidity_direction")) == "High Humidity" and pd.notna(row.get("humidity_score")) and int(row.get("humidity_score")) > 0,
+        },
+        {
+            "Problem pattern": "Low Humidity",
+            "Criterion": "Latest current daily average is below the age-specific lower humidity limit",
+            "Recorded evidence": "Unavailable or stale" if pd.isna(row.get("humidity_avg_pct")) else f"{float(row['humidity_avg_pct']):.1f}%; lower limit {float(row['humidity_minimum_pct']):.1f}%",
+            "Detected": str(row.get("humidity_direction")) == "Low Humidity" and pd.notna(row.get("humidity_score")) and int(row.get("humidity_score")) > 0,
+        },
+        {
+            "Problem pattern": "Missing or Stale Evidence",
+            "Criterion": "At least one of the four risk dimensions cannot be scored from current evidence",
+            "Recorded evidence": f"{scored_count}/4 dimensions scored; {row.get('evidence_status', 'status unavailable')}",
+            "Detected": not complete,
+        },
+        {
+            "Problem pattern": "No Material Concern",
+            "Criterion": "All four dimensions are available and each scores 0/3",
+            "Recorded evidence": f"{scored_count}/4 dimensions scored",
+            "Detected": all_zero,
+        },
+    ]
+    return pd.DataFrame(rows)
+
+
 def score_cycle_snapshot(
     dataset: CanaryDataset,
     cycle_id: str,
@@ -520,8 +749,13 @@ def score_cycle_snapshot(
             {
                 "risk_score": pd.NA,
                 "risk_rating": "Not rated",
+                "base_risk_rating": "Not rated",
                 "risk_pattern": "Not applicable",
+                "risk_patterns": "Not applicable",
+                "risk_pattern_details": "Not applicable",
+                "risk_pattern_count": 0,
                 "scored_dimensions": 0,
+                "available_score_max": 0,
                 "evidence_status": "Not eligible",
                 "why_primary": row["status_note"],
                 "why_supporting": "",
@@ -529,6 +763,8 @@ def score_cycle_snapshot(
                 "risk_approval_status": rules["approval_status"],
                 "score_equation": "Not applicable",
                 "risk_label_rule": "Not applicable",
+                "priority_rule_id": "Not applicable",
+                "priority_override_applied": False,
                 "identified_problem": "Not applicable",
                 "recommended_action": "Not applicable for this building state.",
                 "recommendation_rule_id": "Not applicable",
@@ -540,6 +776,10 @@ def score_cycle_snapshot(
         scores = {dimension: row.get(f"{dimension}_score") for dimension in DIMENSION_ORDER}
         available = {dimension: int(value) for dimension, value in scores.items() if pd.notna(value)}
         if not available:
+            record["risk_pattern"] = "Missing or Stale Evidence"
+            record["risk_patterns"] = "Missing or Stale Evidence"
+            record["risk_pattern_details"] = "Missing or Stale Evidence"
+            record["risk_pattern_count"] = 1
             record["why_primary"] = "Insufficient observations to calculate operational risk."
             record["evidence_status"] = "Insufficient"
             output_records.append(record)
@@ -548,18 +788,51 @@ def score_cycle_snapshot(
         evidence = _score_evidence(row)
         highest = max(available.values())
         primary_dimensions = [dimension for dimension in DIMENSION_ORDER if available.get(dimension) == highest]
-        pattern = _pattern_for(row, available)
+        scored_dimensions = len(available)
+        minimum_scored = int(rules["priority_policy"]["minimum_scored_dimensions"])
+        base_rating = _rating(total, rules)
+        if scored_dimensions < minimum_scored:
+            priority_rating, priority_reason, priority_rule_id, override_applied = _priority_decision(available, rules)
+            if not override_applied:
+                priority_rating = "Insufficient evidence"
+                priority_reason = (
+                    f"Only {scored_dimensions} of {len(DIMENSION_ORDER)} dimensions were scored; "
+                    f"at least {minimum_scored} are required for a normal priority label."
+                )
+                priority_rule_id = "PRIORITY-INSUFFICIENT-EVIDENCE"
+            evidence_status = "Insufficient evidence"
+        else:
+            priority_rating, priority_reason, priority_rule_id, override_applied = _priority_decision(available, rules)
+            evidence_status = "Complete" if scored_dimensions == len(DIMENSION_ORDER) else "Reduced evidence"
+        detected_patterns = _detected_patterns(
+            row,
+            available,
+            include_missing=scored_dimensions < len(DIMENSION_ORDER),
+        )
+        pattern = detected_patterns[0][0]
+        pattern_names = [item[0] for item in detected_patterns]
+        pattern_details = [
+            item[0] if pd.isna(item[1]) else f"{item[0]} ({int(item[1])}/3)"
+            for item in detected_patterns
+        ]
         record.update(
             {
                 "risk_score": total,
-                "risk_rating": _rating(total, rules),
+                "risk_rating": priority_rating,
+                "base_risk_rating": base_rating,
                 "risk_pattern": pattern,
-                "scored_dimensions": len(available),
-                "evidence_status": "Complete" if len(available) == 4 else "Reduced evidence",
+                "risk_patterns": " | ".join(pattern_names),
+                "risk_pattern_details": " | ".join(pattern_details),
+                "risk_pattern_count": len(pattern_names),
+                "scored_dimensions": scored_dimensions,
+                "available_score_max": scored_dimensions * 3,
+                "evidence_status": evidence_status,
                 "why_primary": " ".join(evidence[d] for d in primary_dimensions if d in evidence) or "No material concern in scored dimensions.",
                 "why_supporting": " ".join(evidence[d] for d in DIMENSION_ORDER if d in evidence and d not in primary_dimensions),
                 "score_equation": " + ".join(f"{DIMENSION_LABELS[d]} {available[d]}" for d in DIMENSION_ORDER if d in available) + f" = {total}",
-                "risk_label_rule": _rating_rule(total, rules),
+                "risk_label_rule": priority_reason,
+                "priority_rule_id": priority_rule_id,
+                "priority_override_applied": override_applied,
                 "identified_problem": pattern,
             }
         )

@@ -25,8 +25,10 @@ def build_historical_outcomes(
 
     For the capstone, the last recorded building date is treated as the
     completion date and recovery is ending population divided by beginning
-    population. Final average weight remains missing unless Farm Performance
-    Summary contains a defensible building-cycle match.
+    population. Final sale weight remains missing unless Farm Performance
+    Summary contains a defensible building-cycle match. A separate display
+    field falls back to the recorded Day 35 weight (or, if Day 35 is absent,
+    the last recorded weight) without relabeling it as a final sale weight.
     """
 
     outcomes = dataset.cycles[
@@ -50,6 +52,69 @@ def build_historical_outcomes(
     outcomes["actual_final_average_weight_kg"] = pd.NA
     outcomes["actual_final_weight_status"] = "Not available in Farm Performance Summary"
     outcomes["actual_final_weight_source"] = pd.NA
+
+    measured = dataset.daily.loc[
+        dataset.daily["weight_measured"].fillna(False).astype(bool)
+        & dataset.daily["bodyweight_kg"].notna(),
+        ["cycle_id", "building_id", "age_day", "record_date", "bodyweight_kg"],
+    ].copy()
+    if not measured.empty:
+        measured = measured.sort_values(
+            ["cycle_id", "building_id", "age_day", "record_date"]
+        )
+        latest = measured.drop_duplicates(
+            ["cycle_id", "building_id"], keep="last"
+        ).rename(
+            columns={
+                "age_day": "last_recorded_weight_day",
+                "record_date": "last_recorded_weight_date",
+                "bodyweight_kg": "last_recorded_weight_kg",
+            }
+        )
+        day35 = measured.loc[measured["age_day"].eq(35)].drop_duplicates(
+            ["cycle_id", "building_id"], keep="last"
+        ).rename(
+            columns={
+                "record_date": "recorded_day35_weight_date",
+                "bodyweight_kg": "recorded_day35_weight_kg",
+            }
+        )
+        outcomes = outcomes.merge(
+            latest[
+                [
+                    "cycle_id",
+                    "building_id",
+                    "last_recorded_weight_day",
+                    "last_recorded_weight_date",
+                    "last_recorded_weight_kg",
+                ]
+            ],
+            on=["cycle_id", "building_id"],
+            how="left",
+            validate="one_to_one",
+        )
+        outcomes = outcomes.merge(
+            day35[
+                [
+                    "cycle_id",
+                    "building_id",
+                    "recorded_day35_weight_date",
+                    "recorded_day35_weight_kg",
+                ]
+            ],
+            on=["cycle_id", "building_id"],
+            how="left",
+            validate="one_to_one",
+        )
+    else:
+        for column in (
+            "last_recorded_weight_day",
+            "last_recorded_weight_date",
+            "last_recorded_weight_kg",
+            "recorded_day35_weight_date",
+            "recorded_day35_weight_kg",
+        ):
+            outcomes[column] = pd.NA
 
     if final_weight_labels is not None and not final_weight_labels.empty:
         matched = _eligible_final_weight_labels(dataset, final_weight_labels)[
@@ -82,6 +147,41 @@ def build_historical_outcomes(
         outcomes = outcomes.drop(
             columns=["final_average_weight_kg", "weight_label_source", "weight_label_valid"]
         )
+
+    outcomes["display_recorded_weight_kg"] = outcomes[
+        "actual_final_average_weight_kg"
+    ]
+    outcomes["display_recorded_weight_label"] = "Actual final average weight (g)"
+    outcomes["display_recorded_weight_status"] = outcomes[
+        "actual_final_weight_status"
+    ]
+
+    no_final = outcomes["actual_final_average_weight_kg"].isna()
+    has_day35 = no_final & outcomes["recorded_day35_weight_kg"].notna()
+    outcomes.loc[has_day35, "display_recorded_weight_kg"] = outcomes.loc[
+        has_day35, "recorded_day35_weight_kg"
+    ]
+    outcomes.loc[
+        has_day35, "display_recorded_weight_label"
+    ] = "Recorded Day 35 weight (g)"
+    outcomes.loc[
+        has_day35, "display_recorded_weight_status"
+    ] = "Day 35 management milestone; not a final sale-weight record"
+
+    has_latest = (
+        no_final
+        & ~has_day35
+        & outcomes["last_recorded_weight_kg"].notna()
+    )
+    outcomes.loc[has_latest, "display_recorded_weight_kg"] = outcomes.loc[
+        has_latest, "last_recorded_weight_kg"
+    ]
+    outcomes.loc[has_latest, "display_recorded_weight_label"] = outcomes.loc[
+        has_latest, "last_recorded_weight_day"
+    ].map(lambda day: f"Last recorded weight — Day {int(day)} (g)")
+    outcomes.loc[
+        has_latest, "display_recorded_weight_status"
+    ] = "Latest recorded milestone weight; not a final sale-weight record"
 
     return outcomes.sort_values(["cycle_id", "building_id"]).reset_index(drop=True)
 

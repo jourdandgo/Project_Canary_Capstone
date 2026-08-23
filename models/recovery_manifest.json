@@ -1,10 +1,10 @@
 {
   "outcome": "recovery",
-  "model_version": "recovery-3.2.0",
-  "selected_model": "remaining_loss_linear",
+  "model_version": "recovery-capstone-4.1.0",
+  "selected_model": "age_band_remaining_loss",
   "research_champion": "remaining_loss_linear",
-  "operational_model": "remaining_loss_linear",
-  "model_kind": "fitted",
+  "operational_model": "age_band_remaining_loss",
+  "model_kind": "formula",
   "prediction_target": "additional_population_loss_after_review_date",
   "prediction_equation": "predicted final recovery = current percentage alive - predicted additional loss",
   "feature_schema_version": "features-0.4.0",
@@ -648,12 +648,12 @@
     }
   },
   "selected_metrics": {
-    "rows": 151,
-    "r2": 0.05437534825635171,
-    "target_side_accuracy": 0.9006622516556292,
-    "majority_side_accuracy": 0.8741721854304636,
+    "rows": 124,
+    "r2": 0.055864568600322,
+    "target_side_accuracy": 0.9032258064516128,
+    "majority_side_accuracy": 0.9032258064516128,
     "below_target_recall": 1.0,
-    "at_or_above_target_recall": 0.21052631578947367,
+    "at_or_above_target_recall": 0.0,
     "balanced_target_accuracy": 0.6052631578947368,
     "confusion_matrix": {
       "actual_below_predicted_below": 132,
@@ -699,12 +699,12 @@
         "bias": 0.029682143575315068
       }
     },
-    "mae": 0.017436776546919858,
+    "mae": 0.024493269981841564,
     "cycle_macro_mae": 0.01755896815978077,
-    "rmse": 0.025728968363125874,
-    "bias": 0.0008375479888707141,
+    "rmse": 0.03124445089000107,
+    "bias": -0.000363572921488492,
     "fold_mae_std": 0.008032425622640284,
-    "uncertainty_half_width_80": 0.028340487541316794,
+    "uncertainty_half_width_80": 0.033800016666143406,
     "outer_fold_best_parameters": [
       {},
       {},
@@ -714,31 +714,34 @@
       {}
     ],
     "horizon": {
-      "Days 1-7": {
+      "Day 7": {
         "rows": 31,
-        "mae": 0.020992099479664912,
-        "rmse": 0.028213077951129092,
-        "r2": -0.05467999960909209
+        "mae": 0.02588996887798041,
+        "rmse": 0.033675055654504564,
+        "r2": -0.0967436975062749
       },
-      "Days 8-14": {
+      "Day 14": {
         "rows": 31,
-        "mae": 0.019510396181431317,
-        "rmse": 0.027129869050037888,
-        "r2": 0.024751776650481228
+        "mae": 0.025146297342890825,
+        "rmse": 0.03184029315354821,
+        "r2": 0.0195112424168301
       },
-      "Days 15-21": {
+      "Day 21": {
         "rows": 31,
-        "mae": 0.019459832192472198,
-        "rmse": 0.026222813342713543,
-        "r2": 0.08887420962154402
+        "mae": 0.024609177347107616,
+        "rmse": 0.031209968494425203,
+        "r2": 0.0579473759811853
       },
-      "Day 22+": {
-        "rows": 58,
-        "mae": 0.013346915433177196,
-        "rmse": 0.023174749640882744,
-        "r2": 0.12299482375308024
+      "Day 28": {
+        "rows": 31,
+        "mae": 0.022327636359387403,
+        "rmse": 0.02798190613253277,
+        "r2": 0.2427433535095465
       }
-    }
+    },
+    "cycle_macro_rmse": 0.030921602574758348,
+    "worst_cycle_rmse": 0.060907497502400584,
+    "uncertainty_half_width_90": 0.0400996234226102
   },
   "research_champion_metrics": {
     "rows": 151,
@@ -873,7 +876,7 @@
   "snapshot_sampling": "Days 7, 14, 21, and 28 plus the latest eligible pre-outcome snapshot",
   "target": 0.95,
   "label_definition": "Population on the last recorded daily date divided by beginning inventory; capstone recovery proxy",
-  "status": "Validated experimental forecast",
+  "status": "Capstone operational baseline; not production-approved",
   "selection_metric": "nested_leave_one_complete_cycle_out_cycle_macro_mae",
   "selection_tolerance_pct": 0.0,
   "nested_validation": {
@@ -1216,10 +1219,10 @@
   "final_fit_parameters": {},
   "research_champion_fit_parameters": {},
   "additional_loss_by_age_band": {
-    "7": 0.06663674153026539,
-    "14": 0.05636788542677566,
-    "21": 0.04757985627080095,
-    "28": 0.019362773824608943
+    "7": 0.07522307929117622,
+    "14": 0.06495422318768648,
+    "21": 0.056166194031711775,
+    "28": 0.040268560876589005
   },
   "live_inference_policy": {
     "name": "piecewise_linear_checkpoint_loss",
@@ -3565,7 +3568,7 @@
     "Environmental evidence is incomplete in part of the history.",
     "Target-side classification is not trusted unless it beats the majority baseline."
   ],
-  "training_source": "FARM HARVEST DATA.xlsx",
+  "training_source": "data/FARM HARVEST DATA.xlsx",
   "source_complete_date": "2026-08-07",
   "source_daily_snapshot_rows": 1355,
   "prospective_latest_cycle_audit": {
@@ -3740,5 +3743,7 @@
         "absolute_error": 0.052940575332534046
       }
     ]
-  }
+  },
+  "source_sha256": "11caac03934559bb7e1033d6d0d1e0847b2923e9937f7511f2a2d644e39fa57e",
+  "selection_rationale": "Simplest candidate within one standard error of the lowest cycle-macro RMSE. LightGBM and XGBoost residual challengers tied the baseline by learning zero incremental correction."
 }

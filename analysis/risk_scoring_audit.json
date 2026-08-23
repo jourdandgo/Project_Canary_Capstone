@@ -1,5 +1,5 @@
 {
-  "audit_date": "2026-08-10",
+  "audit_date": "2026-08-19",
   "purpose": "Audit the revised direct-evidence risk score for traceability and historical association without treating it as an outcome probability.",
   "design": {
     "dimensions": [
@@ -16,22 +16,83 @@
     "interpretation": "Operational priority only; separate models forecast outcomes."
   },
   "data_limit": {
-    "temperature_coverage_pct": 42.37695078031212,
-    "humidity_coverage_pct": 40.57623049219688,
+    "temperature_coverage_pct": 43.47290640394089,
+    "humidity_coverage_pct": 41.6256157635468,
     "temperature_range_days_above_5c": 540,
     "temperature_range_days_recorded": 696
   },
   "day14_audit": {
-    "scored_snapshots": 15,
-    "environment_scored": 6,
-    "score_vs_final_recovery_correlation": -0.403,
-    "score_vs_day35_weight_correlation": -0.339
+    "scored_snapshots": 18,
+    "environment_scored": 7,
+    "score_vs_final_recovery_correlation": 0.222,
+    "score_vs_day35_weight_correlation": -0.1
+  },
+  "checkpoint_priority_audit": {
+    "Day 7": {
+      "scored_snapshots": 18,
+      "priority_distribution": {
+        "Critical": 5,
+        "High": 4,
+        "Low": 1,
+        "Medium": 8
+      },
+      "evidence_distribution": {
+        "Complete": 8,
+        "Reduced evidence": 10
+      },
+      "environment_scored": 8,
+      "priority_overrides": 9
+    },
+    "Day 14": {
+      "scored_snapshots": 18,
+      "priority_distribution": {
+        "Critical": 5,
+        "High": 4,
+        "Low": 5,
+        "Medium": 4
+      },
+      "evidence_distribution": {
+        "Complete": 7,
+        "Reduced evidence": 11
+      },
+      "environment_scored": 7,
+      "priority_overrides": 9
+    },
+    "Day 21": {
+      "scored_snapshots": 18,
+      "priority_distribution": {
+        "Critical": 2,
+        "High": 5,
+        "Low": 3,
+        "Medium": 8
+      },
+      "evidence_distribution": {
+        "Complete": 6,
+        "Reduced evidence": 12
+      },
+      "environment_scored": 6,
+      "priority_overrides": 7
+    },
+    "Day 28": {
+      "scored_snapshots": 19,
+      "priority_distribution": {
+        "High": 4,
+        "Low": 8,
+        "Medium": 7
+      },
+      "evidence_distribution": {
+        "Complete": 4,
+        "Reduced evidence": 15
+      },
+      "environment_scored": 5,
+      "priority_overrides": 2
+    }
   },
   "last_recorded_audit": {
-    "scored_snapshots": 25,
-    "environment_scored": 9,
-    "score_vs_final_recovery_correlation": -0.368,
-    "score_vs_day35_weight_correlation": -0.744
+    "scored_snapshots": 31,
+    "environment_scored": 10,
+    "score_vs_final_recovery_correlation": -0.286,
+    "score_vs_day35_weight_correlation": -0.47
   },
-  "decision": "Use the score for transparent prioritization. Do not claim calibrated probability or causal environmental effects. Validate the environmental thresholds with the farm before operational reliance."
+  "decision": "Use the score for transparent prioritization. Do not claim calibrated probability or causal environmental effects. Test the proposed labels and overrides in a one-to-two-cycle shadow pilot; revise only with documented farm approval."
 }

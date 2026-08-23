@@ -61,6 +61,8 @@ def build_harvest_analysis_rows(
     current_snapshot: pd.DataFrame,
     recovery_manifest: dict[str, Any],
     day35_manifest: dict[str, Any],
+    *,
+    include_latest_as_current: bool = True,
 ) -> pd.DataFrame:
     """Return one transparent reporting row for every cycle and physical building."""
 
@@ -148,9 +150,23 @@ def build_harvest_analysis_rows(
         how="left",
         validate="one_to_one",
     )
+    # A reset baseline supplies a historical snapshot rather than a forecast-
+    # enriched current snapshot. Keep the reporting schema stable and leave
+    # current-only fields empty instead of treating history as live output.
+    for column in (
+        "percentage_alive",
+        "latest_population",
+        "latest_weight_kg",
+        "predicted_final_recovery",
+        "projected_day35_weight_kg",
+        "recovery_target_gap_pp",
+        "day35_weight_target_gap_kg",
+    ):
+        if column not in result:
+            result[column] = pd.NA
 
     has_record = result["start_date"].notna()
-    is_current = result["cycle_id"].eq(current_cycle)
+    is_current = result["cycle_id"].eq(current_cycle) & include_latest_as_current
     result["reporting_status"] = "No building data"
     result.loc[has_record & ~is_current, "reporting_status"] = "Historical records ended"
     active_state = result["current_source_state"].isin(["Active", "Incomplete"])

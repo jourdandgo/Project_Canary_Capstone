@@ -1,9 +1,11 @@
 {
-  "version": "operational-alerts-0.3.0-tropical-bands",
+  "version": "operational-alerts-0.4.0-persistent-watch",
   "approval_status": "Tropical bands supplied; severity distances pending Doc Raymond validation",
   "risk_score_effect": "Temperature and humidity feed the formal environmental dimension; feed remains supporting diagnostic only.",
   "feed_alert_enabled": false,
   "maximum_current_reading_age_days": 2,
+  "persistent_signal_window_days": 3,
+  "persistent_weight_gap_pct": 10,
   "mortality_daily_pct": {"watch": 0.1, "warning": 0.2, "critical": 0.3},
   "temperature_deviation_from_range_c": {"warning": 1, "critical": 2},
   "temperature_ranges_c": [

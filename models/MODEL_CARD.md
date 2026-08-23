@@ -1,50 +1,48 @@
-# Project Canary Model Card — Final Capstone Baselines
-
-> **Superseded for the 2026-3 dashboard:** the operational outlook now uses the Trish v18 prospective deployment described in `docs/TRISH_V18_INTEGRATION.md`. The transparent methods below remain documented fallbacks and comparison baselines.
+# Project Canary Model Card — Trish v19 Final Handoff
 
 ## Decision use
 
-Canary forecasts final harvest recovery and average Day 35 bodyweight for each building. Forecasts do not change the independent 0–12 observed-condition risk score, diagnose disease, or prescribe treatment.
+Canary presents two planning outlooks. Model 1 estimates the end-of-cycle recovery proxy. Model 3 estimates average bodyweight on Day 35. Neither forecast changes the independent 0–12 observed-condition risk score, diagnoses a cause, prescribes treatment, or guarantees an outcome.
 
-| Outcome | Version | Selected method | Development cycles | Building outcomes | Held-out MAE | Held-out R² | Status |
-|---|---|---|---:|---:|---:|---:|---|
-| Harvest recovery | recovery-capstone-4.1.0 | age-band remaining loss | 6 | 31 | 2.45 pp | 0.056 | Capstone operational; not production-approved |
-| Day 35 bodyweight | day35-weight-capstone-3.1.0 | historical remaining gain | 6 | 31 | 127.1 g | 0.310 | Capstone operational; not production-approved |
+| Model | Outcome | Algorithm | Features | Overall held-out MAE | Held-out R² | Display schedule |
+|---|---|---|---:|---:|---:|---|
+| Model 1 | Last-recorded-population recovery proxy | Extra Trees | 85 | 1.58 percentage points | 0.373 | Daily through Day 14; held afterward |
+| Model 3 | Recorded Day 35 average bodyweight | CatBoost | 85 | 122.1 g | 0.241 | Days 7, 14, and 21; held between and afterward |
 
-## Validation
+## Validation and replay
 
-Primary evaluation uses nested leave-one-complete-harvest-cycle-out cross-validation. Each outer fold represents a future unseen cycle; cleaning, feature engineering, expected paths, feature selection and tuning use only the remaining cycles. Days 7, 14, 21 and 28 are the principal validated checkpoints. Daily estimates between checkpoints are available and explicitly labeled.
+The application displays Trish's saved leave-one-building-flock-out predictions. All repeated daily rows from the held-out building-flock remain outside that fold's fit. Other buildings from the same production cycle may remain in training, so this should not be described as leave-one-complete-cycle-out validation.
 
-The authoritative source contains 1,624 unique building-days and 34 building-cycles. Thirty-one outcomes across six cycles are development evidence. The three 2026-3 buildings remain a locked later-cycle audit, and their recovery endpoint is provisional.
+The final serialized artifacts were fitted using all 34 building-flocks. To avoid showing in-sample fitted values for historical or 2026-3 screens, Canary replays the saved held-out prediction rows instead. The bundle manifest records the artifact SHA-256 hashes and MLflow run IDs.
 
-## Recovery formula
+## Checkpoint performance
 
-`projected final recovery = current recorded survival − expected remaining loss for flock age`
+| Model | Checkpoint | Held-out MAE | 80th-percentile absolute error |
+|---|---:|---:|---:|
+| Model 1 | Day 7 | 1.62 percentage points | 1.89 percentage points |
+| Model 1 | Day 14 | 1.55 percentage points | 2.10 percentage points |
+| Model 3 | Day 7 | 122.6 g | 187.2 g |
+| Model 3 | Day 14 | 105.7 g | 189.4 g |
+| Model 3 | Day 21 | 105.7 g | 158.2 g |
 
-Expected remaining loss from the full development data is approximately 7.52 pp at Day 7, 6.50 pp at Day 14, 5.62 pp at Day 21 and 4.03 pp at Day 28. Daily application values are linearly interpolated between validated checkpoints. Final recovery is constrained not to exceed current survival.
+The displayed range is the point prediction plus or minus the checkpoint's 80th-percentile held-out absolute error. It is an empirical error reference, not a formal probabilistic confidence interval.
 
-Performance: 3.09 pp cycle-macro RMSE, 3.12 pp pooled RMSE, 2.45 pp MAE, R² 0.056 and -0.04 pp bias. Residual LightGBM and XGBoost tied the baseline exactly because their learned corrections collapsed to zero; the simpler baseline was retained.
+## Refresh rules
 
-## Bodyweight formula
-
-`projected Day 35 weight = latest actually observed weight + expected remaining gain for measurement age`
-
-Expected remaining gain from the full development data is approximately 1.373 kg at Day 7, 1.226 kg at Day 14, 0.943 kg at Day 21 and 0.513 kg at Day 28. Target/interpolated weights are never substituted for measurements.
-
-Performance: 149.9 g cycle-macro RMSE, 163.9 g pooled RMSE, 127.1 g MAE, R² 0.310, -0.6 g bias, 50.8% within 100 g and 75.8% within 200 g. This transparent baseline outperformed all learned challengers in the latest balanced refresh.
-
-Checkpoint cycle-macro RMSE is 163.7 g at Day 7, 141.7 g at Day 14, 124.0 g at Day 21 and 129.3 g at Day 28. Day 28 R² is 0.585; this is checkpoint-specific and must not be presented as the overall R².
+- Model 1 uses daily rows and may refresh daily through Day 14. The Day 14 value is held afterward.
+- Model 3 is shown only at Days 7, 14, and 21 because bodyweight is measured mainly at weekly checkpoints. It is held between weigh-ins and after Day 21.
+- A Day 28 bodyweight observation may change the rules-based weight-gap score, but it does not create a Model 3 forecast.
+- A recorded Day 35 measurement replaces the weight forecast.
+- A current record without a measured checkpoint weight does not receive a Model 3 outlook.
 
 ## Explainability
 
-The selected baselines are explained by their explicit formulas. SHAP is generated only for compatible learned shadow models and represents predictive association, not causation. Many SHAP directions are unstable across held-out cycles and must not drive management recommendations.
+Each app detail panel exposes the exact 85-feature model-ready row, evidence cutoff, algorithm, MLflow run, artifact version, prediction, recorded outcome for completed replays, checkpoint MAE, and error-band calculation. Global leave-one-feature-out results show which inputs improved held-out accuracy. They are predictive associations, not causal effects or guaranteed management levers.
 
-## Limitations and promotion
+## Limitations
 
-- Six independent development cycles are insufficient for production approval.
-- Recovery uses a last-recorded endpoint proxy; the later audit endpoint is provisional.
-- Environmental history is incomplete, feed units remain unresolved, and important flock metadata are absent.
-- Only one of 31 development building-cycles reached 1,800 g.
-- Empirical 80% interval coverage is 75.0% for recovery and 72.6% for bodyweight.
-
-Any learned challenger requires at least three new complete prospective cycles and must retain the prespecified RMSE, bias, worst-cycle, checkpoint and coverage gates before production promotion.
+- The sample contains only 34 building-flocks.
+- Recovery is last recorded population divided by beginning population; it is not independently verified harvest or sales recovery.
+- Environmental, feed, health, and commercial records remain incomplete or inconsistently measured.
+- The handoff does not package the full raw-data-to-85-feature transformer. Arbitrary future-flock scoring is therefore unavailable in this release.
+- The current app is a pilot-stage replay and decision-support prototype, not a production-approved autonomous system.
