@@ -66,7 +66,7 @@ def test_dashboard_renders_without_streamlit_errors(monkeypatch):
     detail_buttons = [
         button
         for button in app.button
-        if button.label.startswith("See how ") and "predictions were made" in button.label
+        if button.label.startswith("View ") and button.label.endswith(" details")
     ]
     assert len(detail_buttons) == 3
     unavailable_buttons = [button for button in app.button if button.label == "No details available"]

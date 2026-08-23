@@ -221,6 +221,22 @@ st.markdown(
       .priority-copy { color:#4d6057; font-size:.78rem; line-height:1.42; }
       .pattern-title { display:block; color:#294f3c; font-weight:850; }
       .pattern-subtitle { display:block; color:#607069; font-size:.71rem; line-height:1.38; margin-top:.13rem; }
+      .scan-card { display:flex; flex-direction:column; gap:.72rem; padding:.12rem; }
+      .scan-meta { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.4rem; color:#617169; font-size:.73rem; }
+      .scan-badges { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:.3rem; }
+      .scan-signal { background:#f7faeb; border-left:5px solid #94bc2b; border-radius:10px; padding:.7rem .75rem; }
+      .scan-signal-kicker { display:block; color:#71813d; font-size:.62rem; font-weight:850; letter-spacing:.065em; text-transform:uppercase; }
+      .scan-signal-title { display:block; color:#244a35; font-size:.96rem; font-weight:900; margin:.14rem 0 .18rem; }
+      .scan-signal-copy { color:#53645b; font-size:.75rem; line-height:1.42; }
+      .scan-more { display:inline-flex; margin-top:.38rem; color:#64745a; font-size:.66rem; font-weight:750; }
+      .scan-outlooks { display:grid; grid-template-columns:1fr 1fr; gap:.52rem; }
+      .scan-outlook { background:#f6f9f7; border:1px solid #e1eae5; border-radius:11px; padding:.66rem .68rem; min-width:0; }
+      .scan-outlook-label { display:block; color:#68786f; font-size:.62rem; font-weight:850; letter-spacing:.045em; text-transform:uppercase; }
+      .scan-outlook-value { display:block; color:#173f31; font-size:1.12rem; font-weight:900; line-height:1.16; margin:.2rem 0; }
+      .scan-outlook-context { display:block; color:#697971; font-size:.67rem; line-height:1.35; }
+      .scan-outlook-gap { display:block; margin-top:.28rem; font-size:.68rem; font-weight:800; line-height:1.3; }
+      .scan-action { background:#f3f6f4; border-radius:10px; padding:.68rem .72rem; color:#3f5149; font-size:.75rem; line-height:1.45; }
+      .scan-action-label { display:block; color:#718078; font-size:.62rem; font-weight:850; letter-spacing:.055em; text-transform:uppercase; margin-bottom:.18rem; }
       [data-testid="stSidebarNav"] { padding-top:.25rem; }
       [data-testid="stSidebarNav"] a { border-radius:10px; margin:.08rem .35rem; }
       [data-testid="stSidebarNav"] a[aria-current="page"] { background:#dcece2; color:var(--green); font-weight:800; }
@@ -232,7 +248,7 @@ st.markdown(
         .card-body { min-height:0; }
         .hero h1 { font-size:1.55rem; }
         .home-hero h1 { font-size:1.55rem; }
-        .signal-grid { grid-template-columns:1fr 1fr; }
+        .signal-grid, .scan-outlooks { grid-template-columns:1fr 1fr; }
         .intro-grid { grid-template-columns:1fr; }
         .executive-grid { grid-template-columns:1fr 1fr; }
         .about-flow { grid-template-columns:1fr 1fr; }
@@ -240,7 +256,7 @@ st.markdown(
         [data-testid="stHorizontalBlock"]:has(.card-body) { flex-direction:column !important; gap:.75rem !important; }
         [data-testid="stHorizontalBlock"]:has(.card-body) > div { width:100% !important; flex:1 1 100% !important; }
       }
-      @media (max-width: 620px) { .executive-grid, .about-flow { grid-template-columns:1fr; } }
+      @media (max-width: 620px) { .executive-grid, .about-flow, .scan-outlooks { grid-template-columns:1fr; } }
     </style>
     """,
     unsafe_allow_html=True,
@@ -1841,16 +1857,6 @@ def _building_card(row: pd.Series) -> str:
     elif row["state"] == "Records ended":
         freshness_badge = '<span class="micro-badge">Latest available record</span>'
     evidence_note = f'<span class="micro-badge">{int(row["scored_dimensions"])}/4 risk checks</span>'
-    evidence_details: list[str] = []
-    if pd.isna(row.get("weight_score")):
-        evidence_details.append("Weight not scored: no usable measured weight")
-    if pd.isna(row.get("environment_score")):
-        evidence_details.append(f"Environment not scored: {row.get('environment_status', 'no current reading')}")
-    evidence_detail = (
-        f'<div class="evidence-note">{html.escape(" · ".join(evidence_details))}</div>'
-        if evidence_details
-        else ""
-    )
     predicted_recovery = row.get("predicted_final_recovery", pd.NA)
     current_recovery = row.get("percentage_alive", pd.NA)
     latest_weight = row.get("latest_weight_kg", pd.NA)
@@ -1862,12 +1868,11 @@ def _building_card(row: pd.Series) -> str:
     )
     driver = str(row.get("owner_reason_detail", _card_driver(row)))
     pattern_title = str(row.get("owner_reason_title", _pattern_display(row["risk_pattern"])[0]))
-    pattern_subtitle = str(row.get("owner_action_basis", _pattern_display(row["risk_pattern"])[1]))
     owner_action = str(row.get("owner_action", row["recommended_action"]))
-    detected_pattern_details = str(row.get("risk_pattern_details", row.get("risk_pattern", "Not available")))
-    pattern_tags = (
-        f'<div class="pattern-tags"><strong>Detected problems:</strong> {html.escape(detected_pattern_details.replace(" | ", " · "))}</div>'
-        if detected_pattern_details not in {"", "Not applicable", "No Material Concern (0/3)"}
+    additional_patterns = max(int(row.get("risk_pattern_count", 1) or 1) - 1, 0)
+    more_signals = (
+        f'<span class="scan-more">+{additional_patterns} other recorded signal{"s" if additional_patterns != 1 else ""} · view details</span>'
+        if additional_patterns
         else ""
     )
     decision_status = str(row.get("management_decision_status", "No management decision recorded"))
@@ -1882,19 +1887,9 @@ def _building_card(row: pd.Series) -> str:
         if override_count
         else ""
     )
-    override_alert = (
-        f'<div class="override-alert"><strong>Management override:</strong> {html.escape(str(row.get("management_override_summary", "")))}</div>'
-        if override_count
-        else ""
-    )
     persistent_count = int(row.get("persistent_signal_count", 0) or 0)
     persistent_badge = (
         f'<span class="micro-badge">{persistent_count} persistent 3-day watch{"es" if persistent_count != 1 else ""}</span>'
-        if persistent_count
-        else ""
-    )
-    persistent_alert = (
-        f'<div class="persistent-alert"><strong>Persistent watch:</strong> {html.escape(str(row.get("persistent_signal_summary")))}</div>'
         if persistent_count
         else ""
     )
@@ -1903,52 +1898,20 @@ def _building_card(row: pd.Series) -> str:
         if decision_status != "No management decision recorded"
         else f"Next action · {row['recommendation_urgency']}"
     )
-    uses_trish = str(row.get("trish_bundle_version", "Not available")) != "Not available"
-    current_day = int(row.get("cycle_day", 0))
-    lineage = str(row.get("trish_lineage_status", ""))
-    lineage_short = "v19 held-out replay" if "v19" in lineage.lower() or "oof" in lineage.lower() else "source lineage unavailable"
-    recovery_provenance = ""
-    if pd.notna(predicted_recovery):
-        if uses_trish:
-            recovery_evidence_day = int(row.get("trish_prediction_day", min(current_day, 14)))
-            recovery_status = "recalculated" if current_day <= 14 else f"held from Day {recovery_evidence_day}"
-            recovery_provenance = (
-                f'<div class="provenance-line">Model used: {html.escape(str(row.get("recovery_model_id", "M1")))} · '
-                f'{html.escape(str(row.get("recovery_model_name", "Extra Trees")).replace("Trish Model 1 · ", ""))} · '
-                f'Day {recovery_evidence_day} evidence · {recovery_status} · {lineage_short}</div>'
-            )
-        else:
-            recovery_provenance = '<div class="provenance-line">Fallback baseline · open Building View for method and source details</div>'
-    weight_provenance = ""
-    if pd.notna(row.get("projected_day35_weight_kg", pd.NA)):
-        if str(row.get("day35_weight_scope")) == "Recorded Day 35 result":
-            weight_provenance = '<div class="provenance-line">Recorded Day 35 result · not a forecast</div>'
-        elif uses_trish:
-            weight_model_id = str(row.get("day35_weight_model_id", "M3"))
-            weight_evidence_day = int(row.get("trish_weight_prediction_day", min(current_day, 21)))
-            weight_window = 21
-            weight_status = "recalculated" if current_day <= weight_window else f"held from Day {weight_evidence_day}"
-            algorithm = str(row.get("day35_weight_model_name", "")).split(" · ")[-1]
-            weight_provenance = (
-                f'<div class="provenance-line">Model used: {html.escape(weight_model_id)} · {html.escape(algorithm)} · '
-                f'Day {weight_evidence_day} evidence · {weight_status} · {lineage_short}</div>'
-            )
-        else:
-            weight_provenance = '<div class="provenance-line">Fallback baseline · open Building View for method and source details</div>'
+    weight_is_recorded = str(row.get("day35_weight_scope")) == "Recorded Day 35 result"
+    weight_outlook_label = "Day 35 recorded" if weight_is_recorded else "Day 35 outlook"
+    weight_context = "Observed measurement" if weight_is_recorded else f"Latest {html.escape(current_weight_text)}"
+    recovery_context = f"Now {_percent(current_recovery)} · Goal 95%"
     return f"""
-    <div class="card-body">
+    <div class="card-body scan-card">
       <div class="head"><div class="name">{building_id}</div><span class="pill {rating_class}">{html.escape(rating_text)}</span></div>
-      <div class="card-summary"><div class="meta">{day} · Observed concern {'—' if pd.isna(row['risk_score']) else str(int(row['risk_score'])) + '/12'}</div><div>{override_badge} {persistent_badge} {evidence_note} {freshness_badge}</div></div>
-      {evidence_detail}
-      <div class="driver"><span class="pattern-title">{html.escape(pattern_title)}</span><span class="pattern-subtitle">{html.escape(pattern_subtitle)}<br><strong>Why now:</strong> {html.escape(driver)}</span></div>
-      {pattern_tags}
-      {persistent_alert}
-      {override_alert}
-      <div class="outcome-stack">
-        <div class="outcome-row"><div class="outcome-name">Recovery proxy</div><div class="outcome-detail"><div class="outcome-flow"><span>Current recorded: {_percent(current_recovery)}</span><span class="outcome-arrow">→</span><strong>Projected: {_percent(predicted_recovery)}</strong></div><span class="gap-tag {recovery_class}">{html.escape(recovery_gap)} · recovery-proxy goal 95%</span>{recovery_provenance}</div></div>
-        <div class="outcome-row"><div class="outcome-name">Average weight (g)</div><div class="outcome-detail"><div class="outcome-flow"><span>Latest: {html.escape(current_weight_text)}</span><span class="outcome-arrow">→</span><strong>Projected Day 35: {weight_value}</strong></div><span class="gap-tag {weight_class}">{html.escape(weight_gap)} · Day 35 goal 1,800 g</span>{weight_provenance}</div></div>
+      <div class="scan-meta"><span>{day} · Score {'—' if pd.isna(row['risk_score']) else str(int(row['risk_score'])) + '/12'}</span><span class="scan-badges">{override_badge} {persistent_badge} {evidence_note} {freshness_badge}</span></div>
+      <div class="scan-signal"><span class="scan-signal-kicker">Primary issue</span><span class="scan-signal-title">{html.escape(pattern_title)}</span><span class="scan-signal-copy">{html.escape(driver)}</span>{more_signals}</div>
+      <div class="scan-outlooks">
+        <div class="scan-outlook"><span class="scan-outlook-label">Recovery outlook</span><span class="scan-outlook-value">{_percent(predicted_recovery)}</span><span class="scan-outlook-context">{recovery_context}</span><span class="scan-outlook-gap {recovery_class}">{html.escape(recovery_gap)}</span></div>
+        <div class="scan-outlook"><span class="scan-outlook-label">{weight_outlook_label}</span><span class="scan-outlook-value">{weight_value}</span><span class="scan-outlook-context">{weight_context}</span><span class="scan-outlook-gap {weight_class}">{html.escape(weight_gap)} vs 1,800 g</span></div>
       </div>
-      <div class="action"><div class="label">{html.escape(str(action_label))}</div>{html.escape(owner_action)}<br>{decision_badge}</div>
+      <div class="scan-action"><span class="scan-action-label">{html.escape(str(action_label))}</span>{html.escape(owner_action)} {decision_badge}</div>
     </div>
     """
 
@@ -2498,7 +2461,7 @@ if selected_view == VIEW_PRIORITIES:
                     st.markdown(_building_card(row), unsafe_allow_html=True)
                     no_cycle_data = row["state"] == "Inactive" and pd.isna(row["placement_date"])
                     if st.button(
-                        "No details available" if no_cycle_data else f"See how {row['building_id']} predictions were made",
+                        "No details available" if no_cycle_data else f"View {row['building_id']} details",
                         key=f"view_details_{row['building_id']}",
                         use_container_width=True,
                         disabled=no_cycle_data,
